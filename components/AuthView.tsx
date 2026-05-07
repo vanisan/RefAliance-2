@@ -15,8 +15,6 @@ export default function AuthView() {
   const [login, setLogin] = useState('');
   const [pass, setPass] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const isDummySupabase = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('dummy');
   
   const DUMMY_DOMAIN = "@heroes.game";
 
