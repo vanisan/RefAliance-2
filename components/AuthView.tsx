@@ -1,48 +1,337 @@
 'use client';
 
-import React, { useState } from 'react';
-import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { LogIn, LogOut, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useGame } from '../lib/game-context';
+import { motion, AnimatePresence } from 'motion/react';
+import { LogIn, LogOut, User as UserIcon, Lock, ShieldCheck } from 'lucide-react';
 
 export default function AuthView() {
-  const [error, setError] = useState("");
+  const { user, authLoading, playerName, setPlayerName, resetProgress } = useGame();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [mode, setMode] = useState<'choice' | 'credentials'>('choice');
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [isRegister, setIsRegister] = useState(false);
+  const [login, setLogin] = useState('');
+  const [pass, setPass] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const login = async () => {
+  const isDummySupabase = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('dummy');
+  
+  const validateSupabaseEnv = () => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!url || url.includes('dummy') || !key || key.includes('dummy')) {
+      return "Ошибка: Переменные окружения Supabase не настроены (URL или ANON KEY). Пожалуйста, укажите их.";
+    }
+    
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (e: any) {
-      setError(e.message);
+      new URL(url);
+    } catch (e) {
+      return `Ошибка: Неверный формат NEXT_PUBLIC_SUPABASE_URL ("${url}"). Должен быть валидный URL (например, https://xxxx.supabase.co).`;
+    }
+    
+    if (!key.startsWith('ey') && !key.startsWith('sb_')) {
+      return `Ошибка: Возможно, у вас неверный NEXT_PUBLIC_SUPABASE_ANON_KEY. Ключи Supabase обычно начинаются с "eyJ". Вы указали: "${key.substring(0, 5)}...". Убедитесь, что скопировали проектный API ключ (anon).`;
+    }
+    
+    return null;
+  };
+
+  const DUMMY_DOMAIN = "@heroes.game";
+
+  const handleCredentialsAuth = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const envError = validateSupabaseEnv();
+    if (envError) {
+      setErrorMsg(envError);
+      return;
+    }
+    setErrorMsg(null);
+    setLoading(true);
+
+    if (login.length < 3) {
+      setErrorMsg("Логин слишком короткий (мин. 3 символа)");
+      setLoading(false);
+      return;
+    }
+    if (pass.length < 6) {
+      setErrorMsg("Пароль слишком короткий (мин. 6 символов)");
+      setLoading(false);
+      return;
+    }
+
+    const encodeLoginToAscii = (str: string) => {
+      // Create a deterministic valid email local part from any login (including Cyrillic)
+      const encoded = Array.from(new TextEncoder().encode(str))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      return encoded || 'empty';
+    };
+
+    const email = `${encodeLoginToAscii(login.toLowerCase().trim())}${DUMMY_DOMAIN}`;
+
+    try {
+      if (isRegister) {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: pass,
+        });
+        if (error) throw error;
+        const cleanName = login.trim();
+        setPlayerName(cleanName);
+        
+        // Supabase users table should probably be populated via trigger or manually
+        if (data.user) {
+          const { error: dbError } = await supabase.from('users').upsert({
+            id: data.user.id,
+            playerName: cleanName,
+            version: 2,
+            createdAt: new Date().toISOString()
+          });
+          if (dbError) {
+            console.error("Manual doc creation failed", dbError);
+          }
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password: pass,
+        });
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      console.error("Auth error", error);
+      setErrorMsg("Ошибка: " + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = async () => {
-    await signOut(auth);
+  const handleGoogleLogin = async () => {
+    const envError = validateSupabaseEnv();
+    if (envError) {
+      setErrorMsg(envError);
+      return;
+    }
+    setErrorMsg(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Login failed", error);
+      setErrorMsg("Ошибка входа: " + error.message);
+    }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-zinc-900 rounded-xl border border-zinc-800 shadow-2xl max-w-md w-full">
-      <h2 className="text-2xl font-bold mb-6 text-white tracking-tight">RefAlliance 2</h2>
+    <div className="p-6 wow-panel max-w-[400px] w-full bg-stone-900/40 backdrop-blur-md">
+      <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow mb-6 text-center">Профиль Игрока</h2>
       
-      {error && (
-        <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-lg flex items-center gap-2 text-red-200 text-sm">
-          <ShieldAlert className="w-4 h-4" />
-          {error}
+      {user ? (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 bg-stone-800/50 p-4 rounded border border-stone-700 shadow-inner">
+            {user.user_metadata?.avatar_url ? (
+              <img src={user.user_metadata?.avatar_url} alt={user.user_metadata?.name || ''} className="w-16 h-16 rounded-full border-2 border-amber-500 shadow-lg" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-stone-700 border-2 border-amber-500 flex items-center justify-center shadow-lg">
+                <UserIcon className="w-8 h-8 text-stone-400" />
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-amber-600 font-black uppercase tracking-tighter leading-none mb-1">Игрок</p>
+              <p className="text-lg font-bold text-stone-100">{playerName || '...'}</p>
+              <p className="text-[10px] text-stone-500 font-mono italic">{login || user.email?.split('@')[0]}</p>
+            </div>
+          </div>
+          
+          <div className="p-4 wow-panel-metal rounded bg-stone-800/30">
+            <p className="text-xs text-stone-300 font-bold mb-2">Ваш прогресс автоматически сохраняется в облаке.</p>
+            <p className="text-[10px] text-stone-500 uppercase tracking-widest">Прогресс привязан к логину: <span className="text-amber-500">{login || user.email?.split('@')[0]}</span></p>
+          </div>
+
+          <div className="space-y-2 pt-4">
+            {!confirmReset ? (
+              <button 
+                onClick={() => setConfirmReset(true)}
+                className="w-full py-2 bg-stone-900/50 text-red-500/50 text-[9px] font-black uppercase tracking-widest hover:text-red-500 border border-stone-700 rounded transition-all"
+              >
+                Сбросить прогресс (Начать с 0)
+              </button>
+            ) : (
+              <div className="bg-red-950/20 p-2 border border-red-500/30 rounded">
+                <p className="text-red-500 text-[8px] font-black uppercase mb-2">Удалить всё и начать с 1 рыцарем?</p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      await resetProgress();
+                      setConfirmReset(false);
+                    }}
+                    className="flex-1 py-1 bg-red-600 text-white text-[9px] font-black uppercase rounded"
+                  >
+                    ДА, УДАЛИТЬ
+                  </button>
+                  <button 
+                    onClick={() => setConfirmReset(false)}
+                    className="flex-1 py-1 bg-stone-700 text-white text-[9px] font-black uppercase rounded"
+                  >
+                    ОТМЕНА
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <button 
+              onClick={handleLogout}
+              className="w-full py-3 wow-panel-metal flex items-center justify-center gap-2 text-stone-400 font-black uppercase tracking-widest hover:bg-stone-700 transition-colors border-stone-800 border-b-2"
+            >
+              <LogOut className="w-4 h-4"/> Выйти из системы
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-4">
+          <AnimatePresence mode="wait">
+            {mode === 'choice' ? (
+              <motion.div
+                key="choice"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="space-y-4"
+              >
+                <div className="mb-6 p-4 bg-amber-900/10 border border-amber-800/30 rounded-lg">
+                  <p className="text-stone-300 text-sm font-bold mb-2 uppercase tracking-tight">Создай свой путь</p>
+                  <p className="text-[10px] text-stone-500 uppercase tracking-widest leading-relaxed italic">Армия и города требуют правителя.</p>
+                </div>
+
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleGoogleLogin}
+                  className="w-full py-4 bg-white text-stone-900 rounded font-black flex items-center justify-center gap-3 shadow-xl hover:bg-stone-100 transition-colors uppercase tracking-widest text-xs border-b-4 border-stone-300"
+                >
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+                  Google Вход
+                </motion.button>
+
+                <div className="flex items-center gap-3 py-2">
+                  <div className="h-px bg-stone-800 flex-1"></div>
+                  <span className="text-[9px] text-stone-600 font-bold uppercase">Альтернатива</span>
+                  <div className="h-px bg-stone-800 flex-1"></div>
+                </div>
+
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setMode('credentials')}
+                  className="w-full py-4 bg-stone-800 text-stone-200 rounded font-black flex items-center justify-center gap-3 shadow-xl hover:bg-stone-700 transition-colors uppercase tracking-widest text-xs border-b-4 border-stone-950"
+                >
+                  <LogIn className="w-4 h-4 text-amber-500" />
+                  Логин и Пароль
+                </motion.button>
+                
+                <p className="mt-4 text-[9px] text-stone-700 uppercase font-black tracking-tighter">Рекомендуем Google, если Логин/Пароль не работают.</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="credentials"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-black text-amber-500 uppercase italic">
+                    {isRegister ? "Регистрация" : "Вход"}
+                  </h3>
+                  <button onClick={() => setMode('choice')} className="text-[9px] text-stone-500 uppercase font-bold hover:text-stone-300">Назад</button>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="relative">
+                    <LogIn className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-600" />
+                    <input 
+                      type="text" 
+                      placeholder="ЛОГИН"
+                      value={login}
+                      onChange={(e) => setLogin(e.target.value)}
+                      className="w-full bg-stone-950 border border-stone-800 p-3 pl-10 rounded text-stone-100 text-xs font-bold focus:border-amber-500 outline-none uppercase tracking-widest"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-600" />
+                    <input 
+                      type="password" 
+                      placeholder="ПАРОЛЬ"
+                      value={pass}
+                      onChange={(e) => setPass(e.target.value)}
+                      className="w-full bg-stone-950 border border-stone-800 p-3 pl-10 rounded text-stone-100 text-xs font-bold focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => handleCredentialsAuth()}
+                  disabled={loading}
+                  className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-stone-900 rounded font-black flex items-center justify-center gap-3 shadow-xl transition-colors uppercase tracking-widest text-xs border-b-4 border-amber-800"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-stone-900 border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    isRegister ? "Создать" : "Войти"
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => setIsRegister(!isRegister)}
+                  className="text-[10px] text-amber-500/70 hover:text-amber-500 font-bold uppercase underline"
+                >
+                  {isRegister ? "Уже есть аккаунт?" : "Нет аккаунта?"}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {errorMsg && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded text-red-100 text-[10px] font-bold text-center uppercase tracking-tight"
+            >
+              {errorMsg}
+            </motion.div>
+          )}
+          
+          <div className="mt-8 pt-6 border-t border-stone-800/50">
+            <p className="text-[9px] text-stone-600 uppercase font-bold tracking-widest">
+              Domain Error? Add &quot;ref-aliance-2.vercel.app&quot; to Firebase Auth Settings.
+            </p>
+          </div>
         </div>
       )}
-
-      <button
-        onClick={login}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-all duration-200 shadow-lg"
-      >
-        <LogIn className="w-5 h-5" />
-        Login with Google
-      </button>
-
-      <p className="mt-4 text-xs text-zinc-500 text-center uppercase tracking-widest">
-        Command your heroes. Build your alliance.
-      </p>
     </div>
   );
 }

@@ -52,7 +52,7 @@ export default function RankingView() {
             transition={{ delay: index * 0.05 }}
             key={leader.uid}
             className={`flex items-center gap-3 p-3 rounded border transition-all ${
-              leader.uid === user?.uid 
+              leader.uid === user?.id 
                 ? 'bg-amber-500/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.1)]' 
                 : 'bg-stone-900/40 border-stone-800'
             }`}
@@ -69,7 +69,7 @@ export default function RankingView() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-stone-100 truncate">{leader.playerName}</span>
-                {leader.uid === user?.uid && <span className="text-[8px] bg-amber-500 text-stone-900 px-1 rounded font-black uppercase">Вы</span>}
+                {leader.uid === user?.id && <span className="text-[8px] bg-amber-500 text-stone-900 px-1 rounded font-black uppercase">Вы</span>}
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 <div className="flex items-center gap-1 text-[10px] text-stone-400 font-mono">
