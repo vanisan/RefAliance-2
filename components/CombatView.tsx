@@ -56,7 +56,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     });
     return initialUnits;
   });
-  const [turn, setTurn] = useState<'player' | 'enemy'>('player');
+  const [turn, setTurn] = useState<'player' | 'enemy'>(node.type === 'boss' ? 'enemy' : 'player');
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>(['Бой начался!']);
   const [gameOver, setGameOver] = useState<'victory' | 'defeat' | null>(null);
@@ -149,16 +149,43 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       let newX = myUnit.x;
       let newY = myUnit.y;
       
-      if (Math.abs(closest.x - myUnit.x) > ranges) {
-        newX = Math.max(0, Math.min(GRID_WIDTH-1, myUnit.x + dx * Math.min(speed, Math.abs(closest.x - myUnit.x) - ranges + 1)));
+      let steps = speed;
+      while(steps > 0 && (Math.abs(closest.x - newX) + Math.abs(closest.y - newY) > ranges)) {
+        let axisPrefix = Math.abs(closest.x - newX) > Math.abs(closest.y - newY) ? 'x' : 'y';
+        if (axisPrefix === 'x') {
+          newX += Math.sign(closest.x - newX);
+        } else {
+          newY += Math.sign(closest.y - newY);
+        }
+        
+        let colUnit = getUnitAt(newX, newY, currentUnits);
+        if (colUnit && colUnit.id !== myUnit.id) {
+          if (axisPrefix === 'x') {
+            newX -= Math.sign(closest.x - newX);
+            newY += Math.sign(closest.y - newY) || 1;
+          } else {
+            newY -= Math.sign(closest.y - newY);
+            newX += Math.sign(closest.x - newX) || 1;
+          }
+          
+          let colUnit2 = getUnitAt(newX, newY, currentUnits);
+          if (colUnit2 && colUnit2.id !== myUnit.id) {
+             if (axisPrefix === 'x') {
+              newY -= Math.sign(closest.y - newY) || 1;
+             } else {
+              newX -= Math.sign(closest.x - newX) || 1;
+             }
+             break;
+          }
+        }
+        steps--;
       }
       
-      while (currentUnits.some(u => u.count > 0 && u.id !== myUnit.id && u.x === newX && u.y === myUnit.y)) {
-        newX -= dx;
-        if (newX === myUnit.x) break;
-      }
+      // Keep within bounds
+      newX = Math.max(0, Math.min(GRID_WIDTH - 1, newX));
+      newY = Math.max(0, Math.min(GRID_HEIGHT - 1, newY));
       
-      const movedUnits = currentUnits.map(u => u.id === myUnit.id ? { ...u, x: newX, hasActed: true } : u);
+      const movedUnits = currentUnits.map(u => u.id === myUnit.id ? { ...u, x: newX, y: newY, hasActed: true } : u);
       setUnits(movedUnits);
       addLog(`Вражеский ${UNITS_INFO[myUnit.unitId].name} перемещается.`);
       determineNextActiveUnit(movedUnits);
@@ -202,12 +229,22 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const getUnitAt = (tx: number, ty: number, currentUnits: CombatUnit[] = units) => {
+    return currentUnits.find(u => {
+      if (u.count <= 0) return false;
+      if (u.unitId === 'titan' && node.type === 'boss') {
+        return tx >= u.x && tx <= u.x + 1 && ty >= u.y && ty <= u.y + 1;
+      }
+      return u.x === tx && u.y === ty;
+    });
+  };
+
   const handleCellClick = (x: number, y: number) => {
     if (turn !== 'player' || gameOver) return;
     const activeUnit = units.find(u => u.id === activeUnitId);
     if (!activeUnit) return;
 
-    const targetPos = units.find(u => u.x === x && u.y === y && u.count > 0);
+    const targetPos = getUnitAt(x, y);
     
     const dist = Math.abs(activeUnit.x - x) + Math.abs(activeUnit.y - y);
     const speed = UNITS_INFO[activeUnit.unitId].speed;
@@ -273,19 +310,31 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const gridCells = [];
   for (let y = 0; y < GRID_HEIGHT; y++) {
     for (let x = 0; x < GRID_WIDTH; x++) {
-      const u = units.find(u => u.x === x && u.y === y && u.count > 0);
-      const isAllowedMove = turn === 'player' && activeUnitId && !u && (Math.abs((units.find(act => act.id === activeUnitId)?.x || 99) - x) + Math.abs((units.find(act => act.id === activeUnitId)?.y || 99) - y)) <= (UNITS_INFO[units.find(act => act.id === activeUnitId)?.unitId!]?.speed || 0);
+      const isBossArea = node.type === 'boss' && units.some(u => u.unitId === 'titan' && u.count > 0 && x > u.x && x <= u.x + 1 && y >= u.y && y <= u.y + 1);
+      const isBossAreaSecondary = node.type === 'boss' && units.some(u => u.unitId === 'titan' && u.count > 0 && (x === u.x && y === u.y + 1 || x === u.x + 1 && y === u.y));
+      const isBossOrigin = node.type === 'boss' && units.some(u => u.unitId === 'titan' && u.count > 0 && x === u.x && y === u.y);
 
+      const u = units.find(u => u.x === x && u.y === y && u.count > 0 && (!isBossArea || isBossOrigin));
+      const activeUnit = activeUnitId ? units.find(act => act.id === activeUnitId) : null;
+      let moveRadius = 0;
+      if (activeUnit && activeUnit.unitId) {
+        moveRadius = Math.min(UNITS_INFO[activeUnit.unitId]?.speed || 3, 3); // Capped to 3 to not make it too big
+      }
+      
+      const dist = activeUnit ? (Math.abs(activeUnit.x - x) + Math.abs(activeUnit.y - y)) : Infinity;
+      const isAllowedMove = turn === 'player' && activeUnit && !getUnitAt(x, y) && dist <= moveRadius && dist > 0;
+      
       gridCells.push(
         <div 
           key={`${x}-${y}`} 
           onClick={() => handleCellClick(x, y)}
           className={cn(
             "relative w-full aspect-square border border-stone-700/50 flex items-center justify-center transition-colors",
-            isAllowedMove && "bg-green-500/20 cursor-pointer hover:bg-green-500/40 border-green-500/50 shadow-[inset_0_0_15px_rgba(34,197,94,0.3)] z-0"
+            isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/30 border-green-500/30 z-0"
           )}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-5">{(x+y)%2===0 ? '·' : ''}</div>
+          {isAllowedMove && <div className="w-2 h-2 rounded-full bg-green-500/50 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>}
           {u && (
             <motion.div 
               layoutId={u.id}
@@ -293,12 +342,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               className={cn(
                 "relative z-10 w-[85%] h-[85%] rounded bg-stone-900 flex flex-col items-center justify-center overflow-visible",
                 u.isEnemy ? "border border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.5)]" : "border border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]",
-                u.id === activeUnitId && "border-2 border-white shadow-[0_0_15px_#fff] z-20 scale-110",
-                u.isEnemy && "scale-x-[-1]" // flip enemy images horizontally
+                u.id === activeUnitId && "border-2 border-white shadow-[0_0_15px_#fff] z-20",
+                u.unitId === 'titan' && node.type === 'boss' && "absolute left-[7.5%] top-[7.5%] w-[calc(200%+0.5rem)] h-[calc(200%+0.5rem)] z-30" 
               )}
+              style={u.id === activeUnitId ? { transform: 'scale(1.1)' } : undefined}
             >
               {UNITS_INFO[u.unitId].image ? (
-                <img src={UNITS_INFO[u.unitId].image} alt={UNITS_INFO[u.unitId].name} className="w-full h-full object-cover rounded-[1px]" />
+                <img src={UNITS_INFO[u.unitId].image} alt={UNITS_INFO[u.unitId].name} className="w-full h-full object-cover rounded-[1px]" style={{ transform: u.isEnemy ? 'scaleX(-1)' : 'none' }} />
               ) : (
                 <div className="text-[7px] font-bold truncate px-0.5 w-full text-center leading-none text-white whitespace-nowrap" style={{ transform: u.isEnemy ? 'scaleX(-1)' : 'none' }}>
                   {UNITS_INFO[u.unitId].name.slice(0,3)}
@@ -307,7 +357,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               <div 
                 className="text-[8px] bg-stone-900 px-1 rounded-sm absolute -bottom-1 -right-1 font-black font-mono border z-30 shadow-md"
                 style={{ 
-                  transform: u.isEnemy ? 'scaleX(-1)' : 'none',
+                  transform: 'none',
                   borderColor: u.isEnemy ? '#ef4444' : '#f59e0b',
                   color: u.isEnemy ? '#fca5a5' : '#fef3c7'
                 }}

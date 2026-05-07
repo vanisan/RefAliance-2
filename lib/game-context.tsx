@@ -35,7 +35,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null,
-    helmet: null,
     chest: null,
     boots: null,
     ring: null

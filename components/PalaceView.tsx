@@ -82,10 +82,12 @@ export default function PalaceView() {
       {/* Palace Header */}
       <div className="flex flex-col items-center mb-6">
         <div className="relative group">
-          <div className="w-24 h-24 bg-stone-800 rounded-lg wow-border-gold flex flex-col items-center justify-center cursor-pointer hover:bg-stone-700 transition-colors shadow-lg">
-            <span className="text-3xl mb-1">🏰</span>
-            <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest text-shadow-glow">Дворец</p>
-            <p className="text-sm font-black text-stone-200 tracking-widest">LVL {palaceLevel}</p>
+          <div className="w-24 h-24 bg-stone-800 rounded-lg wow-border-gold flex flex-col items-center justify-end cursor-pointer transition-colors shadow-lg relative overflow-hidden">
+            <img src="/buildings/hall.webp" alt="Дворец" className="absolute inset-0 w-full h-full object-cover z-0" />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-900 to-transparent pt-6 pb-1 flex flex-col items-center">
+              <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest text-shadow-glow relative z-10">Дворец</p>
+              <p className="text-[10px] font-black text-stone-200 tracking-widest relative z-10">LVL {palaceLevel}</p>
+            </div>
           </div>
           <div className="absolute -top-2 -right-2 bg-amber-500 text-stone-900 text-[10px] px-2 py-0.5 rounded-sm border border-yellow-300 font-black shadow-lg">
             MAX
@@ -112,7 +114,11 @@ export default function PalaceView() {
               {building ? (
                 <>
                   <div className="absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <span className="z-10 text-2xl mb-0.5">{BUILDINGS_INFO[building.id].icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id].icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id].icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id].icon === 'Trees' ? '🪵' : '🪨'}</span>
+                  {BUILDINGS_INFO[building.id].image ? (
+                    <img src={BUILDINGS_INFO[building.id].image} alt={building.name} className="w-11 h-11 object-contain z-10 mb-0.5 opacity-90 drop-shadow-md" />
+                  ) : (
+                    <span className="z-10 text-2xl mb-0.5">{BUILDINGS_INFO[building.id].icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id].icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id].icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id].icon === 'Trees' ? '🪵' : '🪨'}</span>
+                  )}
                   {isSelected && <div className="text-[8px] text-amber-300 font-bold uppercase z-10">Select</div>}
                   {!isSelected && <div className="absolute bottom-0.5 right-1 text-[8px] text-amber-400/80 font-bold z-10 font-mono">L.{building.level}</div>}
                 </>

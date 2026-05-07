@@ -10,7 +10,6 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
 
   const slots: { id: EquipmentSlot; label: string }[] = [
     { id: 'weapon', label: 'Оружие' },
-    { id: 'helmet', label: 'Шлемы' },
     { id: 'chest', label: 'Доспехи' },
     { id: 'boots', label: 'Обувь' },
     { id: 'ring', label: 'Кольца' },

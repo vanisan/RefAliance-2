@@ -1,7 +1,7 @@
 export type ResourceType = 'gold' | 'stone' | 'wood' | 'food';
 export type Resources = Record<ResourceType, number>;
 
-export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry';
+export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat';
 
 export interface Building {
   id: BuildingId;
@@ -13,6 +13,7 @@ export interface BuildingInfo {
   id: BuildingId;
   name: string;
   icon: string;
+  image?: string;
   baseCost: Resources;
   costMultiplier: number; // How much cost increases per level
   production?: Partial<Resources>; // Production per level per tick (e.g. 5 sec)
@@ -21,19 +22,19 @@ export interface BuildingInfo {
 
 export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
   barracks: { 
-    id: 'barracks', name: 'Казарма', icon: 'Sword', 
+    id: 'barracks', name: 'Казарма', icon: 'Sword', image: '/buildings/barracks.webp',
     baseCost: { gold: 200, wood: 100, stone: 100, food: 0 }, costMultiplier: 1.5, 
     description: 'Позволяет нанимать войска' 
   },
   farm: { 
-    id: 'farm', name: 'Ферма', icon: 'Wheat', 
+    id: 'farm', name: 'Ферма', icon: 'Wheat', image: '/buildings/granary.webp',
     baseCost: { gold: 50, wood: 20, stone: 0, food: 0 }, costMultiplier: 1.3,
     production: { food: 5 }, description: 'Производит еду (+5/ур. в тик)' 
   },
   mine: { 
-    id: 'mine', name: 'Шахта', icon: 'Coins', 
+    id: 'mine', name: 'Шахта', icon: 'Coins', image: '/buildings/mine.webp',
     baseCost: { gold: 0, wood: 50, stone: 50, food: 50 }, costMultiplier: 1.4,
-    production: { gold: 5 }, description: 'Добывает золото (+5/ур. в тик)' 
+    production: { gold: 5, stone: 5 }, description: 'Добывает золото и камень (+5/ур. в тик)' 
   },
   mill: { 
     id: 'mill', name: 'Лесопилка', icon: 'Trees', 
@@ -44,6 +45,16 @@ export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
     id: 'quarry', name: 'Каменоломня', icon: 'Mountain', 
     baseCost: { gold: 50, wood: 20, stone: 0, food: 20 }, costMultiplier: 1.3,
     production: { stone: 5 }, description: 'Добывает камень (+5/ур. в тик)' 
+  },
+  altar: { 
+    id: 'altar', name: 'Алтарь', icon: 'Sword', image: '/buildings/Altar.webp',
+    baseCost: { gold: 500, wood: 200, stone: 200, food: 0 }, costMultiplier: 1.5, 
+    description: 'Дает бонусы для армии' 
+  },
+  magistrat: { 
+    id: 'magistrat', name: 'Магистрат', icon: 'Book', image: '/buildings/magistrat.webp',
+    baseCost: { gold: 400, wood: 300, stone: 300, food: 0 }, costMultiplier: 1.5, 
+    description: 'Исследования для армии' 
   },
 };
 
@@ -64,7 +75,7 @@ export interface UnitInfo {
   image?: string;
 }
 
-export type EquipmentSlot = 'helmet' | 'chest' | 'weapon' | 'boots' | 'ring';
+export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
 
 export interface EquipmentItem {
   id: string;
@@ -82,7 +93,6 @@ export interface EquipmentItem {
 
 const TIER_NAMES = ['Ополченца', 'Новичка', 'Солдата', 'Ветерана', 'Мастера', 'Героя', 'Легенды'];
 const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  helmet: 'Шлем',
   chest: 'Нагрудник',
   weapon: 'Оружие',
   boots: 'Сапоги',
@@ -90,7 +100,7 @@ const SLOT_NAMES: Record<EquipmentSlot, string> = {
 };
 
 export const SHOP_ITEMS: EquipmentItem[] = [];
-(['helmet', 'chest', 'weapon', 'boots', 'ring'] as EquipmentSlot[]).forEach(slot => {
+(['chest', 'weapon', 'boots', 'ring'] as EquipmentSlot[]).forEach(slot => {
   for (let i = 1; i <= 7; i++) {
      SHOP_ITEMS.push({
        id: `${slot}-${i}`,
@@ -101,8 +111,8 @@ export const SHOP_ITEMS: EquipmentItem[] = [];
        cost: i * 500, // Gold cost
        stats: {
          attackBonus: ['weapon', 'ring'].includes(slot) ? i * 5 : 0,
-         defenseBonus: ['chest', 'helmet', 'boots'].includes(slot) ? i * 3 : 0,
-         hpBonus: ['helmet', 'chest', 'ring', 'boots'].includes(slot) ? i * 2 : 0,
+         defenseBonus: ['chest', 'boots'].includes(slot) ? i * 3 : 0,
+         hpBonus: ['chest', 'ring', 'boots'].includes(slot) ? i * 2 : 0,
        }
      });
   }
@@ -128,12 +138,13 @@ export interface MapNode {
   reward: Partial<Resources>;
   cleared: boolean;
   name: string;
-  type?: 'combat' | 'city';
+  type?: 'combat' | 'city' | 'boss';
 }
 
 export const INITIAL_MAP_NODES: MapNode[] = [
-  { id: 'city', name: 'Город (Штормград)', type: 'city', x: 50, y: 50, enemies: [], reward: {}, cleared: false },
+  { id: 'city', name: 'Город (Амстерград)', type: 'city', x: 50, y: 50, enemies: [], reward: {}, cleared: false },
   { id: 'camp1', name: 'Лагерь Гоблинов', type: 'combat', x: 20, y: 30, enemies: [{ unitId: 'goblin', count: 5 }], reward: { gold: 100, wood: 50 }, cleared: false },
   { id: 'camp2', name: 'Толпа Орков', type: 'combat', x: 70, y: 40, enemies: [{ unitId: 'orc', count: 3 }], reward: { gold: 200, stone: 100 }, cleared: false },
   { id: 'camp3', name: 'Засада', type: 'combat', x: 40, y: 70, enemies: [{ unitId: 'goblin', count: 10 }, { unitId: 'orc', count: 2 }], reward: { gold: 300, food: 200 }, cleared: false },
+  { id: 'boss1', name: 'Босс (Титан)', type: 'boss', x: 80, y: 20, enemies: [{ unitId: 'titan', count: 1 }], reward: { gold: 10000, stone: 5000 }, cleared: false }
 ];
