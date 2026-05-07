@@ -1,4 +1,4 @@
-import { Building, BuildingId, BUILDINGS_INFO, Resources, UnitId } from './game.types';
+import { Building, BuildingId, BUILDINGS_INFO, Resources, UnitId, UNITS_INFO } from './game.types';
 import clsx, { ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -12,6 +12,15 @@ export const formatNumber = (num: number): string => {
     return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   }
   return num.toString();
+};
+
+export const calculateArmyPower = (army: Record<string, number>): number => {
+  return Object.entries(army).reduce((total, [id, count]) => {
+    const info = UNITS_INFO[id as UnitId];
+    if (!info) return total;
+    // Power formula: (hp + attack + defense) * count
+    return total + (info.hp + info.attack + info.defense) * count;
+  }, 0);
 };
 
 export const getUpgradeCost = (buildingId: BuildingId, currentLevel: number): Resources => {

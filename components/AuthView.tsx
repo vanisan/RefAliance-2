@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { useGame } from '../lib/game-context';
@@ -7,13 +8,25 @@ import { motion } from 'motion/react';
 import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
 
 export default function AuthView() {
-  const { user, authLoading } = useGame();
+  const { user, authLoading, army } = useGame();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    setErrorMsg(null);
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("Logged in:", result.user.email);
+    } catch (error: any) {
       console.error("Login failed", error);
+      if (error.code === 'auth/popup-closed-by-user') {
+        setErrorMsg("Окно было закрыто. Попробуйте еще раз.");
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        setErrorMsg("Запрос отменен. Нажмите кнопку еще раз.");
+      } else if (error.code === 'auth/popup-blocked') {
+        setErrorMsg("Всплывающее окно заблокировано! Разрешите их в настройках браузера.");
+      } else {
+        setErrorMsg("Ошибка входа: " + error.message);
+      }
     }
   };
 
@@ -82,6 +95,12 @@ export default function AuthView() {
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
             Войти через Google
           </motion.button>
+          
+          {errorMsg && (
+            <div className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded text-red-200 text-xs font-bold text-center">
+              {errorMsg}
+            </div>
+          )}
           
           <p className="mt-6 text-[9px] text-stone-600 uppercase font-bold tracking-widest">Создавая аккаунт, вы соглашаетесь с кодексом чести Героя.</p>
         </div>

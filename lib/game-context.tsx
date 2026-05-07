@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { Resources, Building, UnitId, MapNode, INITIAL_MAP_NODES, BUILDINGS_INFO, EquipmentSlot, EquipmentItem } from './game.types';
-import { addResources } from './game.utils';
+import { addResources, calculateArmyPower } from './game.utils';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, orderBy, limit, getDocs } from 'firebase/firestore';
 
 enum OperationType {
   CREATE = 'create',
@@ -51,6 +51,7 @@ interface GameState {
   currentCampaignLevel: string;
   user: User | null;
   authLoading: boolean;
+  getLeaderboard: () => Promise<any[]>;
   
   // Actions
   setResources: (res: Resources | ((prev: Resources) => Resources)) => void;
@@ -85,6 +86,21 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [currentCampaignLevel, setCurrentCampaignLevel] = useState("1-1");
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  const getLeaderboard = async () => {
+    try {
+      const q = query(
+        collection(db, 'users'), 
+        orderBy('armyPower', 'desc'),
+        limit(20)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, 'users');
+      return [];
+    }
+  };
 
   const initialLoadDone = useRef(false);
 
@@ -144,12 +160,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     const timer = setTimeout(async () => {
       try {
+        const armyPower = calculateArmyPower(army);
         await setDoc(doc(db, 'users', user.uid), {
           playerName,
           resources,
           palaceLevel,
           buildings,
           army,
+          armyPower,
           mapNodes,
           equipment,
           currentCampaignLevel,
@@ -206,6 +224,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       equipment, setEquipment,
       currentCampaignLevel, setCurrentCampaignLevel,
       user, authLoading,
+      getLeaderboard,
       setPlayerName
     }}>
       {children}

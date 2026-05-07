@@ -21,11 +21,13 @@ service cloud.firestore {
              data.resources is map &&
              data.buildings is list &&
              data.army is map &&
-             data.palaceLevel is number;
+             data.palaceLevel is number &&
+             (!data.keys().contains('armyPower') || data.armyPower is number);
     }
 
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create, update: if isOwner(userId) && isValidProfile(request.resource.data);
       allow delete: if isOwner(userId);
     }

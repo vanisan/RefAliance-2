@@ -1,6 +1,6 @@
-import { Home, Map as MapIcon, Shield, Menu } from 'lucide-react';
+import { Home, Map as MapIcon, Shield, Menu, Trophy } from 'lucide-react';
 
-export type TabType = 'palace' | 'map' | 'army' | 'menu';
+export type TabType = 'palace' | 'map' | 'army' | 'ranking' | 'menu';
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -13,6 +13,7 @@ export default function BottomNav({ activeTab, onChange, hasBarracks }: BottomNa
     { id: 'palace', label: 'Дворец', icon: <Home className="w-5 h-5" />, disabled: false },
     { id: 'map', label: 'Карта', icon: <MapIcon className="w-5 h-5" />, disabled: false },
     { id: 'army', label: 'Армия', icon: <Shield className="w-5 h-5" />, disabled: !hasBarracks },
+    { id: 'ranking', label: 'Рейтинг', icon: <Trophy className="w-5 h-5" />, disabled: false },
     { id: 'menu', label: 'Меню', icon: <Menu className="w-5 h-5" />, disabled: false },
   ] as const;
 

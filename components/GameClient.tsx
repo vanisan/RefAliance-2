@@ -9,6 +9,7 @@ import MapView from '../components/MapView';
 import ArmyView from '../components/ArmyView';
 import CombatView from '../components/CombatView';
 import AuthView from './AuthView';
+import RankingView from './RankingView';
 import { MapNode } from '../lib/game.types';
 
 export default function GameClient() {
@@ -45,6 +46,7 @@ export default function GameClient() {
             {activeTab === 'palace' && <PalaceView />}
             {activeTab === 'map' && <MapView onStartCombat={handleStartCombat} />}
             {activeTab === 'army' && <ArmyView />}
+            {activeTab === 'ranking' && <RankingView />}
             {activeTab === 'menu' && <AuthView />}
           </>
         )}
