@@ -37,7 +37,7 @@ export default function GameClient() {
   }
 
   // If user is logged in but hasn't set their name yet
-  if (user && playerName === 'Герой') {
+  if (user && !playerName) {
     return <NameEntryView />;
   }
 

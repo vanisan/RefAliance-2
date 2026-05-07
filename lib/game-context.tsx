@@ -64,9 +64,9 @@ interface GameState {
   setCurrentCampaignLevel: (level: string) => void;
 }
 
-const defaultResources: Resources = { gold: 1000, wood: 500, stone: 300, food: 800, crystals: 0 };
+const defaultResources: Resources = { gold: 500, wood: 100, stone: 100, food: 200, crystals: 0 };
 const defaultArmy: Record<UnitId, number> = { 
-  knight: 5, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
+  knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
   goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
 };
 
@@ -81,7 +81,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null, chest: null, boots: null, ring: null
   });
-  const [playerName, setPlayerName] = useState("Hero");
+  const [playerName, setPlayerName] = useState("");
   const [mapRefreshTimer, setMapRefreshTimer] = useState(600);
   const [currentCampaignLevel, setCurrentCampaignLevel] = useState("1-1");
   const [user, setUser] = useState<User | null>(null);
@@ -131,11 +131,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
 
             setEquipment(data.equipment || { weapon: null, chest: null, boots: null, ring: null });
-            setPlayerName(data.playerName || u.displayName || "Hero");
+            setPlayerName(data.playerName || u.displayName || "");
           } else {
             // New user, save default state
             await setDoc(userDoc, {
-              playerName: u.displayName || "Hero",
+              playerName: u.displayName || "",
               resources: defaultResources,
               palaceLevel: 1,
               buildings: Array(16).fill(null),

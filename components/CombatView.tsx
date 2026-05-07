@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO, UnitId } from '../lib/game.types';
 import { addResources, cn } from '../lib/game.utils';
+import { getRandomId, getRandomDamage } from '../lib/combat.utils';
 import { Skull, Shield, Sword } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -127,8 +128,9 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       if (attacker.unitId === 'mage') type = 'fireball';
       if (attacker.unitId === 'titan' || attacker.unitId === 'giant') type = 'lightning';
       
+      const projectileId = getRandomId('p');
       const newProjectile: Projectile = {
-        id: Math.random().toString(),
+        id: projectileId,
         type,
         startX: attacker.x + (attackerInfo.size === 2 ? 0.5 : 0),
         startY: attacker.y + (attackerInfo.size === 2 ? 0.5 : 0),
@@ -137,31 +139,33 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       };
       setProjectiles(prev => [...prev, newProjectile]);
       setTimeout(() => {
-        setProjectiles(prev => prev.filter(p => p.id !== newProjectile.id));
+        setProjectiles(prev => prev.filter(p => p.id !== projectileId));
         // Hit effect
         const hitType: AttackEffect['type'] = (type === 'fireball') ? 'fire' : (type === 'lightning' ? 'lightning_hit' : 'hit');
+        const effectId = getRandomId('e');
         const newEffect: AttackEffect = {
-          id: Math.random().toString(),
+          id: effectId,
           type: hitType,
           x: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
           y: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
           size: defenderInfo.size || 1
         };
         setEffects(prev => [...prev, newEffect]);
-        setTimeout(() => setEffects(prev => prev.filter(e => e.id !== newEffect.id)), 500);
+        setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
       }, 500);
     } else {
       // Melee Attack Effect
       const effectType: AttackEffect['type'] = (attacker.unitId === 'dragon' || attacker.unitId === 'demon') ? 'fire' : 'slash';
+      const effectId = getRandomId('e-melee');
       const newEffect: AttackEffect = {
-        id: Math.random().toString(),
+        id: effectId,
         type: effectType,
         x: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
         y: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
         size: defenderInfo.size || 1
       };
       setEffects(prev => [...prev, newEffect]);
-      setTimeout(() => setEffects(prev => prev.filter(e => e.id !== newEffect.id)), 500);
+      setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
     }
 
     const attInfo = attackerInfo;
@@ -173,7 +177,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     const effMaxDmg = attacker.isEnemy ? attInfo.maxDamage : Math.floor(attInfo.maxDamage * atkMod);
     const effUnitHp = defender.isEnemy ? defInfo.hp : Math.floor(defInfo.hp * hpMod);
     
-    const rawDmg = Math.floor(Math.random() * (effMaxDmg - effMinDmg + 1)) + effMinDmg;
+    const rawDmg = getRandomDamage(effMinDmg, effMaxDmg);
     let totalDmg = rawDmg * attacker.count;
     
     const statDiff = effAttack - effDefense;

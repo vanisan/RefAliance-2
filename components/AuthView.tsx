@@ -38,7 +38,10 @@ export default function AuthView() {
 
     try {
       if (isRegister) {
-        await createUserWithEmailAndPassword(auth, email, pass);
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
+        // Important: set the playerName state immediately so sync uses it
+        const cleanName = login.trim();
+        setPlayerName(cleanName);
       } else {
         await signInWithEmailAndPassword(auth, email, pass);
       }
@@ -107,7 +110,7 @@ export default function AuthView() {
               </div>
             )}
             <div>
-              <p className="text-xs text-amber-600 font-black uppercase tracking-tighter leading-none mb-1">Герой</p>
+              <p className="text-xs text-amber-600 font-black uppercase tracking-tighter leading-none mb-1">Игрок</p>
               <p className="text-lg font-bold text-stone-100">{playerName}</p>
               <p className="text-[10px] text-stone-500 font-mono italic">{user.email?.split('@')[0]}</p>
             </div>
@@ -241,7 +244,7 @@ export default function AuthView() {
           
           <div className="mt-8 pt-6 border-t border-stone-800/50">
             <p className="text-[9px] text-stone-600 uppercase font-bold tracking-widest">
-              Domain Error? Add "ref-aliance-2.vercel.app" to Firebase Auth Settings.
+              Domain Error? Add &quot;ref-aliance-2.vercel.app&quot; to Firebase Auth Settings.
             </p>
           </div>
         </div>

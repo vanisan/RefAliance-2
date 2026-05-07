@@ -39,7 +39,7 @@ export default function RankingView() {
         </div>
         <div>
           <h2 className="text-xl font-black text-amber-500 uppercase tracking-tighter leading-none">Зал Славы</h2>
-          <p className="text-[10px] text-stone-500 uppercase font-bold tracking-widest mt-1">Лучшие герои королевства</p>
+          <p className="text-[10px] text-stone-500 uppercase font-bold tracking-widest mt-1">Сильнейшие правители</p>
         </div>
       </div>
 

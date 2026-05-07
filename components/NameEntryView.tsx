@@ -46,8 +46,8 @@ export default function NameEntryView() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-black text-amber-500 uppercase tracking-tighter italic">Путь Героя</h2>
-            <p className="text-[10px] text-stone-500 font-bold uppercase tracking-[0.2em] mt-1">Как называть тебя в летописях?</p>
+            <h2 className="text-2xl font-black text-amber-500 uppercase tracking-tighter italic">Новый Лидер</h2>
+            <p className="text-[10px] text-stone-500 font-bold uppercase tracking-[0.2em] mt-1">Как называть твоё королевство?</p>
           </div>
 
           <form onSubmit={handleSubmit} className="w-full space-y-4">
