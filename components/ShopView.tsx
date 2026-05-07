@@ -55,7 +55,7 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
               className={`whitespace-nowrap flex flex-col items-center justify-center py-1.5 rounded font-black uppercase tracking-tighter text-[8px] transition-colors border shadow-inner ${
                 activeSlot === s.id 
                   ? 'bg-amber-600 text-stone-900 border-amber-400 shadow-[0_0_10px_#d97706]' 
-                  : 'bg-stone-800/80 text-stone-400 border-stone-700 hover:text-stone-200'
+                  : 'bg-stone-800 text-stone-400 border-stone-700 hover:text-stone-200'
               }`}
             >
               {s.label}

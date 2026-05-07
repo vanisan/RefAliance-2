@@ -48,6 +48,7 @@ interface GameState {
   mapNodes: MapNode[];
   mapRefreshTimer: number;
   equipment: Record<EquipmentSlot, EquipmentItem | null>;
+  currentCampaignLevel: string;
   user: User | null;
   authLoading: boolean;
   
@@ -59,6 +60,7 @@ interface GameState {
   setPalaceLevel: (lv: number) => void;
   setEquipment: (eq: Record<EquipmentSlot, EquipmentItem | null> | ((prev: Record<EquipmentSlot, EquipmentItem | null>) => Record<EquipmentSlot, EquipmentItem | null>)) => void;
   setPlayerName: (name: string) => void;
+  setCurrentCampaignLevel: (level: string) => void;
 }
 
 const defaultResources: Resources = { gold: 1000, wood: 500, stone: 300, food: 800, crystals: 0 };
@@ -80,6 +82,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   });
   const [playerName, setPlayerName] = useState("Hero");
   const [mapRefreshTimer, setMapRefreshTimer] = useState(600);
+  const [currentCampaignLevel, setCurrentCampaignLevel] = useState("1-1");
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -101,6 +104,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             setPalaceLevel(data.palaceLevel || 1);
             setBuildings(data.buildings || Array(16).fill(null));
             setArmy({ ...defaultArmy, ...(data.army || {}) });
+            setCurrentCampaignLevel(data.currentCampaignLevel || "1-1");
             
             // Map migration/refresh: if saved nodes list is shorter than initial, or specific ids missing, update it
             const savedNodes = data.mapNodes || [];
@@ -122,6 +126,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               army: defaultArmy,
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
+              currentCampaignLevel: "1-1",
               lastUpdate: new Date().toISOString()
             });
           }
@@ -147,6 +152,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           army,
           mapNodes,
           equipment,
+          currentCampaignLevel,
           lastUpdate: new Date().toISOString()
         }, { merge: true });
       } catch (e) {
@@ -155,14 +161,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }, 2000); // Debounce save 2s
 
     return () => clearTimeout(timer);
-  }, [user, playerName, resources, palaceLevel, buildings, army, mapNodes, equipment]);
+  }, [user, playerName, resources, palaceLevel, buildings, army, mapNodes, equipment, currentCampaignLevel]);
   
   // Game Loop - Production
   useEffect(() => {
     const tick = setInterval(() => {
       setMapRefreshTimer(prev => {
         if (prev <= 5) {
-          setMapNodes(nodes => nodes.map(n => n.type === 'combat' ? { ...n, cleared: false } : n));
+          // In campaign mode, we might not want to refresh cleared status of nodes 
+          // unless it's designed for farming. For now, let's keep it but only for the current level nodes.
+          setMapNodes(nodes => nodes.map(n => n.type === 'combat' && n.campaignLevel === currentCampaignLevel ? { ...n, cleared: false } : n));
           return 600;
         }
         return prev - 5;
@@ -185,7 +193,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }, 5000); // Resource tick every 5 seconds
     
     return () => clearInterval(tick);
-  }, [buildings]);
+  }, [buildings, currentCampaignLevel]);
 
   return (
     <GameContext.Provider value={{
@@ -196,12 +204,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       mapNodes, setMapNodes,
       mapRefreshTimer,
       equipment, setEquipment,
+      currentCampaignLevel, setCurrentCampaignLevel,
       user, authLoading,
       setPlayerName
     }}>
       {children}
     </GameContext.Provider>
   );
+
 };
 
 export const useGame = () => {

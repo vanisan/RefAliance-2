@@ -144,17 +144,49 @@ export interface MapNode {
   cleared: boolean;
   name: string;
   type?: 'combat' | 'city' | 'boss';
+  campaignLevel: string; // e.g. "1-1"
 }
 
 export const INITIAL_MAP_NODES: MapNode[] = [
-  { id: 'city', name: 'Город (Амстерград)', type: 'city', x: 50, y: 50, enemies: [], reward: {}, cleared: false },
-  { id: 'camp1', name: 'Кладбище', type: 'combat', x: 25, y: 35, enemies: [{ unitId: 'skelet', count: 12 }], reward: { gold: 150, crystals: 1 }, cleared: false },
-  { id: 'camp2', name: 'Лагерь Гоблинов', type: 'combat', x: 75, y: 45, enemies: [{ unitId: 'goblin', count: 20 }], reward: { gold: 500, wood: 200, crystals: 1 }, cleared: false },
-  { id: 'camp3', name: 'Долина Орков', type: 'combat', x: 45, y: 75, enemies: [{ unitId: 'orc', count: 12 }], reward: { gold: 1500, food: 800, crystals: 3 }, cleared: false },
-  { id: 'camp4', name: 'Замок Вампира', type: 'combat', x: 20, y: 80, enemies: [{ unitId: 'vampire', count: 8 }], reward: { gold: 4000, wood: 2000, stone: 1000, crystals: 8 }, cleared: false },
-  { id: 'camp5', name: 'Врата Демона', type: 'combat', x: 80, y: 85, enemies: [{ unitId: 'demon', count: 5 }], reward: { gold: 8000, stone: 4000, wood: 4000, crystals: 15 }, cleared: false },
-  { id: 'camp6', name: 'Лежбище Великана', type: 'combat', x: 20, y: 20, enemies: [{ unitId: 'giant', count: 4 }], reward: { gold: 12000, stone: 7000, food: 7000, crystals: 20 }, cleared: false },
-  { id: 'boss1', name: 'Убежище Титана', type: 'boss', x: 80, y: 25, enemies: [{ unitId: 'titan', count: 2 }], reward: { gold: 25000, stone: 20000, crystals: 100 }, cleared: false },
-  { id: 'camp7', name: 'Легион Тьмы', type: 'combat', x: 10, y: 55, enemies: [{ unitId: 'demon', count: 8 }, { unitId: 'vampire', count: 15 }], reward: { gold: 20000, crystals: 30 }, cleared: false },
-  { id: 'camp8', name: 'Аванпост Великанов', type: 'combat', x: 90, y: 15, enemies: [{ unitId: 'giant', count: 6 }], reward: { gold: 30000, crystals: 50 }, cleared: false }
+  { id: 'city', name: 'Город (Амстерград)', type: 'city', x: 50, y: 50, enemies: [], reward: {}, cleared: false, campaignLevel: 'all' },
+  
+  // Level 1-1
+  { id: '1-1-1', name: 'Лесной патруль', type: 'combat', x: 25, y: 35, enemies: [{ unitId: 'goblin', count: 10 }, { unitId: 'orc', count: 10 }], reward: { gold: 100, crystals: 1 }, cleared: false, campaignLevel: '1-1' },
+  { id: '1-1-2', name: 'Разведчики орков', type: 'combat', x: 75, y: 45, enemies: [{ unitId: 'goblin', count: 20 }, { unitId: 'orc', count: 25 }], reward: { gold: 200, crystals: 1 }, cleared: false, campaignLevel: '1-1' },
+
+  // Level 1-2
+  { id: '1-2-1', name: 'Кладбищенский дозор', type: 'combat', x: 30, y: 25, enemies: [{ unitId: 'skelet', count: 15 }, { unitId: 'goblin', count: 10 }], reward: { gold: 150, crystals: 1 }, cleared: false, campaignLevel: '1-2' },
+  { id: '1-2-2', name: 'Орда скелетов', type: 'combat', x: 70, y: 70, enemies: [{ unitId: 'skelet', count: 25 }, { unitId: 'goblin', count: 20 }], reward: { gold: 300, crystals: 2 }, cleared: false, campaignLevel: '1-2' },
+
+  // Level 1-3
+  { id: '1-3-1', name: 'Скелеты-налетчики', type: 'combat', x: 20, y: 50, enemies: [{ unitId: 'skelet', count: 20 }, { unitId: 'orc', count: 10 }, { unitId: 'goblin', count: 10 }], reward: { gold: 400, crystals: 2 }, cleared: false, campaignLevel: '1-3' },
+  { id: '1-3-2', name: 'Засада в руинах', type: 'combat', x: 50, y: 80, enemies: [{ unitId: 'skelet', count: 30 }, { unitId: 'orc', count: 15 }, { unitId: 'goblin', count: 20 }], reward: { gold: 600, crystals: 2 }, cleared: false, campaignLevel: '1-3' },
+  { id: '1-3-3', name: 'Черная стража', type: 'combat', x: 80, y: 20, enemies: [{ unitId: 'orc', count: 30 }, { unitId: 'skelet', count: 40 }], reward: { gold: 800, crystals: 3 }, cleared: false, campaignLevel: '1-3' },
+
+  // Level 1-4
+  { id: '1-4-1', name: 'Ночные охотники', type: 'combat', x: 15, y: 30, enemies: [{ unitId: 'vampire', count: 5 }, { unitId: 'skelet', count: 30 }], reward: { gold: 1000, crystals: 3 }, cleared: false, campaignLevel: '1-4' },
+  { id: '1-4-2', name: 'Гвардия вампиров', type: 'combat', x: 85, y: 60, enemies: [{ unitId: 'vampire', count: 10 }, { unitId: 'orc', count: 25 }], reward: { gold: 1500, crystals: 4 }, cleared: false, campaignLevel: '1-4' },
+  { id: '1-4-3', name: 'Армия крови', type: 'combat', x: 40, y: 15, enemies: [{ unitId: 'vampire', count: 15 }, { unitId: 'orc', count: 40 }], reward: { gold: 2000, crystals: 5 }, cleared: false, campaignLevel: '1-4' },
+  { id: '1-4-boss', name: 'Логово Палача', type: 'boss', x: 55, y: 45, enemies: [{ unitId: 'titan', count: 1 }, { unitId: 'vampire', count: 20 }], reward: { gold: 5000, crystals: 20 }, cleared: false, campaignLevel: '1-4' },
+
+  // Level 1-5
+  { id: '1-5-1', name: 'Демонические псы', type: 'combat', x: 25, y: 75, enemies: [{ unitId: 'demon', count: 3 }, { unitId: 'vampire', count: 10 }], reward: { gold: 3000, crystals: 10 }, cleared: false, campaignLevel: '1-5' },
+  { id: '1-5-2', name: 'Легион ада', type: 'combat', x: 75, y: 25, enemies: [{ unitId: 'demon', count: 5 }, { unitId: 'orc', count: 50 }], reward: { gold: 4000, crystals: 12 }, cleared: false, campaignLevel: '1-5' },
+  { id: '1-5-3', name: 'Теневые жатвы', type: 'combat', x: 10, y: 10, enemies: [{ unitId: 'demon', count: 8 }, { unitId: 'vampire', count: 15 }], reward: { gold: 5000, crystals: 15 }, cleared: false, campaignLevel: '1-5' },
+  { id: '1-5-4', name: 'Пожиратели душ', type: 'combat', x: 90, y: 90, enemies: [{ unitId: 'demon', count: 12 }, { unitId: 'skelet', count: 100 }], reward: { gold: 7000, crystals: 20 }, cleared: false, campaignLevel: '1-5' },
+
+  // Level 1-6
+  { id: '1-6-1', name: 'Шаги титанов', type: 'combat', x: 35, y: 15, enemies: [{ unitId: 'giant', count: 2 }, { unitId: 'demon', count: 5 }], reward: { gold: 8000, crystals: 25 }, cleared: false, campaignLevel: '1-6' },
+  { id: '1-6-2', name: 'Каменный дозор', type: 'combat', x: 65, y: 85, enemies: [{ unitId: 'giant', count: 4 }, { unitId: 'vampire', count: 20 }], reward: { gold: 10000, crystals: 30 }, cleared: false, campaignLevel: '1-6' },
+  { id: '1-6-3', name: 'Разрушители гор', type: 'combat', x: 15, y: 65, enemies: [{ unitId: 'giant', count: 6 }, { unitId: 'orc', count: 60 }], reward: { gold: 12000, crystals: 35 }, cleared: false, campaignLevel: '1-6' },
+  { id: '1-6-4', name: 'Осадный корпус', type: 'combat', x: 85, y: 35, enemies: [{ unitId: 'giant', count: 8 }, { unitId: 'demon', count: 10 }], reward: { gold: 15000, crystals: 40 }, cleared: false, campaignLevel: '1-6' },
+  { id: '1-6-5', name: 'Великаны-лорды', type: 'combat', x: 50, y: 20, enemies: [{ unitId: 'giant', count: 10 }, { unitId: 'vampire', count: 30 }], reward: { gold: 18000, crystals: 50 }, cleared: false, campaignLevel: '1-6' },
+
+  // Level 1-7
+  { id: '1-7-1', name: 'Железная поступь', type: 'combat', x: 20, y: 20, enemies: [{ unitId: 'giant', count: 12 }, { unitId: 'demon', count: 15 }], reward: { gold: 20000, crystals: 60 }, cleared: false, campaignLevel: '1-7' },
+  { id: '1-7-2', name: 'Темный альянс', type: 'combat', x: 80, y: 80, enemies: [{ unitId: 'giant', count: 15 }, { unitId: 'vampire', count: 50 }], reward: { gold: 25000, crystals: 70 }, cleared: false, campaignLevel: '1-7' },
+  { id: '1-7-3', name: 'Гнев бездны', type: 'combat', x: 20, y: 80, enemies: [{ unitId: 'giant', count: 20 }, { unitId: 'demon', count: 20 }, { unitId: 'vampire', count: 60 }], reward: { gold: 30000, crystals: 80 }, cleared: false, campaignLevel: '1-7' },
+  { id: '1-7-4', name: 'Пепельный легион', type: 'combat', x: 80, y: 20, enemies: [{ unitId: 'giant', count: 25 }, { unitId: 'demon', count: 25 }, { unitId: 'skelet', count: 200 }], reward: { gold: 35000, crystals: 90 }, cleared: false, campaignLevel: '1-7' },
+  { id: '1-7-5', name: 'Последний рубеж', type: 'combat', x: 50, y: 10, enemies: [{ unitId: 'giant', count: 30 }, { unitId: 'demon', count: 30 }, { unitId: 'orc', count: 100 }], reward: { gold: 40000, crystals: 100 }, cleared: false, campaignLevel: '1-7' },
+  { id: '1-7-boss', name: 'Ужас Света', type: 'boss', x: 50, y: 55, enemies: [{ unitId: 'titan', count: 3 }, { unitId: 'giant', count: 10 }, { unitId: 'demon', count: 10 }], reward: { gold: 100000, crystals: 500 }, cleared: false, campaignLevel: '1-7' }
 ];

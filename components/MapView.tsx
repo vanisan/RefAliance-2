@@ -11,15 +11,27 @@ interface MapViewProps {
 }
 
 export default function MapView({ onStartCombat }: MapViewProps) {
-  const { mapNodes, mapRefreshTimer, army } = useGame();
+  const { mapNodes, mapRefreshTimer, army, currentCampaignLevel, setCurrentCampaignLevel } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
   const [showShop, setShowShop] = useState(false);
+
+  const currentLevelNodes = mapNodes.filter(n => n.campaignLevel === currentCampaignLevel || n.campaignLevel === 'all');
+  const enemyNodes = currentLevelNodes.filter(n => n.type === 'combat' || n.type === 'boss');
+  const allCleared = enemyNodes.length > 0 && enemyNodes.every(n => n.cleared);
 
   const totalArmyCount = Object.values(army).reduce((sum, count) => sum + count, 0);
 
   // Split into cleared and uncleared for visual stats
-  const clearedCount = mapNodes.filter(n => n.cleared).length;
-  const progress = Math.round((clearedCount / mapNodes.length) * 100);
+  const levelClearedCount = enemyNodes.filter(n => n.cleared).length;
+  const levelProgress = enemyNodes.length > 0 ? Math.round((levelClearedCount / enemyNodes.length) * 100) : 100;
+
+  const handleNextLevel = () => {
+    const [chap, lev] = currentCampaignLevel.split('-').map(Number);
+    let nextLev = lev + 1;
+    if (nextLev > 7) return; // Cap at 1-7
+    setCurrentCampaignLevel(`${chap}-${nextLev}`);
+    setSelectedNode(null);
+  };
 
   return (
     <div className="w-full h-full min-h-[calc(100vh-8rem)] relative bg-[url('/map.png')] bg-cover bg-center overflow-hidden flex flex-col items-center">
@@ -28,23 +40,28 @@ export default function MapView({ onStartCombat }: MapViewProps) {
       {/* Map Header */}
       <div className="w-full wow-panel p-2 mt-2 mb-1 max-w-[400px] relative z-10 overflow-hidden flex flex-col items-center justify-center">
         <h2 className="text-sm font-black text-amber-500 relative flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
-          <MapPin className="w-4 h-4"/> Карта Мира
+          <MapPin className="w-4 h-4"/> Кампания: Уровень {currentCampaignLevel}
         </h2>
         <div className="w-[80%] bg-stone-900/80 rounded-full h-1.5 mt-1.5 relative border border-stone-800">
-          <div className="bg-amber-600 h-1.5 rounded-full shadow-[0_0_8px_#d97706]" style={{ width: `${progress}%` }}></div>
+          <div className="bg-amber-600 h-1.5 rounded-full shadow-[0_0_8px_#d97706]" style={{ width: `${levelProgress}%` }}></div>
         </div>
         <div className="flex gap-4 mt-1">
-          <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Освоено: {progress}%</p>
-          <p className="text-[9px] font-bold text-amber-500/70 relative uppercase tracking-widest">
-            Обновление: {Math.floor((mapRefreshTimer || 0) / 60)}:{((mapRefreshTimer || 0) % 60).toString().padStart(2, '0')}
-          </p>
+          <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Прогресс: {levelProgress}%</p>
+          {allCleared && currentCampaignLevel !== '1-7' && (
+             <button 
+              onClick={handleNextLevel}
+              className="text-[9px] font-black text-green-400 relative uppercase tracking-widest animate-bounce flex items-center gap-1 bg-stone-900/80 px-2 py-0.5 rounded border border-green-900"
+            >
+               Вперед к {currentCampaignLevel === '1-7' ? 'Финалу' : `1-${parseInt(currentCampaignLevel.split('-')[1]) + 1}`}! ➔
+             </button>
+          )}
         </div>
       </div>
 
       {/* Map Nodes Layer */}
       <div className="absolute inset-0 z-10 pt-24 pb-20 pointer-events-none">
         <div className="relative w-full h-full max-w-[500px] mx-auto pointer-events-auto">
-          {mapNodes.map(node => {
+          {currentLevelNodes.map(node => {
             const isCity = node.type === 'city';
             return (
             <motion.button
