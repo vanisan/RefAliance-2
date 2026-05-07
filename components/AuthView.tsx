@@ -57,11 +57,16 @@ export default function AuthView() {
           }
         });
         if (error) {
-          if (error.message.includes('already registered')) {
+          if (error.message.includes('already registered') || error.message.includes('User already exists')) {
             throw new Error("Пользователь с таким логином уже существует. Попробуйте войти.");
           }
           throw error;
         }
+        
+        if (!data.session) {
+          throw new Error("Регистрация успешна, но требуется подтверждение Email! Т.к. мы используем выдуманные логины, зайдите в настройки вашего Supabase (Authentication -> Providers -> Email) и ОТКЛЮЧИТЕ галочку 'Confirm email', затем попробуйте снова.");
+        }
+
         setPlayerName(cleanName);
         
         // Supabase users table should probably be populated via trigger or manually
@@ -77,13 +82,16 @@ export default function AuthView() {
           }
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password: pass,
         });
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
-            throw new Error('Неверный логин или пароль.');
+            throw new Error('Неверный логин или пароль. Либо аккаунт не существует (нужно зарегистрироваться), либо пароль опечатка.');
+          }
+          if (error.message.includes('Email not confirmed')) {
+             throw new Error('Требуется подтверждение почты. Отключите Confirm Email в настройках Supabase.');
           }
           throw error;
         }
