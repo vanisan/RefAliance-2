@@ -52,6 +52,7 @@ interface GameState {
   user: User | null;
   authLoading: boolean;
   getLeaderboard: () => Promise<any[]>;
+  resetProgress: () => Promise<void>;
   
   // Actions
   setResources: (res: Resources | ((prev: Resources) => Resources)) => void;
@@ -64,9 +65,9 @@ interface GameState {
   setCurrentCampaignLevel: (level: string) => void;
 }
 
-const defaultResources: Resources = { gold: 500, wood: 100, stone: 100, food: 200, crystals: 0 };
+const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 100, crystals: 100 };
 const defaultArmy: Record<UnitId, number> = { 
-  knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
+  knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
   goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
 };
 
@@ -102,13 +103,41 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const resetProgress = async () => {
+    if (!user) return;
+    setResources(defaultResources);
+    setPalaceLevel(1);
+    setBuildings(Array(16).fill(null));
+    setArmy(defaultArmy);
+    setMapNodes(INITIAL_MAP_NODES);
+    setEquipment({ weapon: null, chest: null, boots: null, ring: null });
+    setCurrentCampaignLevel("1-1");
+    
+    try {
+      const userDoc = doc(db, 'users', user.uid);
+      await setDoc(userDoc, {
+        playerName,
+        resources: defaultResources,
+        palaceLevel: 1,
+        buildings: Array(16).fill(null),
+        army: defaultArmy,
+        armyPower: calculateArmyPower(defaultArmy),
+        mapNodes: INITIAL_MAP_NODES,
+        equipment: { weapon: null, chest: null, boots: null, ring: null },
+        currentCampaignLevel: "1-1",
+        lastUpdate: new Date().toISOString()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
+    }
+  };
+
   const initialLoadDone = useRef(false);
 
   // Auth & Sync
   useEffect(() => {
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      setAuthLoading(false);
       
       if (u) {
         const userDoc = doc(db, 'users', u.uid);
@@ -116,13 +145,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           const snap = await getDoc(userDoc);
           if (snap.exists()) {
             const data = snap.data();
+            const loadedName = data.playerName || u.displayName || "";
+            
+            // If the name is the old placeholder 'Hero' or empty, we keep it as empty to trigger NameEntryView
+            const finalName = (loadedName === "Hero" || loadedName === "Герой") ? "" : loadedName;
+            
             setResources({ ...defaultResources, ...(data.resources || {}) });
             setPalaceLevel(data.palaceLevel || 1);
             setBuildings(data.buildings || Array(16).fill(null));
             setArmy({ ...defaultArmy, ...(data.army || {}) });
             setCurrentCampaignLevel(data.currentCampaignLevel || "1-1");
             
-            // Map migration/refresh: if saved nodes list is shorter than initial, or specific ids missing, update it
+            // Map migration/refresh
             const savedNodes = data.mapNodes || [];
             if (savedNodes.length < INITIAL_MAP_NODES.length) {
               setMapNodes(INITIAL_MAP_NODES);
@@ -131,26 +165,31 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             }
 
             setEquipment(data.equipment || { weapon: null, chest: null, boots: null, ring: null });
-            setPlayerName(data.playerName || u.displayName || "");
+            setPlayerName(finalName);
           } else {
             // New user, save default state
+            // If u.displayName exists (Google login), use it
+            const initialName = u.displayName || "";
             await setDoc(userDoc, {
-              playerName: u.displayName || "",
+              playerName: initialName,
               resources: defaultResources,
               palaceLevel: 1,
               buildings: Array(16).fill(null),
               army: defaultArmy,
+              armyPower: calculateArmyPower(defaultArmy),
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
               currentCampaignLevel: "1-1",
-              lastUpdate: new Date().toISOString()
+              createdAt: new Date().toISOString()
             });
+            setPlayerName(initialName);
           }
           initialLoadDone.current = true;
         } catch (e) {
           handleFirestoreError(e, OperationType.GET, `users/${u.uid}`);
         }
       }
+      setAuthLoading(false);
     });
   }, []);
 
@@ -194,7 +233,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         return prev - 5;
       });
       setResources(prev => {
-        let totalProd: Partial<Resources> = {};
+        const baseProd = 0.5; // 1 unit per 10s, tick is 5s
+        let totalProd: Partial<Resources> = {
+          gold: baseProd, wood: baseProd, stone: baseProd, food: baseProd, crystals: baseProd
+        };
         buildings.forEach(b => {
           if (b && BUILDINGS_INFO[b.id].production) {
             const prod = BUILDINGS_INFO[b.id].production;
@@ -202,10 +244,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             if (prod?.wood) totalProd.wood = (totalProd.wood || 0) + prod.wood * b.level;
             if (prod?.stone) totalProd.stone = (totalProd.stone || 0) + prod.stone * b.level;
             if (prod?.food) totalProd.food = (totalProd.food || 0) + prod.food * b.level;
+            if (prod?.crystals) totalProd.crystals = (totalProd.crystals || 0) + prod.crystals * b.level;
           }
         });
         
-        if (Object.keys(totalProd).length === 0) return prev;
         return addResources(prev, totalProd);
       });
     }, 5000); // Resource tick every 5 seconds
@@ -225,6 +267,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       currentCampaignLevel, setCurrentCampaignLevel,
       user, authLoading,
       getLeaderboard,
+      resetProgress,
       setPlayerName
     }}>
       {children}

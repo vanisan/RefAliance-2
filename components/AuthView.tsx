@@ -8,9 +8,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, LogOut, User as UserIcon, Lock, ShieldCheck } from 'lucide-react';
 
 export default function AuthView() {
-  const { user, authLoading, playerName } = useGame();
+  const { user, authLoading, playerName, setPlayerName, resetProgress } = useGame();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<'choice' | 'credentials'>('choice');
+  const [confirmReset, setConfirmReset] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [login, setLogin] = useState('');
   const [pass, setPass] = useState('');
@@ -38,7 +39,7 @@ export default function AuthView() {
 
     try {
       if (isRegister) {
-        const cred = await createUserWithEmailAndPassword(auth, email, pass);
+        await createUserWithEmailAndPassword(auth, email, pass);
         // Important: set the playerName state immediately so sync uses it
         const cleanName = login.trim();
         setPlayerName(cleanName);
@@ -49,8 +50,10 @@ export default function AuthView() {
       console.error("Auth error", error);
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') 
         setErrorMsg("Неверный логин или пароль.");
-      else if (error.code === 'auth/email-already-in-use') 
-        setErrorMsg("Этот логин уже занят.");
+      else if (error.code === 'auth/email-already-in-use') {
+        setErrorMsg("Этот логин уже занят. Если это ваш аккаунт — просто нажмите 'Войти'.");
+        setIsRegister(false); 
+      }
       else if (error.code === 'auth/weak-password')
         setErrorMsg("Слишком слабый пароль.");
       else 
@@ -97,7 +100,7 @@ export default function AuthView() {
 
   return (
     <div className="p-6 wow-panel max-w-[400px] w-full bg-stone-900/40 backdrop-blur-md">
-      <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow mb-6 text-center">Профиль Героя</h2>
+      <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow mb-6 text-center">Профиль Игрока</h2>
       
       {user ? (
         <div className="space-y-6">
@@ -111,22 +114,54 @@ export default function AuthView() {
             )}
             <div>
               <p className="text-xs text-amber-600 font-black uppercase tracking-tighter leading-none mb-1">Игрок</p>
-              <p className="text-lg font-bold text-stone-100">{playerName}</p>
-              <p className="text-[10px] text-stone-500 font-mono italic">{user.email?.split('@')[0]}</p>
+              <p className="text-lg font-bold text-stone-100">{playerName || '...'}</p>
+              <p className="text-[10px] text-stone-500 font-mono italic">{login || user.email?.split('@')[0]}</p>
             </div>
           </div>
           
           <div className="p-4 wow-panel-metal rounded bg-stone-800/30">
             <p className="text-xs text-stone-300 font-bold mb-2">Ваш прогресс автоматически сохраняется в облаке.</p>
-            <p className="text-[10px] text-stone-500 uppercase tracking-widest">Вы можете продолжить игру с любого устройства.</p>
+            <p className="text-[10px] text-stone-500 uppercase tracking-widest">Прогресс привязан к логину: <span className="text-amber-500">{login || user.email?.split('@')[0]}</span></p>
           </div>
 
-          <button 
-            onClick={handleLogout}
-            className="w-full py-3 wow-panel-metal flex items-center justify-center gap-2 text-red-500 font-black uppercase tracking-widest hover:bg-stone-700 transition-colors border-stone-800 border-b-2"
-          >
-            <LogOut className="w-4 h-4"/> Выйти из системы
-          </button>
+          <div className="space-y-2 pt-4">
+            {!confirmReset ? (
+              <button 
+                onClick={() => setConfirmReset(true)}
+                className="w-full py-2 bg-stone-900/50 text-red-500/50 text-[9px] font-black uppercase tracking-widest hover:text-red-500 border border-stone-700 rounded transition-all"
+              >
+                Сбросить прогресс (Начать с 0)
+              </button>
+            ) : (
+              <div className="bg-red-950/20 p-2 border border-red-500/30 rounded">
+                <p className="text-red-500 text-[8px] font-black uppercase mb-2">Удалить всё и начать с 1 рыцарем?</p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      await resetProgress();
+                      setConfirmReset(false);
+                    }}
+                    className="flex-1 py-1 bg-red-600 text-white text-[9px] font-black uppercase rounded"
+                  >
+                    ДА, УДАЛИТЬ
+                  </button>
+                  <button 
+                    onClick={() => setConfirmReset(false)}
+                    className="flex-1 py-1 bg-stone-700 text-white text-[9px] font-black uppercase rounded"
+                  >
+                    ОТМЕНА
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <button 
+              onClick={handleLogout}
+              className="w-full py-3 wow-panel-metal flex items-center justify-center gap-2 text-stone-400 font-black uppercase tracking-widest hover:bg-stone-700 transition-colors border-stone-800 border-b-2"
+            >
+              <LogOut className="w-4 h-4"/> Выйти из системы
+            </button>
+          </div>
         </div>
       ) : (
         <div className="text-center py-4">

@@ -8,10 +8,11 @@ export function cn(...inputs: ClassValue[]) {
 
 export const formatNumber = (num: number): string => {
   if (num === undefined || num === null || isNaN(num)) return '0';
-  if (num > 999) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  const floored = Math.floor(num);
+  if (floored > 999) {
+    return (floored / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   }
-  return num.toString();
+  return floored.toString();
 };
 
 export const calculateArmyPower = (army: Record<string, number>): number => {

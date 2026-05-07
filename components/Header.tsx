@@ -17,8 +17,8 @@ export default function Header() {
             <User className="w-5 h-5"/>
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-0.5">Уровень</span>
-            <span className="font-bold text-sm text-stone-100 leading-none truncate max-w-[80px] sm:max-w-none">{playerName}</span>
+            <span className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-0.5">Владения</span>
+            <span className="font-bold text-sm text-stone-100 leading-none truncate max-w-[80px] sm:max-w-none">{playerName || '...'}</span>
           </div>
         </div>
         
