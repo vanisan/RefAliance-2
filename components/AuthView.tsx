@@ -18,36 +18,10 @@ export default function AuthView() {
 
   const isDummySupabase = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('dummy');
   
-  const validateSupabaseEnv = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!url || url.includes('dummy') || !key || key.includes('dummy')) {
-      return "Ошибка: Переменные окружения Supabase не настроены (URL или ANON KEY). Пожалуйста, укажите их.";
-    }
-    
-    try {
-      new URL(url);
-    } catch (e) {
-      return `Ошибка: Неверный формат NEXT_PUBLIC_SUPABASE_URL ("${url}"). Должен быть валидный URL (например, https://xxxx.supabase.co).`;
-    }
-    
-    if (!key.startsWith('ey') && !key.startsWith('sb_')) {
-      return `Ошибка: Возможно, у вас неверный NEXT_PUBLIC_SUPABASE_ANON_KEY. Ключи Supabase обычно начинаются с "eyJ". Вы указали: "${key.substring(0, 5)}...". Убедитесь, что скопировали проектный API ключ (anon).`;
-    }
-    
-    return null;
-  };
-
   const DUMMY_DOMAIN = "@heroes.game";
 
   const handleCredentialsAuth = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const envError = validateSupabaseEnv();
-    if (envError) {
-      setErrorMsg(envError);
-      return;
-    }
     setErrorMsg(null);
     setLoading(true);
 
@@ -84,7 +58,12 @@ export default function AuthView() {
             }
           }
         });
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('already registered')) {
+            throw new Error("Пользователь с таким логином уже существует. Попробуйте войти.");
+          }
+          throw error;
+        }
         setPlayerName(cleanName);
         
         // Supabase users table should probably be populated via trigger or manually
@@ -104,22 +83,26 @@ export default function AuthView() {
           email,
           password: pass,
         });
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('Неверный логин или пароль.');
+          }
+          throw error;
+        }
       }
     } catch (error: any) {
       console.error("Auth error", error);
-      setErrorMsg("Ошибка: " + error.message);
+      if (error && error.message && error.message.includes('Failed to fetch')) {
+        setErrorMsg('Ошибка связи к сервером Supabase. Убедитесь, что вы добавили NEXT_PUBLIC_SUPABASE_URL и NEXT_PUBLIC_SUPABASE_ANON_KEY в настройках (Settings -> Secrets) AI Studio.');
+      } else {
+        setErrorMsg("Ошибка: " + error.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    const envError = validateSupabaseEnv();
-    if (envError) {
-      setErrorMsg(envError);
-      return;
-    }
     setErrorMsg(null);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
