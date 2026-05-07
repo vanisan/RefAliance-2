@@ -55,7 +55,7 @@ export default function ArmyView() {
   const recruitableUnits: UnitId[] = ['knight', 'archer', 'berserk', 'mage', 'dragon', 'titan'];
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="w-full max-w-[500px] p-4 space-y-6 pb-24">
       {/* Current Army Status */}
       <div className="wow-panel p-4 flex flex-col relative overflow-hidden">
         <div className="absolute inset-0 bg-stone-700/10 blur-xl"></div>

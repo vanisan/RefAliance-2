@@ -29,15 +29,21 @@ const GRID_WIDTH = 10;
 const GRID_HEIGHT = 10;
 
 export default function CombatView({ node, onEnd }: CombatViewProps) {
-  const { army, setArmy, resources, setResources, mapNodes, setMapNodes } = useGame();
+  const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment } = useGame();
   
+  // Equipment stats modifiers
+  const atkMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.attackBonus || 0), 0) / 100;
+  const defMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.defenseBonus || 0), 0) / 100;
+  const hpMod  = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.hpBonus || 0), 0) / 100;
+
   // Initialize teams
   const [units, setUnits] = useState<CombatUnit[]>(() => {
     const initialUnits: CombatUnit[] = [];
     let pY = 0;
     (Object.entries(army) as [UnitId, number][]).forEach(([id, count]) => {
       if (count > 0 && pY < GRID_HEIGHT) {
-        initialUnits.push({ id: `p-${id}`, unitId: id as UnitId, count, hp: UNITS_INFO[id as UnitId].hp, isEnemy: false, x: 0, y: pY, hasActed: false });
+        // Player HP is boosted
+        initialUnits.push({ id: `p-${id}`, unitId: id as UnitId, count, hp: Math.floor(UNITS_INFO[id as UnitId].hp * hpMod), isEnemy: false, x: 0, y: pY, hasActed: false });
         pY++;
       }
     });
@@ -76,16 +82,22 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const processAttack = (currentUnits: CombatUnit[], attacker: CombatUnit, defender: CombatUnit) => {
     const attInfo = UNITS_INFO[attacker.unitId];
     const defInfo = UNITS_INFO[defender.unitId];
+
+    const effAttack = attacker.isEnemy ? attInfo.attack : Math.floor(attInfo.attack * atkMod);
+    const effDefense = defender.isEnemy ? defInfo.defense : Math.floor(defInfo.defense * defMod);
+    const effMinDmg = attacker.isEnemy ? attInfo.minDamage : Math.floor(attInfo.minDamage * atkMod);
+    const effMaxDmg = attacker.isEnemy ? attInfo.maxDamage : Math.floor(attInfo.maxDamage * atkMod);
+    const effUnitHp = defender.isEnemy ? defInfo.hp : Math.floor(defInfo.hp * hpMod);
     
     // eslint-disable-next-line react-hooks/purity
-    const rawDmg = Math.floor(Math.random() * (attInfo.maxDamage - attInfo.minDamage + 1)) + attInfo.minDamage;
+    const rawDmg = Math.floor(Math.random() * (effMaxDmg - effMinDmg + 1)) + effMinDmg;
     let totalDmg = rawDmg * attacker.count;
     
-    const statDiff = attInfo.attack - defInfo.defense;
+    const statDiff = effAttack - effDefense;
     const multiplier = Math.max(0.01, 1 + (statDiff * 0.05));
     totalDmg = Math.floor(totalDmg * multiplier);
     
-    let remainingStackHP = (defender.count - 1) * defInfo.hp + defender.hp - totalDmg;
+    let remainingStackHP = (defender.count - 1) * effUnitHp + defender.hp - totalDmg;
     let killed = 0;
     let newCount = defender.count;
     let newTopHP = defender.hp;
@@ -95,9 +107,9 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       newCount = 0;
       addLog(`${UNITS_INFO[attacker.unitId].name} убил отряд ${UNITS_INFO[defender.unitId].name}!`);
     } else {
-      newCount = Math.ceil(remainingStackHP / defInfo.hp);
+      newCount = Math.ceil(remainingStackHP / effUnitHp);
       killed = defender.count - newCount;
-      newTopHP = remainingStackHP % defInfo.hp === 0 ? defInfo.hp : remainingStackHP % defInfo.hp;
+      newTopHP = remainingStackHP % effUnitHp === 0 ? effUnitHp : remainingStackHP % effUnitHp;
       addLog(`${UNITS_INFO[attacker.unitId].name} наносит ${totalDmg} урона. Убито: ${killed}.`);
     }
 
@@ -270,13 +282,14 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           onClick={() => handleCellClick(x, y)}
           className={cn(
             "relative w-full aspect-square border border-stone-700/50 flex items-center justify-center transition-colors",
-            isAllowedMove && "bg-white/5 cursor-pointer hover:bg-white/10 shadow-[inset_0_0_5px_rgba(255,255,255,0.2)]"
+            isAllowedMove && "bg-green-500/20 cursor-pointer hover:bg-green-500/40 border-green-500/50 shadow-[inset_0_0_15px_rgba(34,197,94,0.3)] z-0"
           )}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-5">{(x+y)%2===0 ? '·' : ''}</div>
           {u && (
             <motion.div 
               layoutId={u.id}
+              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
               className={cn(
                 "relative z-10 w-[85%] h-[85%] rounded bg-stone-900 flex flex-col items-center justify-center overflow-visible",
                 u.isEnemy ? "border border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.5)]" : "border border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]",

@@ -64,6 +64,50 @@ export interface UnitInfo {
   image?: string;
 }
 
+export type EquipmentSlot = 'helmet' | 'chest' | 'weapon' | 'boots' | 'ring';
+
+export interface EquipmentItem {
+  id: string;
+  type: EquipmentSlot;
+  tier: number;
+  name: string;
+  image: string;
+  cost: number;
+  stats: {
+    attackBonus: number; // %
+    defenseBonus: number; // %
+    hpBonus: number; // %
+  };
+}
+
+const TIER_NAMES = ['Ополченца', 'Новичка', 'Солдата', 'Ветерана', 'Мастера', 'Героя', 'Легенды'];
+const SLOT_NAMES: Record<EquipmentSlot, string> = {
+  helmet: 'Шлем',
+  chest: 'Нагрудник',
+  weapon: 'Оружие',
+  boots: 'Сапоги',
+  ring: 'Кольцо'
+};
+
+export const SHOP_ITEMS: EquipmentItem[] = [];
+(['helmet', 'chest', 'weapon', 'boots', 'ring'] as EquipmentSlot[]).forEach(slot => {
+  for (let i = 1; i <= 7; i++) {
+     SHOP_ITEMS.push({
+       id: `${slot}-${i}`,
+       type: slot,
+       tier: i,
+       name: `${SLOT_NAMES[slot]} ${TIER_NAMES[i-1]}`,
+       image: `/sets/${slot}-${i}.png`,
+       cost: i * 500, // Gold cost
+       stats: {
+         attackBonus: ['weapon', 'ring'].includes(slot) ? i * 5 : 0,
+         defenseBonus: ['chest', 'helmet', 'boots'].includes(slot) ? i * 3 : 0,
+         hpBonus: ['helmet', 'chest', 'ring', 'boots'].includes(slot) ? i * 2 : 0,
+       }
+     });
+  }
+});
+
 export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   knight: { id: 'knight', name: 'Рыцарь', hp: 35, attack: 10, defense: 10, minDamage: 5, maxDamage: 10, speed: 5, range: 1, cost: { gold: 100, food: 50, wood: 0, stone: 0 }, isEnemy: false, image: '/units/knight.png' },
   archer: { id: 'archer', name: 'Лучник', hp: 15, attack: 12, defense: 5, minDamage: 4, maxDamage: 8, speed: 4, range: 8, cost: { gold: 80, wood: 30, food: 20, stone: 0 }, isEnemy: false, image: '/units/archer.png' },

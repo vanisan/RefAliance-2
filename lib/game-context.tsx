@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Resources, Building, UnitId, MapNode, INITIAL_MAP_NODES, BUILDINGS_INFO } from './game.types';
+import { Resources, Building, UnitId, MapNode, INITIAL_MAP_NODES, BUILDINGS_INFO, EquipmentSlot, EquipmentItem } from './game.types';
 import { addResources } from './game.utils';
 
 interface GameState {
@@ -11,13 +11,16 @@ interface GameState {
   buildings: (Building | null)[];
   army: Record<UnitId, number>;
   mapNodes: MapNode[];
+  mapRefreshTimer: number;
+  equipment: Record<EquipmentSlot, EquipmentItem | null>;
   
   // Actions
-  setResources: (res: Resources) => void;
+  setResources: (res: Resources | ((prev: Resources) => Resources)) => void;
   setBuildings: (b: (Building | null)[]) => void;
   setArmy: (army: Record<UnitId, number>) => void;
   setMapNodes: (nodes: MapNode[]) => void;
   setPalaceLevel: (lv: number) => void;
+  setEquipment: (eq: Record<EquipmentSlot, EquipmentItem | null> | ((prev: Record<EquipmentSlot, EquipmentItem | null>) => Record<EquipmentSlot, EquipmentItem | null>)) => void;
 }
 
 const defaultResources: Resources = { gold: 1000, wood: 500, stone: 300, food: 800 };
@@ -30,10 +33,25 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [buildings, setBuildings] = useState<(Building | null)[]>(Array(16).fill(null));
   const [army, setArmy] = useState<Record<UnitId, number>>({ knight: 5, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, goblin: 0, orc: 0 });
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
+  const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
+    weapon: null,
+    helmet: null,
+    chest: null,
+    boots: null,
+    ring: null
+  });
+  const [mapRefreshTimer, setMapRefreshTimer] = useState(600);
   
   // Game Loop - Production
   useEffect(() => {
     const tick = setInterval(() => {
+      setMapRefreshTimer(prev => {
+        if (prev <= 5) {
+          setMapNodes(nodes => nodes.map(n => n.type === 'combat' ? { ...n, cleared: false } : n));
+          return 600;
+        }
+        return prev - 5;
+      });
       setResources(prev => {
         let totalProd: Partial<Resources> = {};
         buildings.forEach(b => {
@@ -61,7 +79,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       palaceLevel, setPalaceLevel,
       buildings, setBuildings,
       army, setArmy,
-      mapNodes, setMapNodes
+      mapNodes, setMapNodes,
+      mapRefreshTimer,
+      equipment, setEquipment
     }}>
       {children}
     </GameContext.Provider>

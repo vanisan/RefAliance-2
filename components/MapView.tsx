@@ -3,14 +3,16 @@ import { MapNode, UNITS_INFO } from '../lib/game.types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield } from 'lucide-react';
 import { useState } from 'react';
+import ShopView from './ShopView';
 
 interface MapViewProps {
   onStartCombat: (node: MapNode) => void;
 }
 
 export default function MapView({ onStartCombat }: MapViewProps) {
-  const { mapNodes } = useGame();
+  const { mapNodes, mapRefreshTimer } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
+  const [showShop, setShowShop] = useState(false);
 
   // Split into cleared and uncleared for visual stats
   const clearedCount = mapNodes.filter(n => n.cleared).length;
@@ -29,6 +31,9 @@ export default function MapView({ onStartCombat }: MapViewProps) {
           <div className="bg-amber-600 h-2 rounded-full shadow-[0_0_10px_#d97706]" style={{ width: `${progress}%` }}></div>
         </div>
         <p className="text-[10px] font-black text-stone-300 mt-1 relative uppercase tracking-widest">Освоено: {progress}%</p>
+        <p className="text-[9px] font-bold text-amber-500/70 mt-1 relative uppercase tracking-widest">
+          Мобы обновятся через: {Math.floor(mapRefreshTimer / 60)}:{(mapRefreshTimer % 60).toString().padStart(2, '0')}
+        </p>
       </div>
 
       {/* Map Nodes Layer */}
@@ -69,9 +74,11 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         </div>
       </div>
 
-      {/* Node Details Modal */}
+      {/* Overlays */}
       <AnimatePresence>
-        {selectedNode && (
+        {showShop && <ShopView onClose={() => setShowShop(false)} />}
+        
+        {selectedNode && !showShop && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -92,9 +99,13 @@ export default function MapView({ onStartCombat }: MapViewProps) {
 
             {selectedNode.type === 'city' ? (
                <div className="flex flex-col gap-2 mb-4">
-                 <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
+                 <button 
+                  onClick={() => {
+                    setSelectedNode(null);
+                    setShowShop(true);
+                  }}
+                  className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
                    <div className="flex items-center gap-2"><Store className="w-4 h-4 text-amber-400"/> Магазин</div>
-                   <span className="text-[9px] text-stone-500">(В разработке)</span>
                  </button>
                  <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
                    <div className="flex items-center gap-2"><Hammer className="w-4 h-4 text-stone-400"/> Кузня</div>
