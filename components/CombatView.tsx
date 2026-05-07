@@ -24,8 +24,17 @@ type CombatUnit = {
   hasActed: boolean;
 };
 
-const GRID_WIDTH = 10;
-const GRID_HEIGHT = 10;
+const GRID_WIDTH = 8;
+const GRID_HEIGHT = 8;
+
+interface Projectile {
+  id: string;
+  type: 'arrow' | 'fireball' | 'lightning';
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
 
 export default function CombatView({ node, onEnd }: CombatViewProps) {
   const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment } = useGame();
@@ -35,32 +44,47 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const defMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.defenseBonus || 0), 0) / 100;
   const hpMod  = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.hpBonus || 0), 0) / 100;
 
+  // Projectile state
+  const [projectiles, setProjectiles] = useState<Projectile[]>([]);
+
   // Initialize teams
   const [units, setUnits] = useState<CombatUnit[]>(() => {
     const initialUnits: CombatUnit[] = [];
     let pY = 0;
     (Object.entries(army) as [UnitId, number][]).forEach(([id, count]) => {
-      if (count > 0 && pY < GRID_HEIGHT) {
-        // Player HP is boosted
-        initialUnits.push({ id: `p-${id}`, unitId: id as UnitId, count, hp: Math.floor(UNITS_INFO[id as UnitId].hp * hpMod), isEnemy: false, x: 0, y: pY, hasActed: false });
-        pY++;
+      const info = UNITS_INFO[id as UnitId];
+      const size = info.size || 1;
+      if (count > 0 && pY + size <= GRID_HEIGHT) {
+        initialUnits.push({ 
+          id: `p-${id}`, 
+          unitId: id as UnitId, 
+          count, 
+          hp: Math.floor(info.hp * hpMod), 
+          isEnemy: false, 
+          x: 0, 
+          y: pY, 
+          hasActed: false 
+        });
+        pY += size;
       }
     });
+
     let eY = 0;
-    node.enemies.forEach(e => {
-      if (e.count > 0 && eY < GRID_HEIGHT) {
-        const isBoss = e.unitId === 'titan' && node.type === 'boss';
+    node.enemies.forEach((e, idx) => {
+      const info = UNITS_INFO[e.unitId];
+      const size = info.size || 1;
+      if (e.count > 0 && eY + size <= GRID_HEIGHT) {
         initialUnits.push({ 
-          id: `e-${e.unitId}-${eY}`, 
+          id: `e-${e.unitId}-${idx}-${eY}`, 
           unitId: e.unitId, 
           count: e.count, 
-          hp: UNITS_INFO[e.unitId].hp, 
+          hp: info.hp, 
           isEnemy: true, 
-          x: isBoss ? GRID_WIDTH - 2 : GRID_WIDTH - 1, 
+          x: GRID_WIDTH - size, 
           y: eY, 
           hasActed: false 
         });
-        eY += isBoss ? 2 : 1;
+        eY += size;
       }
     });
     return initialUnits;
@@ -69,26 +93,32 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>(['Бой начался!']);
   const [gameOver, setGameOver] = useState<'victory' | 'defeat' | null>(null);
+  const [round, setRound] = useState(1);
 
   const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 5));
 
   // Forward declarations for ESLint issues
-  const checkWinCondition = (currentUnits: CombatUnit[]) => {
-    const alivePlayer = currentUnits.filter(u => !u.isEnemy && u.count > 0);
-    const aliveEnemy = currentUnits.filter(u => u.isEnemy && u.count > 0);
-    
-    if (alivePlayer.length === 0) {
-      setGameOver('defeat');
-      addLog("Вы проиграли...");
-    } else if (aliveEnemy.length === 0) {
-      setGameOver('victory');
-      addLog("Победа!");
-    } else {
-      determineNextActiveUnit(currentUnits);
-    }
-  };
-
   const processAttack = (currentUnits: CombatUnit[], attacker: CombatUnit, defender: CombatUnit) => {
+    const attackerInfo = UNITS_INFO[attacker.unitId];
+    
+    // Add projectile if ranged
+    if (attackerInfo.range > 1) {
+      let type: 'arrow' | 'fireball' | 'lightning' = 'arrow';
+      if (attacker.unitId === 'mage') type = 'fireball';
+      if (attacker.unitId === 'titan' || attacker.unitId === 'giant') type = 'lightning';
+      
+      const newProjectile: Projectile = {
+        id: Math.random().toString(),
+        type,
+        startX: attacker.x + (attackerInfo.size === 2 ? 0.5 : 0),
+        startY: attacker.y + (attackerInfo.size === 2 ? 0.5 : 0),
+        endX: defender.x + (UNITS_INFO[defender.unitId].size === 2 ? 0.5 : 0),
+        endY: defender.y + (UNITS_INFO[defender.unitId].size === 2 ? 0.5 : 0),
+      };
+      setProjectiles(prev => [...prev, newProjectile]);
+      setTimeout(() => setProjectiles(prev => prev.filter(p => p.id !== newProjectile.id)), 600);
+    }
+
     const attInfo = UNITS_INFO[attacker.unitId];
     const defInfo = UNITS_INFO[defender.unitId];
 
@@ -98,7 +128,6 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     const effMaxDmg = attacker.isEnemy ? attInfo.maxDamage : Math.floor(attInfo.maxDamage * atkMod);
     const effUnitHp = defender.isEnemy ? defInfo.hp : Math.floor(defInfo.hp * hpMod);
     
-    // eslint-disable-next-line react-hooks/purity
     const rawDmg = Math.floor(Math.random() * (effMaxDmg - effMinDmg + 1)) + effMinDmg;
     let totalDmg = rawDmg * attacker.count;
     
@@ -114,12 +143,12 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     if (remainingStackHP <= 0) {
       killed = defender.count;
       newCount = 0;
-      addLog(`${UNITS_INFO[attacker.unitId].name} убил отряд ${UNITS_INFO[defender.unitId].name}!`);
+      addLog(`${UNITS_INFO[attacker.unitId].name} уничтожил ${UNITS_INFO[defender.unitId].name}!`);
     } else {
       newCount = Math.ceil(remainingStackHP / effUnitHp);
       killed = defender.count - newCount;
       newTopHP = remainingStackHP % effUnitHp === 0 ? effUnitHp : remainingStackHP % effUnitHp;
-      addLog(`${UNITS_INFO[attacker.unitId].name} наносит ${totalDmg} урона. Убито: ${killed}.`);
+      addLog(`${UNITS_INFO[attacker.unitId].name} -> ${totalDmg} урона. Убито: ${killed}.`);
     }
 
     const updatedUnits = currentUnits.map(u => {
@@ -129,7 +158,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     });
 
     setUnits(updatedUnits);
-    checkWinCondition(updatedUnits);
+    setTimeout(() => checkWinCondition(updatedUnits), 600);
   };
 
   const handleAI = (currentUnits: CombatUnit[], myUnit: CombatUnit) => {
@@ -142,74 +171,92 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     let minDist = 999;
     
     targets.forEach(t => {
-      const d = Math.abs(t.x - myUnit.x) + Math.abs(t.y - myUnit.y);
+      const targetSize = UNITS_INFO[t.unitId].size || 1;
+      const tCX = t.x + (targetSize - 1) / 2;
+      const tCY = t.y + (targetSize - 1) / 2;
+      const myInfo = UNITS_INFO[myUnit.unitId];
+      const mySize = myInfo.size || 1;
+      const myCX = myUnit.x + (mySize - 1) / 2;
+      const myCY = myUnit.y + (mySize - 1) / 2;
+
+      const d = Math.abs(tCX - myCX) + Math.abs(tCY - myCY);
       if (d < minDist) { minDist = d; closest = t; }
     });
 
-    const ranges = UNITS_INFO[myUnit.unitId].range;
+    const info = UNITS_INFO[myUnit.unitId];
+    const ranges = info.range;
     
-    if (minDist <= ranges) {
+    if (minDist <= ranges + (info.size || 1 > 1 ? 0.5 : 0)) {
       processAttack(currentUnits, myUnit, closest);
     } else {
-      const speed = UNITS_INFO[myUnit.unitId].speed;
-      const dx = Math.sign(closest.x - myUnit.x);
-      const dy = Math.sign(closest.y - myUnit.y);
+      const speed = info.speed;
+      const size = info.size || 1;
       
       let newX = myUnit.x;
       let newY = myUnit.y;
       
       let steps = speed;
-      while(steps > 0 && (Math.abs(closest.x - newX) + Math.abs(closest.y - newY) > ranges)) {
-        let axisPrefix = Math.abs(closest.x - newX) > Math.abs(closest.y - newY) ? 'x' : 'y';
-        if (axisPrefix === 'x') {
-          newX += Math.sign(closest.x - newX);
-        } else {
-          newY += Math.sign(closest.y - newY);
+      while (steps > 0) {
+        const dx = Math.sign(closest.x - newX);
+        const dy = Math.sign(closest.y - newY);
+        
+        let moved = false;
+        if (dx !== 0 && isAreaFree(newX + dx, newY, size, myUnit.id, currentUnits)) {
+          newX += dx;
+          moved = true;
+        } else if (dy !== 0 && isAreaFree(newX, newY + dy, size, myUnit.id, currentUnits)) {
+          newY += dy;
+          moved = true;
         }
         
-        let colUnit = getUnitAt(newX, newY, currentUnits);
-        if (colUnit && colUnit.id !== myUnit.id) {
-          if (axisPrefix === 'x') {
-            newX -= Math.sign(closest.x - newX);
-            newY += Math.sign(closest.y - newY) || 1;
-          } else {
-            newY -= Math.sign(closest.y - newY);
-            newX += Math.sign(closest.x - newX) || 1;
-          }
-          
-          let colUnit2 = getUnitAt(newX, newY, currentUnits);
-          if (colUnit2 && colUnit2.id !== myUnit.id) {
-             if (axisPrefix === 'x') {
-              newY -= Math.sign(closest.y - newY) || 1;
-             } else {
-              newX -= Math.sign(closest.x - newX) || 1;
-             }
-             break;
-          }
-        }
+        if (!moved) break;
         steps--;
+        
+        const cX = newX + (size - 1) / 2;
+        const cY = newY + (size - 1) / 2;
+        const targetSize = UNITS_INFO[closest.unitId].size || 1;
+        const tCX = closest.x + (targetSize - 1) / 2;
+        const tCY = closest.y + (targetSize - 1) / 2;
+        const currentDist = Math.abs(cX - tCX) + Math.abs(cY - tCY);
+        if (currentDist <= ranges + (size > 1 ? 0.5 : 0)) break;
       }
-      
-      // Keep within bounds
-      newX = Math.max(0, Math.min(GRID_WIDTH - 1, newX));
-      newY = Math.max(0, Math.min(GRID_HEIGHT - 1, newY));
       
       const movedUnits = currentUnits.map(u => u.id === myUnit.id ? { ...u, x: newX, y: newY, hasActed: true } : u);
       setUnits(movedUnits);
-      addLog(`Вражеский ${UNITS_INFO[myUnit.unitId].name} перемещается.`);
-      determineNextActiveUnit(movedUnits);
+      addLog(`${info.name} (враг) перемещается.`);
+      setTimeout(() => checkWinCondition(movedUnits), 300);
     }
   };
 
-  const determineNextActiveUnit = (currentUnits: CombatUnit[], expectedTurn?: 'player'|'enemy') => {
+  const determineNextActiveUnit = (currentUnits: CombatUnit[]) => {
+    if (gameOver) return;
+    
     const aliveUnits = currentUnits.filter(u => u.count > 0);
+    const alivePlayer = aliveUnits.filter(u => !u.isEnemy);
+    const aliveEnemy = aliveUnits.filter(u => u.isEnemy);
+
+    if (alivePlayer.length === 0) {
+      setGameOver('defeat');
+      addLog("Вы проиграли...");
+      return;
+    }
+    if (aliveEnemy.length === 0) {
+      setGameOver('victory');
+      addLog("Победа!");
+      return;
+    }
+
     let readyUnits = aliveUnits.filter(u => !u.hasActed);
     
     if (readyUnits.length === 0) {
-      const resetUnits = aliveUnits.map(u => ({ ...u, hasActed: false }));
-      setUnits(resetUnits);
-      readyUnits = resetUnits;
+      // New Round
+      setRound(r => r + 1);
       addLog("Новый раунд.");
+      const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false }));
+      setUnits(refreshedUnits);
+      // Small timeout before starting the next round to prevent instant loops
+      setTimeout(() => determineNextActiveUnit(refreshedUnits), 500);
+      return;
     }
     
     readyUnits.sort((a,b) => {
@@ -232,20 +279,36 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     }
   };
 
+  const checkWinCondition = (currentUnits: CombatUnit[]) => {
+    // Redundant now as determineNextActiveUnit handles it, but kept for processAttack flow
+    determineNextActiveUnit(currentUnits);
+  };
+
   // Setup Combat
   useEffect(() => {
-    determineNextActiveUnit(units, 'player');
+    determineNextActiveUnit(units);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getUnitAt = (tx: number, ty: number, currentUnits: CombatUnit[] = units) => {
     return currentUnits.find(u => {
       if (u.count <= 0) return false;
-      if (u.unitId === 'titan' && node.type === 'boss') {
-        return tx >= u.x && tx <= u.x + 1 && ty >= u.y && ty <= u.y + 1;
-      }
-      return u.x === tx && u.y === ty;
+      const size = UNITS_INFO[u.unitId].size || 1;
+      return tx >= u.x && tx < u.x + size && ty >= u.y && ty < u.y + size;
     });
+  };
+
+  const isAreaFree = (x: number, y: number, size: number, excludeId: string, currentUnits: CombatUnit[]) => {
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const tx = x + c;
+        const ty = y + r;
+        if (tx < 0 || tx >= GRID_WIDTH || ty < 0 || ty >= GRID_HEIGHT) return false;
+        const u = getUnitAt(tx, ty, currentUnits);
+        if (u && u.id !== excludeId) return false;
+      }
+    }
+    return true;
   };
 
   const handleCellClick = (x: number, y: number) => {
@@ -254,30 +317,44 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     if (!activeUnit) return;
 
     const targetPos = getUnitAt(x, y);
+    const activeInfo = UNITS_INFO[activeUnit.unitId];
+    const activeSize = activeInfo.size || 1;
     
-    const dist = Math.abs(activeUnit.x - x) + Math.abs(activeUnit.y - y);
-    const speed = UNITS_INFO[activeUnit.unitId].speed;
-    const ranges = UNITS_INFO[activeUnit.unitId].range;
+    // Dist from center to center? Or closest tile?
+    // Let's use center-to-center for simpler range math
+    const centerX = activeUnit.x + (activeSize - 1) / 2;
+    const centerY = activeUnit.y + (activeSize - 1) / 2;
+    
+    let dist = 100;
+    if (targetPos) {
+      const targetSize = UNITS_INFO[targetPos.unitId].size || 1;
+      const tCenterX = targetPos.x + (targetSize - 1) / 2;
+      const tCenterY = targetPos.y + (targetSize - 1) / 2;
+      dist = Math.abs(centerX - tCenterX) + Math.abs(centerY - tCenterY);
+    } else {
+      dist = Math.abs(centerX - x) + Math.abs(centerY - y);
+    }
+
+    const speed = activeInfo.speed;
+    const ranges = activeInfo.range;
 
     if (targetPos) {
       if (targetPos.isEnemy) {
-        if (dist <= ranges) {
+        if (dist <= ranges + (activeSize > 1 ? 0.5 : 0)) {
           processAttack(units, activeUnit, targetPos);
         } else {
-          addLog("Враг слишком далеко для атаки.");
+          addLog("Враг слишком далеко.");
         }
-      } else {
-        // clicked own unit - do nothing or wait (for MVP: wait turn)
       }
     } else {
-      // Move
-      if (dist <= speed) {
+      // Move for potentially large units
+      if (dist <= speed && isAreaFree(x, y, activeSize, activeUnit.id, units)) {
         const updatedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x, y, hasActed: true } : u);
         setUnits(updatedUnits);
-        addLog(`${UNITS_INFO[activeUnit.unitId].name} переместился.`);
+        addLog(`${activeInfo.name} переместился.`);
         determineNextActiveUnit(updatedUnits);
       } else {
-        addLog("Слишком далеко для перемещения.");
+        addLog("Невозможно переместиться.");
       }
     }
   };
@@ -325,64 +402,70 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const gridCells = [];
   for (let y = 0; y < GRID_HEIGHT; y++) {
     for (let x = 0; x < GRID_WIDTH; x++) {
-      const isBossArea = node.type === 'boss' && units.some(u => u.unitId === 'titan' && u.count > 0 && x > u.x && x <= u.x + 1 && y >= u.y && y <= u.y + 1);
-      const isBossAreaSecondary = node.type === 'boss' && units.some(u => u.unitId === 'titan' && u.count > 0 && (x === u.x && y === u.y + 1 || x === u.x + 1 && y === u.y));
-      const isBossOrigin = node.type === 'boss' && units.some(u => u.unitId === 'titan' && u.count > 0 && x === u.x && y === u.y);
-
-      const u = units.find(u => u.x === x && u.y === y && u.count > 0 && (!isBossArea || isBossOrigin));
       const activeUnit = activeUnitId ? units.find(act => act.id === activeUnitId) : null;
+      const uUnderTile = units.find(u => {
+        if (u.count <= 0) return false;
+        const size = UNITS_INFO[u.unitId].size || 1;
+        return x >= u.x && x < u.x + size && y >= u.y && y < u.y + size; // Covers multi-tiles
+      });
+      
+      const isOrigin = uUnderTile && uUnderTile.x === x && uUnderTile.y === y;
+      
       let moveRadius = 0;
       if (activeUnit && activeUnit.unitId) {
-        moveRadius = Math.min(UNITS_INFO[activeUnit.unitId]?.speed || 3, 3); // Capped to 3 to not make it too big
+        moveRadius = UNITS_INFO[activeUnit.unitId]?.speed || 1;
       }
       
-      const dist = activeUnit ? (Math.abs(activeUnit.x - x) + Math.abs(activeUnit.y - y)) : Infinity;
-      const isAllowedMove = turn === 'player' && activeUnit && !getUnitAt(x, y) && dist <= moveRadius && dist > 0;
+      const activeSize = activeUnit ? (UNITS_INFO[activeUnit.unitId].size || 1) : 1;
+      const dist = activeUnit ? (Math.abs(activeUnit.x + (activeSize-1)/2 - x) + Math.abs(activeUnit.y + (activeSize-1)/2 - y)) : Infinity;
+      const isAllowedMove = turn === 'player' && activeUnit && !uUnderTile && dist <= moveRadius && isAreaFree(x, y, activeSize, activeUnit.id, units);
       
-      const targetUnit = getUnitAt(x, y);
-      const isPickableTarget = turn === 'player' && activeUnit && targetUnit?.isEnemy && dist <= (UNITS_INFO[activeUnit.unitId]?.range || 1);
+      const isPickableTarget = turn === 'player' && activeUnit && uUnderTile?.isEnemy && dist <= (UNITS_INFO[activeUnit.unitId]?.range || 1) + (activeSize > 1 ? 0.5 : 0);
 
       gridCells.push(
         <div 
           key={`${x}-${y}`} 
           onClick={() => handleCellClick(x, y)}
           className={cn(
-            "relative w-full aspect-square border border-stone-700/50 flex items-center justify-center transition-colors overflow-visible",
-            isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/30 border-green-500/30",
-            isPickableTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/30 shadow-[inset_0_0_10px_rgba(239,68,68,0.3)] z-10",
-            (isBossArea || isBossAreaSecondary || isBossOrigin) && "z-10"
+            "relative w-full aspect-square border border-stone-700/30 flex items-center justify-center transition-colors overflow-visible",
+            isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/20",
+            isPickableTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/20 z-10"
           )}
         >
-          <div className="absolute inset-0 flex items-center justify-center opacity-5">{(x+y)%2===0 ? '·' : ''}</div>
-          {isAllowedMove && <div className="w-2 h-2 rounded-full bg-green-500/50 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>}
-          {u && (
+          {isAllowedMove && <div className="w-1.5 h-1.5 rounded-full bg-green-500/30"></div>}
+          {uUnderTile && isOrigin && (
             <motion.div 
-              layoutId={u.id}
+              layoutId={uUnderTile.id}
               transition={{ type: "spring", bounce: 0, duration: 0.3 }}
               className={cn(
-                "relative z-10 w-[85%] h-[85%] rounded bg-stone-900 flex flex-col items-center justify-center overflow-visible",
-                u.isEnemy ? "border border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.5)]" : "border border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]",
-                u.id === activeUnitId && "border-2 border-white shadow-[0_0_15px_#fff] z-20",
-                u.unitId === 'titan' && node.type === 'boss' && "absolute left-0 top-0 w-[200%] h-[200%] z-[60] pointer-events-none origin-top-left" 
+                "relative z-10 rounded bg-stone-900 border overflow-visible",
+                uUnderTile.isEnemy ? "border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.4)]" : "border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.4)]",
+                uUnderTile.id === activeUnitId && "border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] z-20"
               )}
-              style={u.id === activeUnitId ? { transform: 'scale(1.1)' } : undefined}
+              style={{
+                width: `${(UNITS_INFO[uUnderTile.unitId].size || 1) * 100 - 10}%`,
+                height: `${(UNITS_INFO[uUnderTile.unitId].size || 1) * 100 - 10}%`,
+                position: 'absolute',
+                top: '5%',
+                left: '5%',
+                zIndex: (UNITS_INFO[uUnderTile.unitId].size || 1) > 1 ? 40 : 30
+              }}
             >
-              {UNITS_INFO[u.unitId].image ? (
-                <img src={UNITS_INFO[u.unitId].image} alt={UNITS_INFO[u.unitId].name} className="w-full h-full object-cover rounded-[1px]" style={{ transform: u.isEnemy ? 'scaleX(-1)' : 'none' }} />
+              {UNITS_INFO[uUnderTile.unitId].image ? (
+                <img src={UNITS_INFO[uUnderTile.unitId].image} alt={UNITS_INFO[uUnderTile.unitId].name} className="w-full h-full object-cover rounded-[1px]" style={{ transform: uUnderTile.isEnemy ? 'scaleX(-1)' : 'none' }} />
               ) : (
-                <div className="text-[7px] font-bold truncate px-0.5 w-full text-center leading-none text-white whitespace-nowrap" style={{ transform: u.isEnemy ? 'scaleX(-1)' : 'none' }}>
-                  {UNITS_INFO[u.unitId].name.slice(0,3)}
+                <div className="text-[7px] font-bold truncate px-0.5 w-full text-center leading-none text-white whitespace-nowrap">
+                  {UNITS_INFO[uUnderTile.unitId].name.slice(0,3)}
                 </div>
               )}
               <div 
-                className="text-[8px] bg-stone-900 px-1 rounded-sm absolute -bottom-1 -right-1 font-black font-mono border z-30 shadow-md"
+                className="text-[8px] bg-stone-900 px-1 rounded-sm absolute -bottom-1 -right-1 font-black font-mono border z-50 shadow-md"
                 style={{ 
-                  transform: 'none',
-                  borderColor: u.isEnemy ? '#ef4444' : '#f59e0b',
-                  color: u.isEnemy ? '#fca5a5' : '#fef3c7'
+                  borderColor: uUnderTile.isEnemy ? '#ef4444' : '#f59e0b',
+                  color: uUnderTile.isEnemy ? '#fca5a5' : '#fef3c7'
                 }}
               >
-                {u.count}
+                {uUnderTile.count}
               </div>
             </motion.div>
           )}
@@ -399,10 +482,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         <h2 className="text-amber-500 font-bold tracking-widest uppercase flex items-center gap-2 text-shadow-glow">
           <Sword className="w-5 h-5"/> Бой
         </h2>
-        <div className="text-sm font-black flex items-center gap-2 uppercase tracking-widest">
-          <span className={turn === 'player' ? 'text-amber-400' : 'text-red-400 opacity-50'}>Мой ход</span>
-          <span className="text-stone-500 font-light">vs</span>
-          <span className={turn === 'enemy' ? 'text-red-400' : 'text-amber-400 opacity-50'}>Враг</span>
+        <div className="text-sm font-black flex flex-col items-end gap-0 tracking-widest">
+          <div className="flex items-center gap-2 uppercase">
+            <span className={turn === 'player' ? 'text-amber-400' : 'text-stone-500'}>Мой ход</span>
+            <span className="text-stone-600 font-light text-[10px]">vs</span>
+            <span className={turn === 'enemy' ? 'text-red-400' : 'text-stone-500'}>Враг</span>
+          </div>
+          <span className="text-[10px] text-stone-500 font-mono uppercase">Раунд {round}</span>
         </div>
       </div>
 
@@ -418,6 +504,32 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           }}
         >
           {gridCells}
+          
+          {/* Projectiles */}
+          {projectiles.map(p => (
+            <motion.div
+              key={p.id}
+              initial={{ 
+                left: `${(p.startX + 0.5) * (100/GRID_WIDTH)}%`, 
+                top: `${(p.startY + 0.5) * (100/GRID_HEIGHT)}%`,
+                scale: 0.5,
+                opacity: 0
+              }}
+              animate={{ 
+                left: `${(p.endX + 0.5) * (100/GRID_WIDTH)}%`, 
+                top: `${(p.endY + 0.5) * (100/GRID_HEIGHT)}%`,
+                scale: 1,
+                opacity: 1
+              }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="absolute w-4 h-4 z-[100] flex items-center justify-center pointer-events-none"
+              style={{ transform: 'translate(-50%, -50%)' }}
+            >
+              {p.type === 'arrow' && <div className="w-4 h-0.5 bg-stone-300 shadow-[0_0_5px_white]"></div>}
+              {p.type === 'fireball' && <div className="w-4 h-4 bg-orange-500 rounded-full shadow-[0_0_15px_#f97316]"></div>}
+              {p.type === 'lightning' && <div className="w-1 h-8 bg-blue-300 shadow-[0_0_20px_#7dd3fc] rotate-45 animate-pulse"></div>}
+            </motion.div>
+          ))}
         </div>
       </div>
 
