@@ -312,12 +312,6 @@ export default function AuthView() {
               {errorMsg}
             </motion.div>
           )}
-          
-          <div className="mt-8 pt-6 border-t border-stone-800/50">
-            <p className="text-[9px] text-stone-600 uppercase font-bold tracking-widest">
-              Domain Error? Add &quot;ref-aliance-2.vercel.app&quot; to Firebase Auth Settings.
-            </p>
-          </div>
         </div>
       )}
     </div>
