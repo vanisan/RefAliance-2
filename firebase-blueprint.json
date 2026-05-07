@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "Stores user game progress and resources.",
+      "type": "object",
+      "properties": {
+        "playerName": { "type": "string" },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "gold": { "type": "number" },
+            "wood": { "type": "number" },
+            "stone": { "type": "number" },
+            "food": { "type": "number" }
+          }
+        },
+        "buildings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "level": { "type": "number" }
+            }
+          }
+        },
+        "army": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "palaceLevel": { "type": "number" },
+        "equipment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string" },
+              "tier": { "type": "number" },
+              "name": { "type": "string" },
+              "image": { "type": "string" },
+              "cost": { "type": "number" },
+              "stats": {
+                "type": "object",
+                "properties": {
+                  "attackBonus": { "type": "number" },
+                  "defenseBonus": { "type": "number" },
+                  "hpBonus": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "mapNodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "cleared": { "type": "boolean" }
+            }
+          }
+        },
+        "lastUpdate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["playerName", "resources", "buildings", "army", "palaceLevel"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "userProfile",
+      "description": "User progress data"
+    }
+  }
+}

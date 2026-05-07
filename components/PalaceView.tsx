@@ -1,15 +1,9 @@
 import { useState } from 'react';
 import { useGame } from '../lib/game-context';
 import { BuildingId, BUILDINGS_INFO } from '../lib/game.types';
-import { getUpgradeCost, hasEnoughResources, deductResources, addResources, formatNumber } from '../lib/game.utils';
+import { getUpgradeCost, hasEnoughResources, deductResources, addResources, formatNumber, cn } from '../lib/game.utils';
 import { Coins, Trees, Mountain, Wheat, ArrowUpCircle, Trash2, Hammer, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import clsx from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-export function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
 
 export default function PalaceView() {
   const { resources, setResources, buildings, setBuildings, palaceLevel } = useGame();
@@ -78,15 +72,16 @@ export default function PalaceView() {
   );
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center pt-8 px-4 pb-24 relative overflow-y-auto">
+    <div className="w-full h-full flex flex-col items-center pt-2 px-4 pb-20 relative overflow-y-auto bg-stone-900 bg-[radial-gradient(circle,rgba(68,64,60,0.1)_1px,transparent_1px)] bg-[size:32px_32px]">
+      <div className="absolute inset-0 bg-[url('/city.png')] opacity-10 bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
       {/* Palace Header */}
-      <div className="flex flex-col items-center mb-6">
+      <div className="flex flex-col items-center mb-4 mt-2 relative z-20">
         <div className="relative group">
-          <div className="w-24 h-24 bg-stone-800 rounded-lg wow-border-gold flex flex-col items-center justify-end cursor-pointer transition-colors shadow-lg relative overflow-hidden">
-            <img src="/buildings/hall.webp" alt="Дворец" className="absolute inset-0 w-full h-full object-cover z-0" />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-900 to-transparent pt-6 pb-1 flex flex-col items-center">
-              <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest text-shadow-glow relative z-10">Дворец</p>
-              <p className="text-[10px] font-black text-stone-200 tracking-widest relative z-10">LVL {palaceLevel}</p>
+          <div className="w-20 h-20 bg-stone-800 rounded-lg wow-border-gold flex flex-col items-center justify-end cursor-pointer transition-colors shadow-lg relative overflow-hidden">
+            <img src="/buildings/hall.webp" alt="Дворец" className="absolute inset-0 w-full h-full object-contain z-0 p-1.5 scale-110" />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950 via-stone-900 to-transparent pt-4 pb-1 flex flex-col items-center">
+              <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest text-shadow-glow relative z-10 shadow-black leading-none">Дворец</p>
+              <p className="text-[10px] font-black text-stone-200 tracking-widest relative z-10 shadow-black mt-0.5">LVL {palaceLevel}</p>
             </div>
           </div>
           <div className="absolute -top-2 -right-2 bg-amber-500 text-stone-900 text-[10px] px-2 py-0.5 rounded-sm border border-yellow-300 font-black shadow-lg">
@@ -96,7 +91,7 @@ export default function PalaceView() {
       </div>
 
       {/* Grid 4x4 */}
-      <div className="grid grid-cols-4 grid-rows-4 gap-2 w-full max-w-[500px] aspect-square p-3 wow-panel relative">
+      <div className="grid grid-cols-4 grid-rows-4 gap-2 w-full max-w-[360px] aspect-square p-2 wow-panel relative mb-4">
         {buildings.map((building, i) => {
           const isSelected = selectedCell === i;
           return (
@@ -115,9 +110,9 @@ export default function PalaceView() {
                 <>
                   <div className="absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   {BUILDINGS_INFO[building.id].image ? (
-                    <img src={BUILDINGS_INFO[building.id].image} alt={building.name} className="w-11 h-11 object-contain z-10 mb-0.5 opacity-90 drop-shadow-md" />
+                    <img src={BUILDINGS_INFO[building.id].image} alt={building.name} className="w-8 h-8 object-contain z-10 mb-0.5 opacity-90 drop-shadow-md" />
                   ) : (
-                    <span className="z-10 text-2xl mb-0.5">{BUILDINGS_INFO[building.id].icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id].icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id].icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id].icon === 'Trees' ? '🪵' : '🪨'}</span>
+                    <span className="z-10 text-xl mb-0.5">{BUILDINGS_INFO[building.id].icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id].icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id].icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id].icon === 'Trees' ? '🪵' : '🪨'}</span>
                   )}
                   {isSelected && <div className="text-[8px] text-amber-300 font-bold uppercase z-10">Select</div>}
                   {!isSelected && <div className="absolute bottom-0.5 right-1 text-[8px] text-amber-400/80 font-bold z-10 font-mono">L.{building.level}</div>}

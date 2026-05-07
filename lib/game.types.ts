@@ -143,8 +143,11 @@ export interface MapNode {
 
 export const INITIAL_MAP_NODES: MapNode[] = [
   { id: 'city', name: 'Город (Амстерград)', type: 'city', x: 50, y: 50, enemies: [], reward: {}, cleared: false },
-  { id: 'camp1', name: 'Лагерь Гоблинов', type: 'combat', x: 20, y: 30, enemies: [{ unitId: 'goblin', count: 5 }], reward: { gold: 100, wood: 50 }, cleared: false },
-  { id: 'camp2', name: 'Толпа Орков', type: 'combat', x: 70, y: 40, enemies: [{ unitId: 'orc', count: 3 }], reward: { gold: 200, stone: 100 }, cleared: false },
-  { id: 'camp3', name: 'Засада', type: 'combat', x: 40, y: 70, enemies: [{ unitId: 'goblin', count: 10 }, { unitId: 'orc', count: 2 }], reward: { gold: 300, food: 200 }, cleared: false },
-  { id: 'boss1', name: 'Босс (Титан)', type: 'boss', x: 80, y: 20, enemies: [{ unitId: 'titan', count: 1 }], reward: { gold: 10000, stone: 5000 }, cleared: false }
+  { id: 'camp1', name: 'Лагерь Гоблинов', type: 'combat', x: 25, y: 35, enemies: [{ unitId: 'goblin', count: 5 }], reward: { gold: 100, wood: 50 }, cleared: false },
+  { id: 'camp2', name: 'Толпа Орков', type: 'combat', x: 75, y: 45, enemies: [{ unitId: 'orc', count: 3 }], reward: { gold: 200, stone: 100 }, cleared: false },
+  { id: 'camp3', name: 'Засада Гоблинов', type: 'combat', x: 45, y: 75, enemies: [{ unitId: 'goblin', count: 12 }, { unitId: 'orc', count: 2 }], reward: { gold: 300, food: 200 }, cleared: false },
+  { id: 'camp4', name: 'Легион Тьмы', type: 'combat', x: 20, y: 80, enemies: [{ unitId: 'goblin', count: 30 }, { unitId: 'orc', count: 10 }], reward: { gold: 1000, wood: 500, stone: 200 }, cleared: false },
+  { id: 'camp5', name: 'Элитный Отряд Серых', type: 'combat', x: 80, y: 85, enemies: [{ unitId: 'orc', count: 25 }, { unitId: 'goblin', count: 50 }], reward: { gold: 3000, stone: 1500, wood: 1500, food: 1500 }, cleared: false },
+  { id: 'camp6', name: 'Аванпост Нежити', type: 'combat', x: 20, y: 20, enemies: [{ unitId: 'orc', count: 40 }, { unitId: 'goblin', count: 40 }], reward: { gold: 5000, stone: 2000, wood: 2000, food: 2000 }, cleared: false },
+  { id: 'boss1', name: 'Босс (Титан)', type: 'boss', x: 80, y: 25, enemies: [{ unitId: 'titan', count: 1 }], reward: { gold: 10000, stone: 5000 }, cleared: false }
 ];

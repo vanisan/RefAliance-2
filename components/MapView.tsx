@@ -1,6 +1,6 @@
 import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO } from '../lib/game.types';
-import { formatNumber } from '../lib/game.utils';
+import { formatNumber, cn } from '../lib/game.utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield } from 'lucide-react';
 import { useState } from 'react';
@@ -11,9 +11,11 @@ interface MapViewProps {
 }
 
 export default function MapView({ onStartCombat }: MapViewProps) {
-  const { mapNodes, mapRefreshTimer } = useGame();
+  const { mapNodes, mapRefreshTimer, army } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
   const [showShop, setShowShop] = useState(false);
+
+  const totalArmyCount = Object.values(army).reduce((sum, count) => sum + count, 0);
 
   // Split into cleared and uncleared for visual stats
   const clearedCount = mapNodes.filter(n => n.cleared).length;
@@ -24,17 +26,19 @@ export default function MapView({ onStartCombat }: MapViewProps) {
       <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-[2px] z-0"></div>
       
       {/* Map Header */}
-      <div className="w-full wow-panel p-4 mt-4 mb-2 max-w-[500px] relative z-10 overflow-hidden flex flex-col items-center justify-center">
-        <h2 className="text-lg font-black text-amber-500 relative flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
-          <MapPin className="w-5 h-5"/> Карта Мира
+      <div className="w-full wow-panel p-2 mt-2 mb-1 max-w-[400px] relative z-10 overflow-hidden flex flex-col items-center justify-center">
+        <h2 className="text-sm font-black text-amber-500 relative flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
+          <MapPin className="w-4 h-4"/> Карта Мира
         </h2>
-        <div className="w-full bg-stone-900/80 rounded-full h-2 mt-2 relative border border-stone-800">
-          <div className="bg-amber-600 h-2 rounded-full shadow-[0_0_10px_#d97706]" style={{ width: `${progress}%` }}></div>
+        <div className="w-[80%] bg-stone-900/80 rounded-full h-1.5 mt-1.5 relative border border-stone-800">
+          <div className="bg-amber-600 h-1.5 rounded-full shadow-[0_0_8px_#d97706]" style={{ width: `${progress}%` }}></div>
         </div>
-        <p className="text-[10px] font-black text-stone-300 mt-1 relative uppercase tracking-widest">Освоено: {progress}%</p>
-        <p className="text-[9px] font-bold text-amber-500/70 mt-1 relative uppercase tracking-widest">
-          Мобы обновятся через: {Math.floor(mapRefreshTimer / 60)}:{(mapRefreshTimer % 60).toString().padStart(2, '0')}
-        </p>
+        <div className="flex gap-4 mt-1">
+          <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Освоено: {progress}%</p>
+          <p className="text-[9px] font-bold text-amber-500/70 relative uppercase tracking-widest">
+            Обновление: {Math.floor(mapRefreshTimer / 60)}:{(mapRefreshTimer % 60).toString().padStart(2, '0')}
+          </p>
+        </div>
       </div>
 
       {/* Map Nodes Layer */}
@@ -54,19 +58,19 @@ export default function MapView({ onStartCombat }: MapViewProps) {
               style={{ left: `${node.x}%`, top: `${node.y}%` }}
             >
               {node.cleared ? (
-                <div className="w-8 h-8 rounded-full bg-stone-800 border-2 border-stone-600 flex items-center justify-center opacity-70 shadow-inner">
-                  <MapPin className="w-4 h-4 text-stone-500" />
+                <div className="w-6 h-6 rounded-full bg-stone-800 border border-stone-600 flex items-center justify-center opacity-70 shadow-inner">
+                  <MapPin className="w-3 h-3 text-stone-500" />
                 </div>
               ) : isCity ? (
-                <div className={`w-10 h-10 rounded text-amber-300 flex items-center justify-center border-2 border-amber-600 shadow-xl ${selectedNode?.id === node.id ? 'bg-amber-900 shadow-[0_0_20px_#f59e0b]' : 'bg-stone-800'}`}>
-                   <Store className="w-5 h-5" />
+                <div className={`w-8 h-8 rounded text-amber-300 flex items-center justify-center border-2 border-amber-600 shadow-xl ${selectedNode?.id === node.id ? 'bg-amber-900 shadow-[0_0_20px_#f59e0b]' : 'bg-stone-800'}`}>
+                   <Store className="w-4 h-4" />
                 </div>
               ) : (
-                <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center border-2 shadow-xl ${selectedNode?.id === node.id ? 'border-red-400 bg-red-900/80 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'border-red-800 bg-stone-900'}`}>
-                  <Skull className="w-5 h-5 text-red-500 animate-pulse" />
+                <div className={`w-8 h-8 rounded-[4px] flex items-center justify-center border-2 shadow-xl ${selectedNode?.id === node.id ? 'border-red-400 bg-red-900/80 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'border-red-800 bg-stone-900'}`}>
+                   <Skull className="w-4 h-4 text-red-500 animate-pulse" />
                 </div>
               )}
-              <div className="mt-1 text-[9px] font-black bg-stone-900 px-2 py-0.5 rounded text-amber-500 whitespace-nowrap border border-stone-700/50 uppercase tracking-widest shadow-md">
+              <div className="mt-1 text-[7px] font-black bg-stone-950/90 px-1.5 py-0.5 rounded text-amber-500 max-w-[80px] text-center leading-tight border border-stone-700/50 uppercase tracking-tighter shadow-xl">
                 {node.name}
               </div>
             </motion.button>
@@ -149,13 +153,22 @@ export default function MapView({ onStartCombat }: MapViewProps) {
             )}
 
             {!selectedNode.cleared && selectedNode.type !== 'city' && (
-              <div className="flex gap-2 mt-4">
+              <div className="flex flex-col gap-2 mt-4 text-center">
+                {totalArmyCount === 0 && (
+                  <p className="text-[9px] text-red-500 font-bold uppercase animate-pulse">У вас нет войск для боя!</p>
+                )}
                 <button 
                   onClick={() => {
-                    onStartCombat(selectedNode);
-                    setSelectedNode(null);
+                    if (totalArmyCount > 0) {
+                      onStartCombat(selectedNode);
+                      setSelectedNode(null);
+                    }
                   }}
-                  className="w-full py-3 wow-button font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2"
+                  disabled={totalArmyCount === 0}
+                  className={cn(
+                    "w-full py-3 wow-button font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2",
+                    totalArmyCount === 0 && "opacity-50 grayscale cursor-not-allowed border-stone-700"
+                  )}
                 >
                   <Swords className="w-4 h-4"/> В Атаку!
                 </button>

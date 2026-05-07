@@ -8,13 +8,14 @@ import PalaceView from '../components/PalaceView';
 import MapView from '../components/MapView';
 import ArmyView from '../components/ArmyView';
 import CombatView from '../components/CombatView';
+import AuthView from './AuthView';
 import { MapNode } from '../lib/game.types';
 
 export default function GameClient() {
   const [activeTab, setActiveTab] = useState<TabType>('palace');
   const [combatNode, setCombatNode] = useState<MapNode | null>(null);
   
-  const { buildings } = useGame();
+  const { buildings, authLoading } = useGame();
   const hasBarracks = buildings.some(b => b?.id === 'barracks');
 
   const handleStartCombat = (node: MapNode) => {
@@ -26,27 +27,25 @@ export default function GameClient() {
   };
 
   return (
-    <div className="h-[100dvh] bg-stone-900 text-stone-200 pb-20 pt-24 font-sans flex flex-col relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('/city.png')] opacity-30 bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
-      <Header />
+    <div className="h-[100dvh] bg-stone-900 text-stone-200 pb-16 pt-24 font-sans flex flex-col relative overflow-hidden">
+      <div className="absolute inset-0 bg-[url('/city.png')] opacity-60 bg-cover bg-center mix-blend-overlay pointer-events-none z-0"></div>
+      <header className="fixed top-2 left-2 right-2 z-50">
+        <Header />
+      </header>
       
       <main className="flex-1 overflow-y-auto relative z-10 w-full mx-auto flex flex-col items-center">
-        {combatNode ? (
+        {authLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+          </div>
+        ) : combatNode ? (
           <CombatView node={combatNode} onEnd={handleEndCombat} />
         ) : (
           <>
             {activeTab === 'palace' && <PalaceView />}
             {activeTab === 'map' && <MapView onStartCombat={handleStartCombat} />}
             {activeTab === 'army' && <ArmyView />}
-            {activeTab === 'menu' && (
-              <div className="p-4 text-center text-slate-400 mt-20">
-                <h2 className="text-xl font-bold mb-4 neon-text-blue">Меню</h2>
-                <p>Настройки, профиль и информация</p>
-                <div className="mt-8 opacity-50 text-xs">
-                  (В разработке)
-                </div>
-              </div>
-            )}
+            {activeTab === 'menu' && <AuthView />}
           </>
         )}
       </main>

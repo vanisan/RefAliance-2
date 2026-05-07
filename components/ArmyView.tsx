@@ -61,22 +61,22 @@ export default function ArmyView() {
   const recruitableUnits: UnitId[] = ['knight', 'archer', 'berserk', 'mage', 'dragon', 'titan'];
 
   return (
-    <div className="w-full h-full flex flex-col items-center p-4 space-y-6 pb-24 overflow-y-auto">
-      <div className="w-full max-w-[500px] space-y-6">
+    <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto">
+      <div className="w-full max-w-[440px] space-y-3">
         {/* Current Army Status */}
-        <div className="wow-panel p-4 flex flex-col relative overflow-hidden">
+        <div className="wow-panel p-2 flex flex-col relative overflow-hidden">
         <div className="absolute inset-0 bg-stone-700/10 blur-xl"></div>
-        <div className="flex justify-between items-center mb-4 relative z-10">
-          <h3 className="font-bold text-lg text-amber-500 flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
-            <Shield className="w-5 h-5"/> Мои войска
+        <div className="flex justify-between items-center mb-2 relative z-10 px-1">
+          <h3 className="font-bold text-sm text-amber-500 flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
+            <Shield className="w-4 h-4"/> Мои войска
           </h3>
-          <div className="flex gap-2 items-center text-xs font-mono bg-stone-900/80 px-2 py-1 rounded border border-stone-700">
+          <div className="flex gap-2 items-center text-[9px] font-mono bg-stone-900/80 px-1.5 py-0.5 rounded border border-stone-700">
              <Users className="w-3 h-3 text-indigo-400" />
              <span className={currentTroops >= maxTroops ? "text-red-400" : "text-indigo-300"}>{formatNumber(currentTroops)} / {formatNumber(maxTroops)}</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-3 relative z-10">
+        <div className="grid grid-cols-2 gap-2 relative z-10">
           {(Object.entries(army) as [UnitId, number][]).filter(([_, count]) => count > 0).map(([id, count]) => (
             <div key={id} className="bg-stone-900/60 p-2 rounded-lg border border-stone-700 hover:border-amber-600/50 flex justify-between items-center transition-colors">
               <div className="flex items-center gap-2 overflow-hidden">
@@ -115,7 +115,7 @@ export default function ArmyView() {
               <div className="flex justify-between items-start mb-2 relative z-10">
                 <div className="flex gap-3 items-center">
                   {info.image && (
-                     <div className="w-14 h-14 bg-stone-800 rounded border border-stone-700 overflow-hidden shrink-0 flex items-center justify-center">
+                     <div className="w-10 h-10 bg-stone-800 rounded border border-stone-700 overflow-hidden shrink-0 flex items-center justify-center">
                        <img src={info.image} alt={info.name} className="w-full h-full object-cover" />
                      </div>
                   )}

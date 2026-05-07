@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO, UnitId } from '../lib/game.types';
-import { addResources } from '../lib/game.utils';
+import { addResources, cn } from '../lib/game.utils';
 import { Skull, Shield, Sword } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from './PalaceView';
 
 interface CombatViewProps {
   node: MapNode;
@@ -50,8 +49,18 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     let eY = 0;
     node.enemies.forEach(e => {
       if (e.count > 0 && eY < GRID_HEIGHT) {
-        initialUnits.push({ id: `e-${e.unitId}-${eY}`, unitId: e.unitId, count: e.count, hp: UNITS_INFO[e.unitId].hp, isEnemy: true, x: GRID_WIDTH - 1, y: eY, hasActed: false });
-        eY++;
+        const isBoss = e.unitId === 'titan' && node.type === 'boss';
+        initialUnits.push({ 
+          id: `e-${e.unitId}-${eY}`, 
+          unitId: e.unitId, 
+          count: e.count, 
+          hp: UNITS_INFO[e.unitId].hp, 
+          isEnemy: true, 
+          x: isBoss ? GRID_WIDTH - 2 : GRID_WIDTH - 1, 
+          y: eY, 
+          hasActed: false 
+        });
+        eY += isBoss ? 2 : 1;
       }
     });
     return initialUnits;
@@ -324,13 +333,18 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       const dist = activeUnit ? (Math.abs(activeUnit.x - x) + Math.abs(activeUnit.y - y)) : Infinity;
       const isAllowedMove = turn === 'player' && activeUnit && !getUnitAt(x, y) && dist <= moveRadius && dist > 0;
       
+      const targetUnit = getUnitAt(x, y);
+      const isPickableTarget = turn === 'player' && activeUnit && targetUnit?.isEnemy && dist <= (UNITS_INFO[activeUnit.unitId]?.range || 1);
+
       gridCells.push(
         <div 
           key={`${x}-${y}`} 
           onClick={() => handleCellClick(x, y)}
           className={cn(
-            "relative w-full aspect-square border border-stone-700/50 flex items-center justify-center transition-colors",
-            isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/30 border-green-500/30 z-0"
+            "relative w-full aspect-square border border-stone-700/50 flex items-center justify-center transition-colors overflow-visible",
+            isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/30 border-green-500/30",
+            isPickableTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/30 shadow-[inset_0_0_10px_rgba(239,68,68,0.3)] z-10",
+            (isBossArea || isBossAreaSecondary || isBossOrigin) && "z-10"
           )}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-5">{(x+y)%2===0 ? '·' : ''}</div>
@@ -343,7 +357,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 "relative z-10 w-[85%] h-[85%] rounded bg-stone-900 flex flex-col items-center justify-center overflow-visible",
                 u.isEnemy ? "border border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.5)]" : "border border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]",
                 u.id === activeUnitId && "border-2 border-white shadow-[0_0_15px_#fff] z-20",
-                u.unitId === 'titan' && node.type === 'boss' && "absolute left-[7.5%] top-[7.5%] w-[calc(200%+0.5rem)] h-[calc(200%+0.5rem)] z-30" 
+                u.unitId === 'titan' && node.type === 'boss' && "absolute left-0 top-0 w-[200%] h-[200%] z-[60] pointer-events-none origin-top-left" 
               )}
               style={u.id === activeUnitId ? { transform: 'scale(1.1)' } : undefined}
             >
@@ -387,8 +401,9 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       </div>
 
       {/* Battlefield Grid */}
-      <div className="bg-[url('/fight.png')] bg-cover bg-center w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl">
-        <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm mix-blend-multiply"></div>
+      <div className="bg-stone-900 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
+        <img src="/fight.png" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay pointer-events-none" />
+        <div className="absolute inset-0 bg-stone-950/20 backdrop-blur-[1px] rounded-sm pointer-events-none"></div>
         <div 
           className="relative z-10 w-full h-full grid"
           style={{ 

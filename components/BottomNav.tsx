@@ -10,14 +10,14 @@ interface BottomNavProps {
 
 export default function BottomNav({ activeTab, onChange, hasBarracks }: BottomNavProps) {
   const tabs = [
-    { id: 'palace', label: 'Дворец', icon: <Home className="w-6 h-6" />, disabled: false },
-    { id: 'map', label: 'Карта', icon: <MapIcon className="w-6 h-6" />, disabled: false },
-    { id: 'army', label: 'Армия', icon: <Shield className="w-6 h-6" />, disabled: !hasBarracks },
-    { id: 'menu', label: 'Меню', icon: <Menu className="w-6 h-6" />, disabled: false },
+    { id: 'palace', label: 'Дворец', icon: <Home className="w-5 h-5" />, disabled: false },
+    { id: 'map', label: 'Карта', icon: <MapIcon className="w-5 h-5" />, disabled: false },
+    { id: 'army', label: 'Армия', icon: <Shield className="w-5 h-5" />, disabled: !hasBarracks },
+    { id: 'menu', label: 'Меню', icon: <Menu className="w-5 h-5" />, disabled: false },
   ] as const;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-20 bg-stone-900 border-t-2 border-stone-800 flex z-50">
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-stone-900 border-t-2 border-stone-800 flex z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const isDisabled = tab.disabled;

@@ -1,4 +1,10 @@
 import { Building, BuildingId, BUILDINGS_INFO, Resources, UnitId } from './game.types';
+import clsx, { ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export const formatNumber = (num: number): string => {
   if (num > 999) {
