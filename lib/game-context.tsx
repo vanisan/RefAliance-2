@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { Resources, Building, UnitId, MapNode, INITIAL_MAP_NODES, BUILDINGS_INFO, EquipmentSlot, EquipmentItem } from './game.types';
 import { addResources, calculateArmyPower } from './game.utils';
-import { supabase, initSupabase } from './supabase';
+import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
 function handleSupabaseError(error: any) {
@@ -47,9 +47,7 @@ const defaultArmy: Record<UnitId, number> = {
 
 const GameContext = createContext<GameState | null>(null);
 
-export const GameProvider = ({ children, supabaseUrl, supabaseKey }: { children: ReactNode, supabaseUrl: string, supabaseKey: string }) => {
-  // Initialize Supabase immediately
-  initSupabase(supabaseUrl, supabaseKey);
+export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const [resources, setResources] = useState<Resources>(defaultResources);
   const [palaceLevel, setPalaceLevel] = useState(1);

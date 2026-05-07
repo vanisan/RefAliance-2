@@ -1,9 +1,6 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-export let supabase: SupabaseClient;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy';
 
-export function initSupabase(url: string, key: string) {
-  if (!supabase && url && key) {
-    supabase = createClient(url, key);
-  }
-}
+export const supabase = createClient(supabaseUrl, supabaseKey);
