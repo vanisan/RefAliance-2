@@ -61,7 +61,11 @@ interface GameState {
   setPlayerName: (name: string) => void;
 }
 
-const defaultResources: Resources = { gold: 1000, wood: 500, stone: 300, food: 800 };
+const defaultResources: Resources = { gold: 1000, wood: 500, stone: 300, food: 800, crystals: 0 };
+const defaultArmy: Record<UnitId, number> = { 
+  knight: 5, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
+  goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
+};
 
 const GameContext = createContext<GameState | null>(null);
 
@@ -69,7 +73,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [resources, setResources] = useState<Resources>(defaultResources);
   const [palaceLevel, setPalaceLevel] = useState(1);
   const [buildings, setBuildings] = useState<(Building | null)[]>(Array(16).fill(null));
-  const [army, setArmy] = useState<Record<UnitId, number>>({ knight: 5, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, goblin: 0, orc: 0 });
+  const [army, setArmy] = useState<Record<UnitId, number>>(defaultArmy);
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null, chest: null, boots: null, ring: null
@@ -93,11 +97,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           const snap = await getDoc(userDoc);
           if (snap.exists()) {
             const data = snap.data();
-            setResources(data.resources || defaultResources);
+            setResources({ ...defaultResources, ...(data.resources || {}) });
             setPalaceLevel(data.palaceLevel || 1);
             setBuildings(data.buildings || Array(16).fill(null));
-            setArmy(data.army || { knight: 5, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, goblin: 0, orc: 0 });
-            setMapNodes(data.mapNodes?.length ? data.mapNodes : INITIAL_MAP_NODES);
+            setArmy({ ...defaultArmy, ...(data.army || {}) });
+            
+            // Map migration/refresh: if saved nodes list is shorter than initial, or specific ids missing, update it
+            const savedNodes = data.mapNodes || [];
+            if (savedNodes.length < INITIAL_MAP_NODES.length) {
+              setMapNodes(INITIAL_MAP_NODES);
+            } else {
+              setMapNodes(savedNodes);
+            }
+
             setEquipment(data.equipment || { weapon: null, chest: null, boots: null, ring: null });
             setPlayerName(data.playerName || u.displayName || "Hero");
           } else {
@@ -107,7 +119,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               resources: defaultResources,
               palaceLevel: 1,
               buildings: Array(16).fill(null),
-              army: { knight: 5, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, goblin: 0, orc: 0 },
+              army: defaultArmy,
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
               lastUpdate: new Date().toISOString()

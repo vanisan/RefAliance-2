@@ -295,7 +295,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         // In a real game we'd add back survivors to reserves that didn't go. Here we override.
       });
       // Actually MVP: update army exactly as left on field
-      const nextArmy: Record<UnitId, number> = { knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, goblin: 0, orc: 0 };
+      const nextArmy: Record<UnitId, number> = { 
+        knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
+        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
+      };
       units.forEach(u => {
         if (!u.isEnemy && u.count > 0) {
           nextArmy[u.unitId] = (nextArmy[u.unitId] || 0) + u.count;
@@ -310,7 +313,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       setMapNodes(mapNodes.map(m => m.id === node.id ? { ...m, cleared: true } : m));
     } else if (gameOver === 'defeat') {
       // Lose all deployed troops
-      setArmy({ knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, goblin: 0, orc: 0 }); // Hardcore loss
+      setArmy({ 
+        knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
+        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
+      }); // Hardcore loss
     }
     onEnd();
   };
@@ -386,10 +392,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950 flex flex-col items-center justify-center pt-16">
+    <div className="fixed inset-0 z-50 bg-stone-950/30 flex flex-col items-center justify-center pt-16">
       
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 h-16 bg-stone-900 border-b border-stone-800 flex justify-between items-center px-4 shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
+      <div className="absolute top-0 left-0 right-0 h-16 bg-stone-900/40 border-b border-stone-800 flex justify-between items-center px-4 shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
         <h2 className="text-amber-500 font-bold tracking-widest uppercase flex items-center gap-2 text-shadow-glow">
           <Sword className="w-5 h-5"/> Бой
         </h2>
@@ -401,7 +407,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       </div>
 
       {/* Battlefield Grid */}
-      <div className="bg-stone-900 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
+      <div className="bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
         <img src="/fight.png" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay pointer-events-none" />
         <div className="absolute inset-0 bg-stone-950/20 backdrop-blur-[1px] rounded-sm pointer-events-none"></div>
         <div 
@@ -439,8 +445,9 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 </div>
                 <h1 className="text-4xl font-black text-green-400 mb-2 drop-shadow-lg">ПОБЕДА!</h1>
                 <p className="text-slate-400 text-center mb-6">Враг повержен. Вы добыли трофеи.</p>
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl w-full max-w-xs mb-8 flex justify-center gap-4 text-sm font-mono">
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl w-full max-w-xs mb-8 flex flex-wrap justify-center gap-4 text-sm font-mono">
                   {node.reward.gold && <span className="text-yellow-500">+{node.reward.gold} Золото</span>}
+                  {node.reward.crystals && <span className="text-indigo-400">+{node.reward.crystals} 💎</span>}
                   {node.reward.wood && <span className="text-amber-600">+{node.reward.wood} Дерево</span>}
                 </div>
               </>

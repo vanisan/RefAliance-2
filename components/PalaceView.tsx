@@ -72,7 +72,7 @@ export default function PalaceView() {
   );
 
   return (
-    <div className="w-full h-full flex flex-col items-center pt-2 px-4 pb-20 relative overflow-y-auto bg-stone-900 bg-[radial-gradient(circle,rgba(68,64,60,0.1)_1px,transparent_1px)] bg-[size:32px_32px]">
+    <div className="w-full h-full flex flex-col items-center pt-2 px-4 pb-20 relative overflow-y-auto bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.1)_1px,transparent_1px)] bg-[size:32px_32px]">
       <div className="absolute inset-0 bg-[url('/city.png')] opacity-10 bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
       {/* Palace Header */}
       <div className="flex flex-col items-center mb-4 mt-2 relative z-20">

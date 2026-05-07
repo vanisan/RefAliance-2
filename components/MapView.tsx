@@ -22,8 +22,8 @@ export default function MapView({ onStartCombat }: MapViewProps) {
   const progress = Math.round((clearedCount / mapNodes.length) * 100);
 
   return (
-    <div className="w-full h-full min-h-[calc(100vh-8rem)] relative bg-[url('https://picsum.photos/id/1025/800/1200')] bg-cover bg-center overflow-hidden flex flex-col items-center">
-      <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-[2px] z-0"></div>
+    <div className="w-full h-full min-h-[calc(100vh-8rem)] relative bg-[url('/map.png')] bg-cover bg-center overflow-hidden flex flex-col items-center">
+      <div className="absolute inset-0 bg-stone-950/30 backdrop-blur-[2px] z-0"></div>
       
       {/* Map Header */}
       <div className="w-full wow-panel p-2 mt-2 mb-1 max-w-[400px] relative z-10 overflow-hidden flex flex-col items-center justify-center">
@@ -36,7 +36,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         <div className="flex gap-4 mt-1">
           <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Освоено: {progress}%</p>
           <p className="text-[9px] font-bold text-amber-500/70 relative uppercase tracking-widest">
-            Обновление: {Math.floor(mapRefreshTimer / 60)}:{(mapRefreshTimer % 60).toString().padStart(2, '0')}
+            Обновление: {Math.floor((mapRefreshTimer || 0) / 60)}:{((mapRefreshTimer || 0) % 60).toString().padStart(2, '0')}
           </p>
         </div>
       </div>
@@ -144,6 +144,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                   <h4 className="text-[10px] text-amber-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Возможная Награда:</h4>
                   <div className="flex flex-wrap gap-2 text-xs font-mono font-bold">
                     {selectedNode.reward.gold && <span className="text-yellow-500 bg-stone-900 px-1.5 py-0.5 rounded border border-yellow-900/50">+{formatNumber(selectedNode.reward.gold)} Золото</span>}
+                    {selectedNode.reward.crystals && <span className="text-indigo-400 bg-stone-900 px-1.5 py-0.5 rounded border border-indigo-900/50">+{formatNumber(selectedNode.reward.crystals)} 💎</span>}
                     {selectedNode.reward.wood && <span className="text-amber-600 bg-stone-900 px-1.5 py-0.5 rounded border border-amber-900/50">+{formatNumber(selectedNode.reward.wood)} Дерево</span>}
                     {selectedNode.reward.stone && <span className="text-stone-400 bg-stone-900 px-1.5 py-0.5 rounded border border-stone-700/50">+{formatNumber(selectedNode.reward.stone)} Камень</span>}
                     {selectedNode.reward.food && <span className="text-orange-400 bg-stone-900 px-1.5 py-0.5 rounded border border-orange-900/50">+{formatNumber(selectedNode.reward.food)} Еда</span>}

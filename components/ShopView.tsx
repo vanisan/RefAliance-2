@@ -19,8 +19,8 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
   const items = SHOP_ITEMS.filter(it => it.type === activeSlot);
 
   const handleBuy = (item: EquipmentItem) => {
-    if (resources.gold >= item.cost) {
-      setResources(prev => ({ ...prev, gold: prev.gold - item.cost }));
+    if (resources.crystals >= item.cost) {
+      setResources(prev => ({ ...prev, crystals: prev.crystals - item.cost }));
       // Automatically equip
       setEquipment(prev => ({ ...prev, [item.type]: item }));
     }
@@ -47,15 +47,15 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
 
       {/* Tabs */}
       <div className="w-full shrink-0 mt-4 mb-2">
-        <div className="flex gap-2 overflow-x-auto pb-2 px-1 snap-x hide-scrollbar">
+        <div className="grid grid-cols-4 gap-1 pb-2 px-1">
           {slots.map(s => (
             <button
               key={s.id}
               onClick={() => setActiveSlot(s.id)}
-              className={`whitespace-nowrap px-4 py-2 rounded font-bold uppercase tracking-widest text-xs snap-start transition-colors ${
+              className={`whitespace-nowrap flex flex-col items-center justify-center py-1.5 rounded font-black uppercase tracking-tighter text-[8px] transition-colors border shadow-inner ${
                 activeSlot === s.id 
-                  ? 'bg-amber-600 text-stone-900 shadow-[0_0_10px_#d97706]' 
-                  : 'wow-panel-metal text-stone-400 hover:text-stone-200'
+                  ? 'bg-amber-600 text-stone-900 border-amber-400 shadow-[0_0_10px_#d97706]' 
+                  : 'bg-stone-800/80 text-stone-400 border-stone-700 hover:text-stone-200'
               }`}
             >
               {s.label}
@@ -64,8 +64,8 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      <div className="text-right text-xs font-bold text-yellow-500 mb-4 tracking-widest uppercase">
-        Ваше золото: {formatNumber(resources.gold)}
+      <div className="text-right text-[10px] font-black text-indigo-400 mb-4 tracking-widest uppercase flex items-center justify-end gap-1 text-shadow-glow">
+        💎 Алмазы: {formatNumber(resources.crystals)}
       </div>
 
       {/* Current Equipped Item */}
@@ -98,7 +98,7 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
       <div className="space-y-3 pb-24">
         {items.map(item => {
           const isEquipped = currentEquipped?.id === item.id;
-          const canAfford = resources.gold >= item.cost;
+          const canAfford = resources.crystals >= item.cost;
           
           return (
             <div key={item.id} className={`wow-panel p-3 flex gap-3 ${isEquipped ? 'border-amber-500 border-2' : ''}`}>
@@ -119,8 +119,8 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
                 </div>
                 
                 <div className="flex justify-between items-end mt-2">
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${canAfford ? 'text-yellow-500' : 'text-stone-600'}`}>
-                    {formatNumber(item.cost)} Золота
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${canAfford ? 'text-indigo-400' : 'text-stone-600'}`}>
+                    💎 {formatNumber(item.cost)}
                   </span>
                   {!isEquipped && (
                     <button 

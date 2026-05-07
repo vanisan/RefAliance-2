@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const formatNumber = (num: number): string => {
+  if (num === undefined || num === null || isNaN(num)) return '0';
   if (num > 999) {
     return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   }
@@ -21,6 +22,7 @@ export const getUpgradeCost = (buildingId: BuildingId, currentLevel: number): Re
     wood: Math.floor(info.baseCost.wood * multiplier),
     stone: Math.floor(info.baseCost.stone * multiplier),
     food: Math.floor(info.baseCost.food * multiplier),
+    crystals: 0,
   };
 };
 
@@ -29,7 +31,8 @@ export const hasEnoughResources = (cost: Partial<Resources>, wallet: Resources):
     wallet.gold >= (cost.gold || 0) &&
     wallet.wood >= (cost.wood || 0) &&
     wallet.stone >= (cost.stone || 0) &&
-    wallet.food >= (cost.food || 0)
+    wallet.food >= (cost.food || 0) &&
+    wallet.crystals >= (cost.crystals || 0)
   );
 };
 
@@ -39,6 +42,7 @@ export const deductResources = (wallet: Resources, cost: Partial<Resources>): Re
     wood: wallet.wood - (cost.wood || 0),
     stone: wallet.stone - (cost.stone || 0),
     food: wallet.food - (cost.food || 0),
+    crystals: wallet.crystals - (cost.crystals || 0),
   };
 };
 
@@ -48,5 +52,6 @@ export const addResources = (wallet: Resources, amount: Partial<Resources>): Res
     wood: wallet.wood + (amount.wood || 0),
     stone: wallet.stone + (amount.stone || 0),
     food: wallet.food + (amount.food || 0),
+    crystals: wallet.crystals + (amount.crystals || 0),
   };
 };

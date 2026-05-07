@@ -15,7 +15,8 @@ export default function ArmyView() {
   const currentTroops = Object.values(army).reduce((acc, count) => acc + count, 0);
 
   const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
-    knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, goblin: 0, orc: 0
+    knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, goblin: 0, orc: 0,
+    skelet: 0, vampire: 0, demon: 0, giant: 0
   });
 
   const handleHire = (unitId: UnitId) => {
@@ -61,7 +62,7 @@ export default function ArmyView() {
   const recruitableUnits: UnitId[] = ['knight', 'archer', 'berserk', 'mage', 'dragon', 'titan'];
 
   return (
-    <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto">
+    <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto bg-stone-900/30">
       <div className="w-full max-w-[440px] space-y-3">
         {/* Current Army Status */}
         <div className="wow-panel p-2 flex flex-col relative overflow-hidden">

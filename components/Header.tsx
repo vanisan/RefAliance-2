@@ -48,6 +48,12 @@ export default function Header() {
                 <Wheat className="w-3 h-3 md:hidden" /> {formatNumber(resources.food)}
               </div>
             </div>
+            <div className="text-center hidden xs:block">
+              <p className="text-[9px] uppercase text-indigo-400 font-bold">Алмазы</p>
+              <div className="flex items-center justify-center gap-1 font-mono text-indigo-300 text-xs">
+                <span className="text-[10px]">💎</span> {formatNumber(resources.crystals)}
+              </div>
+            </div>
 
             {/* Mobile view fallback: just icons and numbers */}
             <div className="flex xs:hidden grid grid-cols-2 gap-x-2 gap-y-1">
@@ -62,6 +68,9 @@ export default function Header() {
               </div>
               <div className="flex items-center gap-1 font-mono text-rose-400 text-[10px]">
                 <Wheat className="w-3 h-3 text-rose-500" /> {formatNumber(resources.food)}
+              </div>
+              <div className="flex items-center gap-1 font-mono text-indigo-300 text-[10px]">
+                <span className="text-[10px]">💎</span> {formatNumber(resources.crystals)}
               </div>
             </div>
           </div>
