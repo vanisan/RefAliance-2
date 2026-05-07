@@ -48,12 +48,12 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         <div className="flex gap-4 mt-1">
           <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Прогресс: {levelProgress}%</p>
           {allCleared && currentCampaignLevel !== '1-7' && (
-             <button 
-              onClick={handleNextLevel}
-              className="text-[9px] font-black text-green-400 relative uppercase tracking-widest animate-bounce flex items-center gap-1 bg-stone-900/80 px-2 py-0.5 rounded border border-green-900"
-            >
-               Вперед к {currentCampaignLevel === '1-7' ? 'Финалу' : `1-${parseInt(currentCampaignLevel.split('-')[1]) + 1}`}! ➔
-             </button>
+              <button 
+               onClick={handleNextLevel}
+               className="text-[9px] font-black text-green-400 relative uppercase tracking-widest animate-pulse flex items-center gap-1 bg-stone-900/80 px-2 py-0.5 rounded border border-green-500 shadow-[0_0_10px_#22c55e,inset_0_0_5px_#22c55e] transition-all hover:scale-105 active:scale-95"
+             >
+                Вперед к {currentCampaignLevel === '1-7' ? 'Финалу' : `1-${parseInt(currentCampaignLevel.split('-')[1]) + 1}`}! ➔
+              </button>
           )}
         </div>
       </div>

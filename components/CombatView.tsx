@@ -117,59 +117,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 5));
 
   // Forward declarations for ESLint issues
-  const processAttack = (currentUnits: CombatUnit[], attacker: CombatUnit, defender: CombatUnit) => {
-    const attackerInfo = UNITS_INFO[attacker.unitId];
-    const defenderInfo = UNITS_INFO[defender.unitId];
-    
-    // Trigger Effects
-    if (attackerInfo.range > 1) {
-      // Ranged Attack Projectile
-      let type: 'arrow' | 'fireball' | 'lightning' = 'arrow';
-      if (attacker.unitId === 'mage') type = 'fireball';
-      if (attacker.unitId === 'titan' || attacker.unitId === 'giant') type = 'lightning';
-      
-      const projectileId = getRandomId('p');
-      const newProjectile: Projectile = {
-        id: projectileId,
-        type,
-        startX: attacker.x + (attackerInfo.size === 2 ? 0.5 : 0),
-        startY: attacker.y + (attackerInfo.size === 2 ? 0.5 : 0),
-        endX: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
-        endY: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
-      };
-      setProjectiles(prev => [...prev, newProjectile]);
-      setTimeout(() => {
-        setProjectiles(prev => prev.filter(p => p.id !== projectileId));
-        // Hit effect
-        const hitType: AttackEffect['type'] = (type === 'fireball') ? 'fire' : (type === 'lightning' ? 'lightning_hit' : 'hit');
-        const effectId = getRandomId('e');
-        const newEffect: AttackEffect = {
-          id: effectId,
-          type: hitType,
-          x: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
-          y: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
-          size: defenderInfo.size || 1
-        };
-        setEffects(prev => [...prev, newEffect]);
-        setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
-      }, 500);
-    } else {
-      // Melee Attack Effect
-      const effectType: AttackEffect['type'] = (attacker.unitId === 'dragon' || attacker.unitId === 'demon') ? 'fire' : 'slash';
-      const effectId = getRandomId('e-melee');
-      const newEffect: AttackEffect = {
-        id: effectId,
-        type: effectType,
-        x: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
-        y: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
-        size: defenderInfo.size || 1
-      };
-      setEffects(prev => [...prev, newEffect]);
-      setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
-    }
-
-    const attInfo = attackerInfo;
-    const defInfo = defenderInfo;
+  // Helper to calculate damage
+  const calculateDamage = (attacker: CombatUnit, defender: CombatUnit, isCounter = false) => {
+    const attInfo = UNITS_INFO[attacker.unitId];
+    const defInfo = UNITS_INFO[defender.unitId];
 
     const effAttack = attacker.isEnemy ? attInfo.attack : Math.floor(attInfo.attack * atkMod);
     const effDefense = defender.isEnemy ? defInfo.defense : Math.floor(defInfo.defense * defMod);
@@ -180,31 +131,115 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     const rawDmg = getRandomDamage(effMinDmg, effMaxDmg);
     let totalDmg = rawDmg * attacker.count;
     
+    if (isCounter && attInfo.special === 'counter_attack_50') {
+      totalDmg = Math.floor(totalDmg * 0.5);
+    }
+
     const statDiff = effAttack - effDefense;
-    const multiplier = Math.max(0.05, 1 + (statDiff * 0.05)); // Floor at 5% damage instead of 1%
+    const multiplier = Math.max(0.05, 1 + (statDiff * 0.05));
     totalDmg = Math.floor(totalDmg * multiplier);
     
-    if (totalDmg < 1 && attacker.count > 0) totalDmg = 1; // Ensure at least 1 dmg if they hit
-    
-    let remainingStackHP = (defender.count - 1) * effUnitHp + defender.hp - totalDmg;
-    let killed = 0;
-    let newCount = defender.count;
-    let newTopHP = defender.hp;
+    if (totalDmg < 1 && attacker.count > 0) totalDmg = 1;
+    return { totalDmg, effUnitHp };
+  };
 
-    if (remainingStackHP <= 0) {
-      killed = defender.count;
-      newCount = 0;
-      addLog(`${UNITS_INFO[attacker.unitId].name} уничтожил ${UNITS_INFO[defender.unitId].name}!`);
-    } else {
-      newCount = Math.ceil(remainingStackHP / effUnitHp);
-      killed = defender.count - newCount;
-      newTopHP = remainingStackHP % effUnitHp === 0 ? effUnitHp : remainingStackHP % effUnitHp;
-      addLog(`${UNITS_INFO[attacker.unitId].name} -> ${totalDmg} урона. Убито: ${killed}.`);
+  const processAttack = (currentUnits: CombatUnit[], attacker: CombatUnit, defender: CombatUnit) => {
+    const attackerInfo = UNITS_INFO[attacker.unitId];
+    const defenderInfo = UNITS_INFO[defender.unitId];
+    
+    // Trigger Effects
+    const triggerEffect = (aId: UnitId, dId: UnitId, dx: number, dy: number, ds: number) => {
+      const aInfo = UNITS_INFO[aId];
+      if (aInfo.range > 1) {
+        let type: 'arrow' | 'fireball' | 'lightning' = 'arrow';
+        if (aId === 'mage') type = 'fireball';
+        if (aId === 'titan' || aId === 'giant') type = 'lightning';
+        
+        const projectileId = getRandomId('p');
+        const newProjectile: Projectile = {
+          id: projectileId, type,
+          startX: attacker.x + (attackerInfo.size === 2 ? 0.5 : 0),
+          startY: attacker.y + (attackerInfo.size === 2 ? 0.5 : 0),
+          endX: dx + (ds === 2 ? 0.5 : 0),
+          endY: dy + (ds === 2 ? 0.5 : 0),
+        };
+        setProjectiles(prev => [...prev, newProjectile]);
+        setTimeout(() => {
+          setProjectiles(prev => prev.filter(p => p.id !== projectileId));
+          const hitType: AttackEffect['type'] = (type === 'fireball') ? 'fire' : (type === 'lightning' ? 'lightning_hit' : 'hit');
+          const effectId = getRandomId('e');
+          setEffects(prev => [...prev, { id: effectId, type: hitType, x: dx, y: dy, size: ds }]);
+          setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
+        }, 500);
+      } else {
+        const effectType: AttackEffect['type'] = (aId === 'dragon' || aId === 'demon' || aId === 'hydra') ? 'fire' : 'slash';
+        const effectId = getRandomId('e-melee');
+        setEffects(prev => [...prev, { id: effectId, type: effectType, x: dx, y: dy, size: ds }]);
+        setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
+      }
+    };
+
+    triggerEffect(attacker.unitId, defender.unitId, defender.x, defender.y, defenderInfo.size || 1);
+
+    const applyDamage = (att: CombatUnit, def: CombatUnit, unitsList: CombatUnit[], isCounter = false) => {
+      const { totalDmg, effUnitHp } = calculateDamage(att, def, isCounter);
+      
+      let remainingStackHP = (def.count - 1) * effUnitHp + def.hp - totalDmg;
+      let newCount = Math.max(0, Math.ceil(remainingStackHP / effUnitHp));
+      let killed = def.count - newCount;
+      let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % effUnitHp === 0 ? effUnitHp : remainingStackHP % effUnitHp);
+
+      const label = isCounter ? "Ответный удар" : "Атака";
+      if (newCount === 0) {
+        addLog(`${label}: ${UNITS_INFO[att.unitId].name} уничтожил ${UNITS_INFO[def.unitId].name}!`);
+      } else {
+        addLog(`${label}: ${UNITS_INFO[att.unitId].name} -> ${totalDmg} урона. Убито: ${killed}.`);
+      }
+
+      return { newCount, newTopHP };
+    };
+
+    // Primary Attack
+    let { newCount, newTopHP } = applyDamage(attacker, defender, currentUnits);
+    let currentDefender = { ...defender, count: newCount, hp: newTopHP };
+
+    // Double Attack Logic
+    if (attackerInfo.special === 'double_attack' && newCount > 0) {
+      setTimeout(() => {
+        triggerEffect(attacker.unitId, defender.unitId, defender.x, defender.y, defenderInfo.size || 1);
+        const secondHit = applyDamage(attacker, currentDefender, currentUnits);
+        currentDefender = { ...currentDefender, count: secondHit.newCount, hp: secondHit.newTopHP };
+        
+        const finalUnits = currentUnits.map(u => {
+          if (u.id === attacker.id) return { ...u, hasActed: true };
+          if (u.id === defender.id) return currentDefender;
+          return u;
+        });
+        setUnits(finalUnits);
+        checkWinCondition(finalUnits);
+      }, 600);
+      return; 
+    }
+
+    // Counter Attack Logic (Hydra)
+    if (defenderInfo.special === 'counter_attack_50' && attackerInfo.range === 1 && newCount > 0) {
+      setTimeout(() => {
+        triggerEffect(defender.unitId, attacker.unitId, attacker.x, attacker.y, attackerInfo.size || 1);
+        const res = applyDamage(currentDefender, attacker, currentUnits, true);
+        const finalUnits = currentUnits.map(u => {
+          if (u.id === attacker.id) return { ...u, count: res.newCount, hp: res.newTopHP, hasActed: true };
+          if (u.id === defender.id) return currentDefender;
+          return u;
+        });
+        setUnits(finalUnits);
+        checkWinCondition(finalUnits);
+      }, 600);
+      return;
     }
 
     const updatedUnits = currentUnits.map(u => {
       if (u.id === attacker.id) return { ...u, hasActed: true };
-      if (u.id === defender.id) return { ...u, count: newCount, hp: newTopHP };
+      if (u.id === defender.id) return currentDefender;
       return u;
     });
 
@@ -428,7 +463,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       // Actually MVP: update army exactly as left on field
       const nextArmy: Record<UnitId, number> = { 
         knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
-        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
+        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
+        assassin: 0, hydra: 0, souleater: 0 
       };
       units.forEach(u => {
         if (!u.isEnemy && u.count > 0) {
@@ -446,7 +482,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       // Lose all deployed troops
       setArmy({ 
         knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
-        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
+        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
+        assassin: 0, hydra: 0, souleater: 0
       }); // Hardcore loss
     }
     onEnd();
@@ -687,7 +724,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
                     <span className="uppercase opacity-50">Атака</span>
-                    <span className="text-stone-300 font-bold uppercase tracking-widest text-[7px]">Обычная</span>
+                    <span className="text-stone-300 font-bold uppercase tracking-widest text-[7px]">
+                      {UNITS_INFO[selectedUnitInfo.unitId].special === 'double_attack' ? 'Двойная' : 
+                       UNITS_INFO[selectedUnitInfo.unitId].special === 'counter_attack_50' ? 'Ответная (50%)' : 'Обычная'}
+                    </span>
                   </div>
                 </div>
               </div>

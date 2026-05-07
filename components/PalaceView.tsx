@@ -71,6 +71,16 @@ export default function PalaceView() {
     </div>
   );
 
+  const renderProduction = (prod: any, level: number = 1) => (
+    <div className="flex gap-2 text-[10px] font-bold">
+      {prod.gold > 0 && <span className="flex items-center text-yellow-500">+{formatNumber(prod.gold * level)} <Coins className="w-2 h-2 ml-0.5"/></span>}
+      {prod.wood > 0 && <span className="flex items-center text-emerald-500">+{formatNumber(prod.wood * level)} <Trees className="w-2 h-2 ml-0.5"/></span>}
+      {prod.stone > 0 && <span className="flex items-center text-stone-300">+{formatNumber(prod.stone * level)} <Mountain className="w-2 h-2 ml-0.5"/></span>}
+      {prod.food > 0 && <span className="flex items-center text-rose-400">+{formatNumber(prod.food * level)} <Wheat className="w-2 h-2 ml-0.5"/></span>}
+      <span className="text-stone-500 opacity-60 ml-1">/ 5сек</span>
+    </div>
+  );
+
   return (
     <div className="w-full h-full flex flex-col items-center pt-2 px-4 pb-20 relative overflow-y-auto bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.1)_1px,transparent_1px)] bg-[size:32px_32px]">
       <div className="absolute inset-0 bg-[url('/city.png')] opacity-10 bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
@@ -145,8 +155,21 @@ export default function PalaceView() {
 
             {buildings[selectedCell] ? (
               <div className="flex flex-col gap-2">
-                <div className="mb-2">
-                  <span className="font-bold text-stone-100 text-sm">{buildings[selectedCell]!.name}</span> <span className="text-xs text-amber-600 font-black">LVL {buildings[selectedCell]!.level}</span>
+                <div className="mb-2 flex flex-col">
+                  <div>
+                    <span className="font-bold text-stone-100 text-sm">{buildings[selectedCell]!.name}</span> <span className="text-xs text-amber-600 font-black">LVL {buildings[selectedCell]!.level}</span>
+                  </div>
+                  {BUILDINGS_INFO[buildings[selectedCell]!.id].production && (
+                    <div className="mt-1">
+                      <p className="text-[8px] uppercase text-stone-500 font-bold mb-1">Текущая добыча:</p>
+                      {renderProduction(BUILDINGS_INFO[buildings[selectedCell]!.id].production, buildings[selectedCell]!.level)}
+                    </div>
+                  )}
+                  {buildings[selectedCell]?.id === 'farm' && (
+                    <div className="mt-1">
+                      <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">+ {buildings[selectedCell]!.level * 10} к Лимиту войск</p>
+                    </div>
+                  )}
                 </div>
                 
                 <button 
@@ -154,7 +177,12 @@ export default function PalaceView() {
                   disabled={!hasEnoughResources(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level), resources)}
                   className="w-full text-left py-2 px-3 rounded text-xs font-bold border-l-2 border-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-between wow-panel-metal hover:bg-stone-700"
                 >
-                  <span className="text-amber-500">🔼 Улучшить</span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-amber-500">🔼 Улучшить</span>
+                    {BUILDINGS_INFO[buildings[selectedCell]!.id].production && (
+                      <span className="text-[8px] text-green-500 font-bold">Будет: +{formatNumber(Object.values(BUILDINGS_INFO[buildings[selectedCell]!.id].production!)[0] as number * (buildings[selectedCell]!.level + 1))}</span>
+                    )}
+                  </div>
                   <span className="font-mono text-[10px] flex items-center">{renderCost(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level))}</span>
                 </button>
                 <button 
@@ -187,6 +215,14 @@ export default function PalaceView() {
                     >
                       <span className="font-black text-sm tracking-widest uppercase text-amber-500">{info.name}</span>
                       <span className="text-[10px] text-stone-400 font-semibold">{info.description}</span>
+                      {info.production && (
+                        <div className="mt-1">
+                          {renderProduction(info.production)}
+                        </div>
+                      )}
+                      {info.id === 'farm' && (
+                        <div className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest">+10 к Лимиту войск</div>
+                      )}
                       <div className="mt-1 flex items-center justify-between w-full">
                         <span className="text-[9px] uppercase font-bold tracking-widest text-stone-500">Стоимость</span>
                         {renderCost(info.baseCost)}

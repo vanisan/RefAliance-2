@@ -36,6 +36,10 @@ export default function GameClient() {
     );
   }
 
+  if (!user) {
+    return <AuthView />;
+  }
+
   // If user is logged in but hasn't set their name yet (or has old placeholder)
   const isDefaultName = !playerName || playerName === 'Hero' || playerName === 'Герой';
   if (user && isDefaultName) {

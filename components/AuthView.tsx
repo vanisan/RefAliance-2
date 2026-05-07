@@ -43,13 +43,29 @@ export default function AuthView() {
         // Important: set the playerName state immediately so sync uses it
         const cleanName = login.trim();
         setPlayerName(cleanName);
+        
+        // Pre-create the user record to ensure version and name are set
+        try {
+          const u = auth.currentUser;
+          if (u) {
+            const { doc, setDoc } = await import('firebase/firestore');
+            const { db } = await import('../lib/firebase');
+            await setDoc(doc(db, 'users', u.uid), {
+              playerName: cleanName,
+              version: 2, // Explicitly set current version
+              createdAt: new Date().toISOString()
+            }, { merge: true });
+          }
+        } catch (e) {
+          console.error("Manual doc creation failed", e);
+        }
       } else {
         await signInWithEmailAndPassword(auth, email, pass);
       }
     } catch (error: any) {
       console.error("Auth error", error);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') 
-        setErrorMsg("Неверный логин или пароль.");
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') 
+        setErrorMsg("Неверный логин или пароль. Пожалуйста, проверьте введённые данные.");
       else if (error.code === 'auth/email-already-in-use') {
         setErrorMsg("Этот логин уже занят. Если это ваш аккаунт — просто нажмите 'Войти'.");
         setIsRegister(false); 

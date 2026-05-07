@@ -14,13 +14,14 @@ export default function RankingView() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
   useEffect(() => {
+    if (!user) return;
     const fetch = async () => {
       const data = await getLeaderboard();
       setLeaders(data);
       setLoading(false);
     };
     fetch();
-  }, [getLeaderboard]);
+  }, [getLeaderboard, user]);
 
   if (loading) {
     return (

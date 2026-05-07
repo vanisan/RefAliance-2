@@ -65,10 +65,12 @@ interface GameState {
   setCurrentCampaignLevel: (level: string) => void;
 }
 
-const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 100, crystals: 100 };
+const CURRENT_GAME_VERSION = 2;
+const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 100, crystals: 0 };
 const defaultArmy: Record<UnitId, number> = { 
   knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
-  goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0 
+  goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
+  assassin: 0, hydra: 0, souleater: 0 
 };
 
 const GameContext = createContext<GameState | null>(null);
@@ -89,6 +91,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [authLoading, setAuthLoading] = useState(true);
 
   const getLeaderboard = async () => {
+    if (!auth.currentUser) return [];
     try {
       const q = query(
         collection(db, 'users'), 
@@ -145,30 +148,52 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           const snap = await getDoc(userDoc);
           if (snap.exists()) {
             const data = snap.data();
-            const loadedName = data.playerName || u.displayName || "";
             
-            // If the name is the old placeholder 'Hero' or empty, we keep it as empty to trigger NameEntryView
-            const finalName = (loadedName === "Hero" || loadedName === "Герой") ? "" : loadedName;
-            
-            setResources({ ...defaultResources, ...(data.resources || {}) });
-            setPalaceLevel(data.palaceLevel || 1);
-            setBuildings(data.buildings || Array(16).fill(null));
-            setArmy({ ...defaultArmy, ...(data.army || {}) });
-            setCurrentCampaignLevel(data.currentCampaignLevel || "1-1");
-            
-            // Map migration/refresh
-            const savedNodes = data.mapNodes || [];
-            if (savedNodes.length < INITIAL_MAP_NODES.length) {
+            // FORCED RESET for legacy users (version mismatch or old names)
+            if (data.version !== CURRENT_GAME_VERSION || data.playerName === 'Hero' || data.playerName === 'Герой') {
+              console.log("Legacy user detected, resetting progress...");
+              await setDoc(userDoc, {
+                playerName: (data.playerName && data.playerName !== 'Hero' && data.playerName !== 'Герой') ? data.playerName : (u.displayName || ""),
+                resources: defaultResources,
+                palaceLevel: 1,
+                buildings: Array(16).fill(null),
+                army: defaultArmy,
+                armyPower: calculateArmyPower(defaultArmy),
+                mapNodes: INITIAL_MAP_NODES,
+                equipment: { weapon: null, chest: null, boots: null, ring: null },
+                currentCampaignLevel: "1-1",
+                version: CURRENT_GAME_VERSION,
+                lastUpdate: new Date().toISOString()
+              });
+              
+              setResources(defaultResources);
+              setPalaceLevel(1);
+              setBuildings(Array(16).fill(null));
+              setArmy(defaultArmy);
               setMapNodes(INITIAL_MAP_NODES);
+              setEquipment({ weapon: null, chest: null, boots: null, ring: null });
+              setCurrentCampaignLevel("1-1");
+              setPlayerName((data.playerName && data.playerName !== 'Hero' && data.playerName !== 'Герой') ? data.playerName : (u.displayName || ""));
             } else {
-              setMapNodes(savedNodes);
-            }
+              setResources({ ...defaultResources, ...(data.resources || {}) });
+              setPalaceLevel(data.palaceLevel || 1);
+              setBuildings(data.buildings || Array(16).fill(null));
+              setArmy({ ...defaultArmy, ...(data.army || {}) });
+              setCurrentCampaignLevel(data.currentCampaignLevel || "1-1");
+              
+              // Map migration/refresh
+              const savedNodes = data.mapNodes || [];
+              if (savedNodes.length < INITIAL_MAP_NODES.length) {
+                setMapNodes(INITIAL_MAP_NODES);
+              } else {
+                setMapNodes(savedNodes);
+              }
 
-            setEquipment(data.equipment || { weapon: null, chest: null, boots: null, ring: null });
-            setPlayerName(finalName);
+              setEquipment(data.equipment || { weapon: null, chest: null, boots: null, ring: null });
+              setPlayerName(data.playerName || u.displayName || "");
+            }
           } else {
             // New user, save default state
-            // If u.displayName exists (Google login), use it
             const initialName = u.displayName || "";
             await setDoc(userDoc, {
               playerName: initialName,
@@ -180,6 +205,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
               currentCampaignLevel: "1-1",
+              version: CURRENT_GAME_VERSION,
               createdAt: new Date().toISOString()
             });
             setPlayerName(initialName);
@@ -235,7 +261,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       setResources(prev => {
         const baseProd = 0.5; // 1 unit per 10s, tick is 5s
         let totalProd: Partial<Resources> = {
-          gold: baseProd, wood: baseProd, stone: baseProd, food: baseProd, crystals: baseProd
+          gold: baseProd, wood: baseProd, stone: baseProd, food: baseProd
         };
         buildings.forEach(b => {
           if (b && BUILDINGS_INFO[b.id].production) {
@@ -244,7 +270,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             if (prod?.wood) totalProd.wood = (totalProd.wood || 0) + prod.wood * b.level;
             if (prod?.stone) totalProd.stone = (totalProd.stone || 0) + prod.stone * b.level;
             if (prod?.food) totalProd.food = (totalProd.food || 0) + prod.food * b.level;
-            if (prod?.crystals) totalProd.crystals = (totalProd.crystals || 0) + prod.crystals * b.level;
           }
         });
         
