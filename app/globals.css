@@ -1,84 +1,88 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-body {
-  background-color: #1c1917; /* stone-900 */
-  overflow: hidden;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  user-select: none;
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 240 10% 3.9%;
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+  --radius: 0.5rem;
 }
 
-/* Hide scrollbar for mobile game feel */
-::-webkit-scrollbar {
-  display: none;
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 5.9% 10%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
 }
 
-.wow-panel {
-  background: linear-gradient(to bottom, rgba(41, 37, 36, 0.3), rgba(28, 25, 23, 0.3));
-  border: 2px solid rgba(120, 53, 15, 0.5);
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 4px 6px rgba(0,0,0,0.5);
-  backdrop-filter: blur(4px);
-  border-radius: 6px;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    @apply bg-zinc-950 text-zinc-50;
+  }
 }
 
-.wow-panel-metal {
-  background: linear-gradient(to bottom, rgba(63, 63, 70, 0.3), rgba(39, 39, 42, 0.3));
-  border: 2px solid rgba(82, 82, 91, 0.5);
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 4px 6px rgba(0,0,0,0.5);
-  backdrop-filter: blur(4px);
-  border-radius: 6px;
+.neon-green-pulse {
+  animation: neon-pulse 1.5s infinite;
 }
 
-.wow-border-gold {
-  border: 2px solid #d97706; /* amber-600 */
-  box-shadow: 0 0 5px #d97706, inset 0 0 5px #d97706;
-}
-
-.wow-button {
-  background: linear-gradient(to bottom, #b45309, #78350f);
-  border: 2px solid #f59e0b;
-  color: #fef3c7;
-  text-shadow: 1px 1px 2px black;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  transition: all 0.2s ease;
-}
-
-.wow-button:hover:not(:disabled) {
-  background: linear-gradient(to bottom, #d97706, #92400e);
-}
-
-.wow-button:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.wow-button:disabled {
-  filter: grayscale(100%);
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.wow-text-gold {
-  color: #fbbf24;
-  text-shadow: 1px 1px 2px black;
-}
-
-.grid-cell {
-  background: rgba(41, 37, 36, 0.7); /* stone-800 */
-  transition: all 0.2s ease;
-}
-
-.grid-cell:hover {
-  background: rgba(120, 53, 15, 0.5); /* amber-900 */
-  transform: scale(1.02);
-}
-
-.flicker {
-  animation: flickerAnim 2s infinite;
-}
-
-@keyframes flickerAnim {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
-  80% { opacity: 0.9; }
+@keyframes neon-pulse {
+  0% {
+    box-shadow: 0 0 5px #22c55e, 0 0 10px #22c55e;
+    border-color: #22c55e;
+  }
+  50% {
+    box-shadow: 0 0 20px #22c55e, 0 0 30px #22c55e;
+    border-color: #4ade80;
+  }
+  100% {
+    box-shadow: 0 0 5px #22c55e, 0 0 10px #22c55e;
+    border-color: #22c55e;
+  }
 }
