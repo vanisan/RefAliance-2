@@ -1,7 +1,7 @@
 import { useGame } from '../lib/game-context';
-import { MapNode, INITIAL_MAP_NODES, UNITS_INFO } from '../lib/game.types';
-import { Swords, MapPin } from 'lucide-react';
+import { MapNode, UNITS_INFO } from '../lib/game.types';
 import { motion, AnimatePresence } from 'motion/react';
+import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 interface MapViewProps {
@@ -12,86 +12,143 @@ export default function MapView({ onStartCombat }: MapViewProps) {
   const { mapNodes } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
 
+  // Split into cleared and uncleared for visual stats
+  const clearedCount = mapNodes.filter(n => n.cleared).length;
+  const progress = Math.round((clearedCount / mapNodes.length) * 100);
+
   return (
-    <div className="w-full h-full min-h-[calc(100vh-8rem)] relative bg-[url('https://picsum.photos/id/1025/800/1200')] bg-cover bg-center overflow-hidden">
-      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-0"></div>
+    <div className="w-full h-full min-h-[calc(100vh-8rem)] relative bg-[url('https://picsum.photos/id/1025/800/1200')] bg-cover bg-center overflow-hidden flex flex-col items-center">
+      <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-[2px] z-0"></div>
       
+      {/* Map Header */}
+      <div className="w-full wow-panel p-4 mt-4 mb-2 max-w-[500px] relative z-10 overflow-hidden flex flex-col items-center justify-center">
+        <h2 className="text-lg font-black text-amber-500 relative flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
+          <MapPin className="w-5 h-5"/> Карта Мира
+        </h2>
+        <div className="w-full bg-stone-900/80 rounded-full h-2 mt-2 relative border border-stone-800">
+          <div className="bg-amber-600 h-2 rounded-full shadow-[0_0_10px_#d97706]" style={{ width: `${progress}%` }}></div>
+        </div>
+        <p className="text-[10px] font-black text-stone-300 mt-1 relative uppercase tracking-widest">Освоено: {progress}%</p>
+      </div>
+
       {/* Map Nodes Layer */}
-      <div className="absolute inset-0 z-10 p-4">
-        {mapNodes.map(node => (
-          <motion.button
-            key={node.id}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setSelectedNode(node)}
-            className={`absolute flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2`}
-            style={{ left: `${node.x}%`, top: `${node.y}%` }}
-          >
-            {node.cleared ? (
-              <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center opacity-50">
-                <MapPin className="w-4 h-4 text-slate-500" />
+      <div className="absolute inset-0 z-10 pt-24 pb-20 pointer-events-none">
+        <div className="relative w-full h-full max-w-[500px] mx-auto pointer-events-auto">
+          {mapNodes.map(node => {
+            const isCity = node.type === 'city';
+            return (
+            <motion.button
+              key={node.id}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setSelectedNode(node)}
+              className={`absolute flex flex-col items-center justify-center transform -translate-x-1/2 -translate-y-1/2`}
+              style={{ left: `${node.x}%`, top: `${node.y}%` }}
+            >
+              {node.cleared ? (
+                <div className="w-8 h-8 rounded-full bg-stone-800 border-2 border-stone-600 flex items-center justify-center opacity-70 shadow-inner">
+                  <MapPin className="w-4 h-4 text-stone-500" />
+                </div>
+              ) : isCity ? (
+                <div className={`w-10 h-10 rounded text-amber-300 flex items-center justify-center border-2 border-amber-600 shadow-xl ${selectedNode?.id === node.id ? 'bg-amber-900 shadow-[0_0_20px_#f59e0b]' : 'bg-stone-800'}`}>
+                   <Store className="w-5 h-5" />
+                </div>
+              ) : (
+                <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center border-2 shadow-xl ${selectedNode?.id === node.id ? 'border-red-400 bg-red-900/80 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'border-red-800 bg-stone-900'}`}>
+                  <Skull className="w-5 h-5 text-red-500 animate-pulse" />
+                </div>
+              )}
+              <div className="mt-1 text-[9px] font-black bg-stone-900 px-2 py-0.5 rounded text-amber-500 whitespace-nowrap border border-stone-700/50 uppercase tracking-widest shadow-md">
+                {node.name}
               </div>
-            ) : (
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-xl ${selectedNode?.id === node.id ? 'border-red-400 neon-glow bg-red-900/80' : 'border-red-600 bg-slate-900'}`}>
-                <Swords className="w-5 h-5 text-red-500 animate-pulse" />
-              </div>
-            )}
-            <div className="mt-1 text-[10px] font-bold bg-slate-900/80 px-2 py-0.5 rounded text-white whitespace-nowrap border border-slate-700/50">
-              {node.name}
-            </div>
-          </motion.button>
-        ))}
+            </motion.button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Node Details Modal */}
       <AnimatePresence>
-        {selectedNode && !selectedNode.cleared && (
+        {selectedNode && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="absolute bottom-4 left-4 right-4 z-40 bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-2xl"
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[320px] z-50 wow-panel p-4 shadow-2xl"
           >
-            <h3 className="font-bold text-lg mb-2 neon-text-blue">{selectedNode.name}</h3>
-            
-            <div className="mb-4">
-              <h4 className="text-xs text-slate-400 uppercase font-bold mb-1 border-b border-slate-800 pb-1">Враги:</h4>
-              <ul className="text-sm space-y-1">
-                {selectedNode.enemies.map((e, idx) => (
-                  <li key={idx} className="flex justify-between">
-                    <span className="text-slate-300">{UNITS_INFO[e.unitId].name}</span>
-                    <span className="text-red-400 font-mono">x{e.count}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className="mb-4">
-              <h4 className="text-xs text-slate-400 uppercase font-bold mb-1 border-b border-slate-800 pb-1">Награда:</h4>
-              <div className="flex gap-3 text-sm font-mono">
-                {selectedNode.reward.gold && <span className="text-yellow-500">Золото: {selectedNode.reward.gold}</span>}
-                {selectedNode.reward.wood && <span className="text-amber-600">Дерево: {selectedNode.reward.wood}</span>}
-                {selectedNode.reward.stone && <span className="text-stone-400">Камень: {selectedNode.reward.stone}</span>}
-                {selectedNode.reward.food && <span className="text-orange-400">Еда: {selectedNode.reward.food}</span>}
+            <div className="flex justify-between items-start mb-4 border-b border-stone-700/50 pb-2">
+              <div>
+                <h3 className="font-black text-lg text-amber-500 uppercase tracking-widest text-shadow-glow">{selectedNode.name}</h3>
+                <p className="text-xs text-stone-400 mt-1 uppercase font-bold tracking-widest">
+                  {selectedNode.cleared ? 'Зачищено' : selectedNode.type === 'city' ? 'Мирная локация' : 'Опасная зона'}
+                </p>
               </div>
+              <button onClick={() => setSelectedNode(null)} className="p-1 text-stone-400 hover:text-stone-200 transition-colors">
+                <X className="w-5 h-5"/>
+              </button>
             </div>
 
-            <div className="flex gap-2">
-              <button 
-                onClick={() => onStartCombat(selectedNode)}
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-red-400"
-              >
-                <Swords className="w-5 h-5"/> Атаковать
-              </button>
-              <button 
-                onClick={() => setSelectedNode(null)}
-                className="px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg transition-colors border border-slate-600"
-              >
-                Отмена
-              </button>
-            </div>
+            {selectedNode.type === 'city' ? (
+               <div className="flex flex-col gap-2 mb-4">
+                 <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
+                   <div className="flex items-center gap-2"><Store className="w-4 h-4 text-amber-400"/> Магазин</div>
+                   <span className="text-[9px] text-stone-500">(В разработке)</span>
+                 </button>
+                 <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
+                   <div className="flex items-center gap-2"><Hammer className="w-4 h-4 text-stone-400"/> Кузня</div>
+                   <span className="text-[9px] text-stone-500">(В разработке)</span>
+                 </button>
+                 <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
+                   <div className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-blue-400"/> Библиотека</div>
+                   <span className="text-[9px] text-stone-500">(В разработке)</span>
+                 </button>
+               </div>
+            ) : selectedNode.cleared ? (
+              <div className="py-6 flex flex-col items-center opacity-70">
+                <Shield className="w-12 h-12 text-stone-500 mb-2"/>
+                <p className="text-sm font-black text-stone-400 uppercase tracking-widest">Эта земля принадлежит вам</p>
+              </div>
+            ) : (
+              <div className="mb-4 space-y-4">
+                <div className="wow-panel-metal p-3">
+                  <h4 className="text-[10px] text-red-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Вражеский Гарнизон:</h4>
+                  <ul className="text-xs space-y-1 font-bold">
+                    {selectedNode.enemies.map((e, idx) => (
+                      <li key={idx} className="flex justify-between items-center text-stone-300">
+                        <span>{UNITS_INFO[e.unitId].name}</span>
+                        <span className="text-red-400 font-mono bg-stone-900 border border-stone-800 px-1.5 rounded-sm">x{e.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="wow-panel-metal p-3">
+                  <h4 className="text-[10px] text-amber-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Возможная Награда:</h4>
+                  <div className="flex flex-wrap gap-2 text-xs font-mono font-bold">
+                    {selectedNode.reward.gold && <span className="text-yellow-500 bg-stone-900 px-1.5 py-0.5 rounded border border-yellow-900/50">+{selectedNode.reward.gold} Золото</span>}
+                    {selectedNode.reward.wood && <span className="text-amber-600 bg-stone-900 px-1.5 py-0.5 rounded border border-amber-900/50">+{selectedNode.reward.wood} Дерево</span>}
+                    {selectedNode.reward.stone && <span className="text-stone-400 bg-stone-900 px-1.5 py-0.5 rounded border border-stone-700/50">+{selectedNode.reward.stone} Камень</span>}
+                    {selectedNode.reward.food && <span className="text-orange-400 bg-stone-900 px-1.5 py-0.5 rounded border border-orange-900/50">+{selectedNode.reward.food} Еда</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!selectedNode.cleared && selectedNode.type !== 'city' && (
+              <div className="flex gap-2 mt-4">
+                <button 
+                  onClick={() => {
+                    onStartCombat(selectedNode);
+                    setSelectedNode(null);
+                  }}
+                  className="w-full py-3 wow-button font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Swords className="w-4 h-4"/> В Атаку!
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 
 body {
-  background-color: #020617;
+  background-color: #1c1917; /* stone-900 */
   overflow: hidden;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   user-select: none;
@@ -13,32 +13,61 @@ body {
   display: none;
 }
 
-.neon-cyan {
-  text-shadow: 0 0 10px #22d3ee, 0 0 20px #22d3ee;
+.wow-panel {
+  background: linear-gradient(to bottom, #292524, #1c1917);
+  border: 2px solid #78350f;
+  box-shadow: inset 0 0 10px #000, 0 4px 6px rgba(0,0,0,0.5);
+  border-radius: 6px;
 }
 
-.neon-box-cyan {
-  box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
-  border: 1px solid #22d3ee;
+.wow-panel-metal {
+  background: linear-gradient(to bottom, #3f3f46, #27272a);
+  border: 2px solid #52525b;
+  box-shadow: inset 0 0 10px #000, 0 4px 6px rgba(0,0,0,0.5);
+  border-radius: 6px;
 }
 
-.neon-box-pink {
-  box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
-  border: 1px solid #f472b6;
+.wow-border-gold {
+  border: 2px solid #d97706; /* amber-600 */
+  box-shadow: 0 0 5px #d97706, inset 0 0 5px #d97706;
 }
 
-.neon-box-yellow {
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
-  border: 1px solid #fbbf24;
+.wow-button {
+  background: linear-gradient(to bottom, #b45309, #78350f);
+  border: 2px solid #f59e0b;
+  color: #fef3c7;
+  text-shadow: 1px 1px 2px black;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  transition: all 0.2s ease;
+}
+
+.wow-button:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #d97706, #92400e);
+}
+
+.wow-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.wow-button:disabled {
+  filter: grayscale(100%);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wow-text-gold {
+  color: #fbbf24;
+  text-shadow: 1px 1px 2px black;
 }
 
 .grid-cell {
-  background: rgba(30, 41, 59, 0.7);
-  transition: all 0.3s ease;
+  background: rgba(41, 37, 36, 0.7); /* stone-800 */
+  transition: all 0.2s ease;
 }
 
 .grid-cell:hover {
-  background: rgba(34, 211, 238, 0.2);
+  background: rgba(120, 53, 15, 0.5); /* amber-900 */
   transform: scale(1.02);
 }
 
@@ -50,19 +79,4 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.8; }
   80% { opacity: 0.9; }
-}
-
-.scanline {
-  width: 100%;
-  height: 100px;
-  z-index: 10;
-  background: linear-gradient(0deg, rgba(34, 211, 238, 0) 0%, rgba(34, 211, 238, 0.1) 50%, rgba(34, 211, 238, 0) 100%);
-  position: absolute;
-  pointer-events: none;
-  animation: scan 4s linear infinite;
-}
-
-@keyframes scan {
-  from { top: -100px; }
-  to { top: 100%; }
 }

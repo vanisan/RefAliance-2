@@ -25,8 +25,8 @@ type CombatUnit = {
   hasActed: boolean;
 };
 
-const GRID_WIDTH = 6;
-const GRID_HEIGHT = 5;
+const GRID_WIDTH = 10;
+const GRID_HEIGHT = 10;
 
 export default function CombatView({ node, onEnd }: CombatViewProps) {
   const { army, setArmy, resources, setResources, mapNodes, setMapNodes } = useGame();
@@ -269,8 +269,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           key={`${x}-${y}`} 
           onClick={() => handleCellClick(x, y)}
           className={cn(
-            "relative w-full aspect-square border border-slate-700/50 flex items-center justify-center transition-colors",
-            isAllowedMove && "bg-white/5 cursor-pointer hover:bg-white/10"
+            "relative w-full aspect-square border border-stone-700/50 flex items-center justify-center transition-colors",
+            isAllowedMove && "bg-white/5 cursor-pointer hover:bg-white/10 shadow-[inset_0_0_5px_rgba(255,255,255,0.2)]"
           )}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-5">{(x+y)%2===0 ? '·' : ''}</div>
@@ -278,25 +278,25 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
             <motion.div 
               layoutId={u.id}
               className={cn(
-                "relative z-10 w-[85%] h-[85%] rounded bg-slate-900 flex flex-col items-center justify-center overflow-visible",
-                u.isEnemy ? "border-2 border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.5)]" : "border-2 border-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.5)]",
-                u.id === activeUnitId && "border-white shadow-[0_0_30px_#fff] z-20 scale-110",
+                "relative z-10 w-[85%] h-[85%] rounded bg-stone-900 flex flex-col items-center justify-center overflow-visible",
+                u.isEnemy ? "border border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.5)]" : "border border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]",
+                u.id === activeUnitId && "border-2 border-white shadow-[0_0_15px_#fff] z-20 scale-110",
                 u.isEnemy && "scale-x-[-1]" // flip enemy images horizontally
               )}
             >
               {UNITS_INFO[u.unitId].image ? (
-                <img src={UNITS_INFO[u.unitId].image} alt={UNITS_INFO[u.unitId].name} className="w-full h-full object-cover rounded-[2px]" />
+                <img src={UNITS_INFO[u.unitId].image} alt={UNITS_INFO[u.unitId].name} className="w-full h-full object-cover rounded-[1px]" />
               ) : (
-                <div className="text-[10px] font-bold truncate px-1 w-full text-center leading-none text-white whitespace-nowrap" style={{ transform: u.isEnemy ? 'scaleX(-1)' : 'none' }}>
+                <div className="text-[7px] font-bold truncate px-0.5 w-full text-center leading-none text-white whitespace-nowrap" style={{ transform: u.isEnemy ? 'scaleX(-1)' : 'none' }}>
                   {UNITS_INFO[u.unitId].name.slice(0,3)}
                 </div>
               )}
               <div 
-                className="text-[10px] bg-slate-900 px-1.5 rounded-sm absolute -bottom-2 -right-2 font-black font-mono border z-30"
+                className="text-[8px] bg-stone-900 px-1 rounded-sm absolute -bottom-1 -right-1 font-black font-mono border z-30 shadow-md"
                 style={{ 
                   transform: u.isEnemy ? 'scaleX(-1)' : 'none',
-                  borderColor: u.isEnemy ? '#ef4444' : '#22d3ee',
-                  color: u.isEnemy ? '#fca5a5' : '#cffafe'
+                  borderColor: u.isEnemy ? '#ef4444' : '#f59e0b',
+                  color: u.isEnemy ? '#fca5a5' : '#fef3c7'
                 }}
               >
                 {u.count}
@@ -309,23 +309,23 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center pt-16">
+    <div className="fixed inset-0 z-50 bg-stone-950 flex flex-col items-center justify-center pt-16">
       
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-800 flex justify-between items-center px-4">
-        <h2 className="text-neon-blue font-bold tracking-widest uppercase flex items-center gap-2">
+      <div className="absolute top-0 left-0 right-0 h-16 bg-stone-900 border-b border-stone-800 flex justify-between items-center px-4 shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
+        <h2 className="text-amber-500 font-bold tracking-widest uppercase flex items-center gap-2 text-shadow-glow">
           <Sword className="w-5 h-5"/> Бой
         </h2>
-        <div className="text-sm font-mono flex items-center gap-2">
-          <span className={turn === 'player' ? 'text-blue-400' : 'text-red-400 opacity-50'}>Мой ход</span>
-          <span className="text-slate-500">vs</span>
-          <span className={turn === 'enemy' ? 'text-red-400' : 'text-blue-400 opacity-50'}>Враг</span>
+        <div className="text-sm font-black flex items-center gap-2 uppercase tracking-widest">
+          <span className={turn === 'player' ? 'text-amber-400' : 'text-red-400 opacity-50'}>Мой ход</span>
+          <span className="text-stone-500 font-light">vs</span>
+          <span className={turn === 'enemy' ? 'text-red-400' : 'text-amber-400 opacity-50'}>Враг</span>
         </div>
       </div>
 
       {/* Battlefield Grid */}
-      <div className="bg-[url('https://picsum.photos/id/1015/800/600')] bg-cover w-[95%] max-w-[400px] aspect-square relative rounded-xl overflow-hidden border-2 border-slate-800 shadow-2xl">
-        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm mix-blend-multiply"></div>
+      <div className="bg-[url('https://picsum.photos/id/1015/800/800')] bg-cover w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl">
+        <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm mix-blend-multiply"></div>
         <div 
           className="relative z-10 w-full h-full grid"
           style={{ 
@@ -338,9 +338,9 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       </div>
 
       {/* Combat Log */}
-      <div className="mt-8 w-[95%] max-w-[400px] h-32 bg-black/60 border border-slate-800 rounded-lg p-2 overflow-y-auto text-xs font-mono flex flex-col-reverse text-slate-400">
+      <div className="mt-4 w-[95%] max-w-[500px] h-28 wow-panel p-2 overflow-y-auto text-[10px] font-mono flex flex-col-reverse text-stone-400">
         {log.map((m, i) => (
-          <div key={i} className={i === 0 ? "text-slate-200" : ""}>
+          <div key={i} className={i === 0 ? "text-stone-200 font-bold" : ""}>
             &gt; {m}
           </div>
         ))}
@@ -378,7 +378,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
             
             <button 
               onClick={handleFinish}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-[0_0_15px_rgba(0,100,255,0.5)] tracking-widest uppercase transition-all"
+              className="px-8 py-3 wow-button font-black rounded-lg shadow-xl tracking-widest uppercase transition-all"
             >
               Продолжить
             </button>

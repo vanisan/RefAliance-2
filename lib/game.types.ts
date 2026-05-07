@@ -84,10 +84,12 @@ export interface MapNode {
   reward: Partial<Resources>;
   cleared: boolean;
   name: string;
+  type?: 'combat' | 'city';
 }
 
 export const INITIAL_MAP_NODES: MapNode[] = [
-  { id: 'camp1', name: 'Лагерь Гоблинов', x: 20, y: 30, enemies: [{ unitId: 'goblin', count: 5 }], reward: { gold: 100, wood: 50 }, cleared: false },
-  { id: 'camp2', name: 'Толпа Орков', x: 70, y: 40, enemies: [{ unitId: 'orc', count: 3 }], reward: { gold: 200, stone: 100 }, cleared: false },
-  { id: 'camp3', name: 'Засада', x: 40, y: 70, enemies: [{ unitId: 'goblin', count: 10 }, { unitId: 'orc', count: 2 }], reward: { gold: 300, food: 200 }, cleared: false },
+  { id: 'city', name: 'Город (Штормград)', type: 'city', x: 50, y: 50, enemies: [], reward: {}, cleared: false },
+  { id: 'camp1', name: 'Лагерь Гоблинов', type: 'combat', x: 20, y: 30, enemies: [{ unitId: 'goblin', count: 5 }], reward: { gold: 100, wood: 50 }, cleared: false },
+  { id: 'camp2', name: 'Толпа Орков', type: 'combat', x: 70, y: 40, enemies: [{ unitId: 'orc', count: 3 }], reward: { gold: 200, stone: 100 }, cleared: false },
+  { id: 'camp3', name: 'Засада', type: 'combat', x: 40, y: 70, enemies: [{ unitId: 'goblin', count: 10 }, { unitId: 'orc', count: 2 }], reward: { gold: 300, food: 200 }, cleared: false },
 ];

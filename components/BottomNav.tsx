@@ -17,7 +17,7 @@ export default function BottomNav({ activeTab, onChange, hasBarracks }: BottomNa
   ] as const;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-20 bg-slate-900 flex z-50">
+    <nav className="fixed bottom-0 left-0 right-0 h-20 bg-stone-900 border-t-2 border-stone-800 flex z-50">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const isDisabled = tab.disabled;
@@ -27,10 +27,10 @@ export default function BottomNav({ activeTab, onChange, hasBarracks }: BottomNa
             key={tab.id}
             disabled={isDisabled}
             onClick={() => onChange(tab.id)}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors bg-slate-900
+            className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors bg-stone-900
               ${isActive 
-                ? 'border-t-2 border-cyan-500 shadow-[inset_0_5px_15px_-10px_#22d3ee] text-cyan-500' 
-                : 'border-t-2 border-slate-800 text-slate-500 hover:bg-slate-800'
+                ? 'border-t-2 border-amber-500 shadow-[inset_0_5px_15px_-10px_#f59e0b] text-amber-500' 
+                : 'border-t-2 border-transparent text-stone-500 hover:bg-stone-800 hover:text-stone-300'
               }
               ${isDisabled && 'opacity-30 cursor-not-allowed'}
             `}
