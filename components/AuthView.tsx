@@ -74,12 +74,17 @@ export default function AuthView() {
 
     try {
       if (isRegister) {
+        const cleanName = login.trim();
         const { data, error } = await supabase.auth.signUp({
           email,
           password: pass,
+          options: {
+            data: {
+              name: cleanName
+            }
+          }
         });
         if (error) throw error;
-        const cleanName = login.trim();
         setPlayerName(cleanName);
         
         // Supabase users table should probably be populated via trigger or manually
@@ -163,13 +168,13 @@ export default function AuthView() {
             <div>
               <p className="text-xs text-amber-600 font-black uppercase tracking-tighter leading-none mb-1">Игрок</p>
               <p className="text-lg font-bold text-stone-100">{playerName || '...'}</p>
-              <p className="text-[10px] text-stone-500 font-mono italic">{login || user.email?.split('@')[0]}</p>
+              <p className="text-[10px] text-stone-500 font-mono italic">{login || (user.email?.endsWith(DUMMY_DOMAIN) ? user.user_metadata?.name || 'Player' : user.email)}</p>
             </div>
           </div>
           
           <div className="p-4 wow-panel-metal rounded bg-stone-800/30">
             <p className="text-xs text-stone-300 font-bold mb-2">Ваш прогресс автоматически сохраняется в облаке.</p>
-            <p className="text-[10px] text-stone-500 uppercase tracking-widest">Прогресс привязан к логину: <span className="text-amber-500">{login || user.email?.split('@')[0]}</span></p>
+            <p className="text-[10px] text-stone-500 uppercase tracking-widest">Прогресс привязан к логину: <span className="text-amber-500">{login || (user.email?.endsWith(DUMMY_DOMAIN) ? user.user_metadata?.name || 'Player' : user.email)}</span></p>
           </div>
 
           <div className="space-y-2 pt-4">
