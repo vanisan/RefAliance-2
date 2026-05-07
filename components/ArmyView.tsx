@@ -1,7 +1,7 @@
 import { useGame } from '../lib/game-context';
 import { UNITS_INFO, UnitId } from '../lib/game.types';
-import { hasEnoughResources, deductResources } from '../lib/game.utils';
-import { Coins, Trees, Mountain, Wheat, UserPlus, Shield } from 'lucide-react';
+import { hasEnoughResources, deductResources, formatNumber } from '../lib/game.utils';
+import { Coins, Trees, Mountain, Wheat, UserPlus, Shield, Users } from 'lucide-react';
 import { useState } from 'react';
 
 export default function ArmyView() {
@@ -9,6 +9,10 @@ export default function ArmyView() {
   
   // Find highest barracks level to determine allowed units or hiring speed
   const barracksLevel = buildings.reduce((max, b) => (b?.id === 'barracks' ? Math.max(max, b.level) : max), 0);
+  const farmLevel = buildings.reduce((max, b) => (b?.id === 'farm' ? Math.max(max, b.level) : max), 0);
+  
+  const maxTroops = 50 + farmLevel * 10;
+  const currentTroops = Object.values(army).reduce((acc, count) => acc + count, 0);
 
   const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
     knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, goblin: 0, orc: 0
@@ -19,6 +23,8 @@ export default function ArmyView() {
     if (!info.cost) return;
 
     const count = hireCounts[unitId] || 1;
+    if (currentTroops + count > maxTroops) return;
+
     const totalCost = {
       gold: (info.cost.gold || 0) * count,
       wood: (info.cost.wood || 0) * count,
@@ -44,11 +50,11 @@ export default function ArmyView() {
   };
 
   const renderCost = (cost: any, count: number) => (
-    <div className="flex gap-2 text-xs font-mono mb-2">
-      {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3 h-3 mr-1"/>{cost.gold * count}</span>}
-      {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-1"/>{cost.wood * count}</span>}
-      {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-1"/>{cost.stone * count}</span>}
-      {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-1"/>{cost.food * count}</span>}
+    <div className="flex gap-2 text-[10px] font-mono mb-2">
+      {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3 h-3 mr-0.5"/>{formatNumber(cost.gold * count)}</span>}
+      {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-0.5"/>{formatNumber(cost.wood * count)}</span>}
+      {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-0.5"/>{formatNumber(cost.stone * count)}</span>}
+      {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-0.5"/>{formatNumber(cost.food * count)}</span>}
     </div>
   );
 
@@ -60,19 +66,26 @@ export default function ArmyView() {
         {/* Current Army Status */}
         <div className="wow-panel p-4 flex flex-col relative overflow-hidden">
         <div className="absolute inset-0 bg-stone-700/10 blur-xl"></div>
-        <h3 className="font-bold text-lg mb-4 text-amber-500 flex items-center gap-2 relative z-10 uppercase tracking-widest text-shadow-glow">
-          <Shield className="w-5 h-5"/> Мои войска
-        </h3>
+        <div className="flex justify-between items-center mb-4 relative z-10">
+          <h3 className="font-bold text-lg text-amber-500 flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
+            <Shield className="w-5 h-5"/> Мои войска
+          </h3>
+          <div className="flex gap-2 items-center text-xs font-mono bg-stone-900/80 px-2 py-1 rounded border border-stone-700">
+             <Users className="w-3 h-3 text-indigo-400" />
+             <span className={currentTroops >= maxTroops ? "text-red-400" : "text-indigo-300"}>{formatNumber(currentTroops)} / {formatNumber(maxTroops)}</span>
+          </div>
+        </div>
+        
         <div className="grid grid-cols-2 gap-3 relative z-10">
           {(Object.entries(army) as [UnitId, number][]).filter(([_, count]) => count > 0).map(([id, count]) => (
             <div key={id} className="bg-stone-900/60 p-2 rounded-lg border border-stone-700 hover:border-amber-600/50 flex justify-between items-center transition-colors">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 overflow-hidden">
                 {UNITS_INFO[id].image ? (
-                  <img src={UNITS_INFO[id].image} alt={UNITS_INFO[id].name} className="w-8 h-8 object-cover rounded-md border border-stone-600" />
+                  <img src={UNITS_INFO[id].image} alt={UNITS_INFO[id].name} className="w-8 h-8 object-cover rounded-md border border-stone-600 shrink-0" />
                 ) : null}
-                <span className="text-stone-200 font-medium text-xs font-bold uppercase">{UNITS_INFO[id].name}</span>
+                <span className="text-stone-200 font-medium text-[10px] font-bold uppercase truncate">{UNITS_INFO[id].name}</span>
               </div>
-              <span className="text-amber-400 font-mono font-bold text-base flex gap-1 items-center"><UserPlus className="w-3 h-3 opacity-50"/> {count}</span>
+              <span className="text-amber-400 font-mono font-bold text-xs sm:text-base flex gap-1 items-center shrink-0 ml-1"><UserPlus className="w-3 h-3 opacity-50"/> {formatNumber(count)}</span>
             </div>
           ))}
           {Object.values(army).every(v => v === 0) && (
@@ -95,6 +108,7 @@ export default function ArmyView() {
             food: (info.cost?.food || 0) * count,
           };
           const canAfford = hasEnoughResources(totalCost, resources);
+          const hasSpace = currentTroops + count <= maxTroops;
 
           return (
             <div key={unitId} className="wow-panel-metal p-3 flex flex-col relative overflow-hidden transition-all">
@@ -108,9 +122,9 @@ export default function ArmyView() {
                   <div>
                     <div className="font-black text-sm text-stone-200 uppercase tracking-widest">{info.name}</div>
                     <div className="text-[10px] text-stone-400 flex flex-wrap gap-x-2 gap-y-1 mt-1 font-mono">
-                      <span className="bg-stone-950 px-1 py-0.5 rounded text-red-500">❤ {info.hp}</span>
-                      <span className="bg-stone-950 px-1 py-0.5 rounded text-yellow-500">⚔ {info.attack}</span>
-                      <span className="bg-stone-950 px-1 py-0.5 rounded text-blue-400">🛡 {info.defense}</span>
+                      <span className="bg-stone-950 px-1 py-0.5 rounded text-red-500">❤ {formatNumber(info.hp)}</span>
+                      <span className="bg-stone-950 px-1 py-0.5 rounded text-yellow-500">⚔ {formatNumber(info.attack)}</span>
+                      <span className="bg-stone-950 px-1 py-0.5 rounded text-blue-400">🛡 {formatNumber(info.defense)}</span>
                       <span className="bg-stone-950 px-1 py-0.5 rounded text-emerald-500">⚡ {info.speed}</span>
                     </div>
                   </div>
@@ -118,7 +132,7 @@ export default function ArmyView() {
                 
                 <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-lg border border-stone-800 shrink-0">
                   <button onClick={() => updateCount(unitId, false)} className="w-6 h-6 bg-stone-800 rounded text-stone-300 font-bold hover:bg-stone-700 transition-colors">-</button>
-                  <span className="font-mono font-bold w-5 text-center text-xs text-stone-200">{count}</span>
+                  <span className="font-mono font-bold w-5 text-center text-xs text-stone-200">{formatNumber(count)}</span>
                   <button onClick={() => updateCount(unitId, true)} className="w-6 h-6 bg-stone-800 rounded text-stone-300 font-bold hover:bg-stone-700 transition-colors">+</button>
                 </div>
               </div>
@@ -129,10 +143,10 @@ export default function ArmyView() {
                 </div>
                 <button
                   onClick={() => handleHire(unitId)}
-                  disabled={!canAfford || count < 1}
-                  className="px-5 py-2 wow-button text-[10px] uppercase font-black tracking-widest"
+                  disabled={!canAfford || count < 1 || !hasSpace}
+                  className={`px-5 py-2 wow-button text-[10px] uppercase font-black tracking-widest ${!hasSpace && canAfford ? 'opacity-50 !bg-red-900/50' : ''}`}
                 >
-                  Нанять
+                  {hasSpace ? 'Нанять' : 'Нет мест'}
                 </button>
               </div>
             </div>

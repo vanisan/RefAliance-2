@@ -1,5 +1,6 @@
 import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO } from '../lib/game.types';
+import { formatNumber } from '../lib/game.utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield } from 'lucide-react';
 import { useState } from 'react';
@@ -129,7 +130,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                     {selectedNode.enemies.map((e, idx) => (
                       <li key={idx} className="flex justify-between items-center text-stone-300">
                         <span>{UNITS_INFO[e.unitId].name}</span>
-                        <span className="text-red-400 font-mono bg-stone-900 border border-stone-800 px-1.5 rounded-sm">x{e.count}</span>
+                        <span className="text-red-400 font-mono bg-stone-900 border border-stone-800 px-1.5 rounded-sm">x{formatNumber(e.count)}</span>
                       </li>
                     ))}
                   </ul>
@@ -138,10 +139,10 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                 <div className="wow-panel-metal p-3">
                   <h4 className="text-[10px] text-amber-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Возможная Награда:</h4>
                   <div className="flex flex-wrap gap-2 text-xs font-mono font-bold">
-                    {selectedNode.reward.gold && <span className="text-yellow-500 bg-stone-900 px-1.5 py-0.5 rounded border border-yellow-900/50">+{selectedNode.reward.gold} Золото</span>}
-                    {selectedNode.reward.wood && <span className="text-amber-600 bg-stone-900 px-1.5 py-0.5 rounded border border-amber-900/50">+{selectedNode.reward.wood} Дерево</span>}
-                    {selectedNode.reward.stone && <span className="text-stone-400 bg-stone-900 px-1.5 py-0.5 rounded border border-stone-700/50">+{selectedNode.reward.stone} Камень</span>}
-                    {selectedNode.reward.food && <span className="text-orange-400 bg-stone-900 px-1.5 py-0.5 rounded border border-orange-900/50">+{selectedNode.reward.food} Еда</span>}
+                    {selectedNode.reward.gold && <span className="text-yellow-500 bg-stone-900 px-1.5 py-0.5 rounded border border-yellow-900/50">+{formatNumber(selectedNode.reward.gold)} Золото</span>}
+                    {selectedNode.reward.wood && <span className="text-amber-600 bg-stone-900 px-1.5 py-0.5 rounded border border-amber-900/50">+{formatNumber(selectedNode.reward.wood)} Дерево</span>}
+                    {selectedNode.reward.stone && <span className="text-stone-400 bg-stone-900 px-1.5 py-0.5 rounded border border-stone-700/50">+{formatNumber(selectedNode.reward.stone)} Камень</span>}
+                    {selectedNode.reward.food && <span className="text-orange-400 bg-stone-900 px-1.5 py-0.5 rounded border border-orange-900/50">+{formatNumber(selectedNode.reward.food)} Еда</span>}
                   </div>
                 </div>
               </div>

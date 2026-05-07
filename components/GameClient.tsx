@@ -27,7 +27,7 @@ export default function GameClient() {
 
   return (
     <div className="h-[100dvh] bg-stone-900 text-stone-200 pb-20 pt-24 font-sans flex flex-col relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('https://picsum.photos/id/1025/1200/1800')] opacity-20 bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[url('/city.png')] opacity-30 bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
       <Header />
       
       <main className="flex-1 overflow-y-auto relative z-10 w-full mx-auto flex flex-col items-center">

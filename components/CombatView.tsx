@@ -387,7 +387,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       </div>
 
       {/* Battlefield Grid */}
-      <div className="bg-[url('https://picsum.photos/id/1015/800/800')] bg-cover w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl">
+      <div className="bg-[url('/fight.png')] bg-cover bg-center w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl">
         <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm mix-blend-multiply"></div>
         <div 
           className="relative z-10 w-full h-full grid"

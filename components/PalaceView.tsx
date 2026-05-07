@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGame } from '../lib/game-context';
 import { BuildingId, BUILDINGS_INFO } from '../lib/game.types';
-import { getUpgradeCost, hasEnoughResources, deductResources, addResources } from '../lib/game.utils';
+import { getUpgradeCost, hasEnoughResources, deductResources, addResources, formatNumber } from '../lib/game.utils';
 import { Coins, Trees, Mountain, Wheat, ArrowUpCircle, Trash2, Hammer, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import clsx from 'clsx';
@@ -70,10 +70,10 @@ export default function PalaceView() {
 
   const renderCost = (cost: any) => (
     <div className="flex gap-2 text-xs">
-      {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3 h-3 mr-1"/>{cost.gold}</span>}
-      {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-1"/>{cost.wood}</span>}
-      {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-1"/>{cost.stone}</span>}
-      {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-1"/>{cost.food}</span>}
+      {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3 h-3 mr-1"/>{formatNumber(cost.gold)}</span>}
+      {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-1"/>{formatNumber(cost.wood)}</span>}
+      {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-1"/>{formatNumber(cost.stone)}</span>}
+      {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-1"/>{formatNumber(cost.food)}</span>}
     </div>
   );
 

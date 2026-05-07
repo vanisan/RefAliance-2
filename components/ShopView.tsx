@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGame } from '../lib/game-context';
 import { EquipmentSlot, SHOP_ITEMS, EquipmentItem } from '../lib/game.types';
+import { formatNumber } from '../lib/game.utils';
 import { X, Sword, Shield, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -64,7 +65,7 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="text-right text-xs font-bold text-yellow-500 mb-4 tracking-widest uppercase">
-        Ваше золото: {resources.gold}
+        Ваше золото: {formatNumber(resources.gold)}
       </div>
 
       {/* Current Equipped Item */}
@@ -119,7 +120,7 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
                 
                 <div className="flex justify-between items-end mt-2">
                   <span className={`text-[10px] font-black uppercase tracking-widest ${canAfford ? 'text-yellow-500' : 'text-stone-600'}`}>
-                    {item.cost} Золота
+                    {formatNumber(item.cost)} Золота
                   </span>
                   {!isEquipped && (
                     <button 

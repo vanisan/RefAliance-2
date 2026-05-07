@@ -1,5 +1,12 @@
 import { Building, BuildingId, BUILDINGS_INFO, Resources, UnitId } from './game.types';
 
+export const formatNumber = (num: number): string => {
+  if (num > 999) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  }
+  return num.toString();
+};
+
 export const getUpgradeCost = (buildingId: BuildingId, currentLevel: number): Resources => {
   const info = BUILDINGS_INFO[buildingId];
   const multiplier = Math.pow(info.costMultiplier, currentLevel); // lv 0 to 1 will use multiplier^0 = 1
