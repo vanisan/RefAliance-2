@@ -74,6 +74,8 @@ export interface UnitInfo {
   cost?: Resources; // For hiring
   isEnemy: boolean;
   image?: string;
+  description?: string;
+  combatType?: 'melee' | 'ranged';
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -121,19 +123,43 @@ const TIER_COSTS = [50, 150, 400, 1000, 2000, 3500, 5000];
 });
 
 export const UNITS_INFO: Record<UnitId, UnitInfo> = {
-  knight: { id: 'knight', name: 'Рыцарь', hp: 35, attack: 10, defense: 10, minDamage: 5, maxDamage: 10, speed: 2, range: 1, cost: { gold: 100, food: 50, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/knight.png' },
-  archer: { id: 'archer', name: 'Лучник', hp: 15, attack: 12, defense: 5, minDamage: 4, maxDamage: 8, speed: 2, range: 5, cost: { gold: 150, wood: 30, food: 20, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/archer.png' },
-  berserk: { id: 'berserk', name: 'Берсерк', hp: 40, attack: 15, defense: 5, minDamage: 8, maxDamage: 15, speed: 2, range: 1, cost: { gold: 175, food: 80, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/berserk.png' },
-  mage: { id: 'mage', name: 'Маг', hp: 20, attack: 18, defense: 6, minDamage: 10, maxDamage: 18, speed: 2, range: 5, cost: { gold: 250, wood: 50, stone: 10, food: 0, crystals: 0 }, isEnemy: false, image: '/units/mage.png' },
-  dragon: { id: 'dragon', name: 'Дракон', hp: 200, attack: 40, defense: 30, minDamage: 25, maxDamage: 50, speed: 6, range: 1, cost: { gold: 2000, wood: 200, stone: 200, food: 500, crystals: 0 }, isEnemy: false, image: '/units/dragon.png' },
-  titan: { id: 'titan', name: 'Титан', hp: 300, attack: 50, defense: 40, minDamage: 40, maxDamage: 60, speed: 2, range: 8, size: 2, cost: { gold: 4000, stone: 1000, wood: 0, food: 500, crystals: 0 }, isEnemy: false, image: '/units/titan.png' },
+  knight: { 
+    id: 'knight', name: 'Рыцарь', hp: 35, attack: 10, defense: 10, minDamage: 5, maxDamage: 10, speed: 2, range: 1, 
+    cost: { gold: 100, food: 50, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/knight.png',
+    combatType: 'melee', description: 'Благородный воин. Ближний бой. Атака: обычная.'
+  },
+  archer: { 
+    id: 'archer', name: 'Лучник', hp: 15, attack: 12, defense: 5, minDamage: 4, maxDamage: 8, speed: 2, range: 5, 
+    cost: { gold: 150, wood: 30, food: 20, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/archer.png',
+    combatType: 'ranged', description: 'Мастер лука. Дальний бой. Атака: обычная.'
+  },
+  berserk: { 
+    id: 'berserk', name: 'Берсерк', hp: 40, attack: 15, defense: 5, minDamage: 8, maxDamage: 15, speed: 2, range: 1, 
+    cost: { gold: 175, food: 80, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/berserk.png',
+    combatType: 'melee', description: 'Яростный боец. Ближний бой. Атака: обычная.'
+  },
+  mage: { 
+    id: 'mage', name: 'Маг', hp: 20, attack: 18, defense: 6, minDamage: 10, maxDamage: 18, speed: 2, range: 5, 
+    cost: { gold: 250, wood: 50, stone: 10, food: 0, crystals: 0 }, isEnemy: false, image: '/units/mage.png',
+    combatType: 'ranged', description: 'Повелитель огня. Дальний бой. Атака: обычная.'
+  },
+  dragon: { 
+    id: 'dragon', name: 'Дракон', hp: 200, attack: 40, defense: 30, minDamage: 25, maxDamage: 50, speed: 6, range: 1, 
+    cost: { gold: 2000, wood: 200, stone: 200, food: 500, crystals: 0 }, isEnemy: false, image: '/units/dragon.png',
+    combatType: 'melee', description: 'Легендарный зверь. Ближний бой. Атака: обычная.'
+  },
+  titan: { 
+    id: 'titan', name: 'Титан', hp: 300, attack: 50, defense: 40, minDamage: 40, maxDamage: 60, speed: 2, range: 8, size: 2, 
+    cost: { gold: 4000, stone: 1000, wood: 0, food: 500, crystals: 0 }, isEnemy: false, image: '/units/titan.png',
+    combatType: 'ranged', description: 'Древний гигант. Дальний бой. Атака: обычная.'
+  },
   
-  skelet: { id: 'skelet', name: 'Скелет', hp: 10, attack: 5, defense: 5, minDamage: 2, maxDamage: 4, speed: 2, range: 1, isEnemy: true, image: '/mobs/skeleton.png' },
-  goblin: { id: 'goblin', name: 'Гоблин', hp: 15, attack: 10, defense: 5, minDamage: 3, maxDamage: 6, speed: 2, range: 1, isEnemy: true, image: '/mobs/goblin.png' },
-  orc: { id: 'orc', name: 'Орк', hp: 70, attack: 25, defense: 25, minDamage: 10, maxDamage: 18, speed: 2, range: 1, isEnemy: true, image: '/mobs/orc.png' },
-  vampire: { id: 'vampire', name: 'Вампир', hp: 150, attack: 55, defense: 30, minDamage: 25, maxDamage: 45, speed: 4, range: 1, isEnemy: true, image: '/mobs/vampire.png' },
-  demon: { id: 'demon', name: 'Демон', hp: 250, attack: 180, defense: 35, minDamage: 80, maxDamage: 120, speed: 3, range: 1, isEnemy: true, image: '/mobs/demon.png' },
-  giant: { id: 'giant', name: 'Великан', hp: 400, attack: 150, defense: 40, minDamage: 60, maxDamage: 100, speed: 2, range: 8, isEnemy: true, image: '/mobs/velikan.png' },
+  skelet: { id: 'skelet', name: 'Скелет', hp: 10, attack: 5, defense: 5, minDamage: 2, maxDamage: 4, speed: 2, range: 1, isEnemy: true, image: '/mobs/skeleton.png', combatType: 'melee', description: 'Оживленный мертвец. Ближний бой.' },
+  goblin: { id: 'goblin', name: 'Гоблин', hp: 15, attack: 10, defense: 5, minDamage: 3, maxDamage: 6, speed: 2, range: 1, isEnemy: true, image: '/mobs/goblin.png', combatType: 'melee', description: 'Мелкий проказник. Ближний бой.' },
+  orc: { id: 'orc', name: 'Орк', hp: 70, attack: 25, defense: 25, minDamage: 10, maxDamage: 18, speed: 2, range: 1, isEnemy: true, image: '/mobs/orc.png', combatType: 'melee', description: 'Могучий варвар. Ближний бой.' },
+  vampire: { id: 'vampire', name: 'Вампир', hp: 150, attack: 55, defense: 30, minDamage: 25, maxDamage: 45, speed: 4, range: 1, isEnemy: true, image: '/mobs/vampire.png', combatType: 'melee', description: 'Ночной охотник. Ближний бой.' },
+  demon: { id: 'demon', name: 'Демон', hp: 250, attack: 180, defense: 35, minDamage: 80, maxDamage: 120, speed: 3, range: 1, isEnemy: true, image: '/mobs/demon.png', combatType: 'melee', description: 'Создание бездны. Ближний бой.' },
+  giant: { id: 'giant', name: 'Великан', hp: 400, attack: 150, defense: 40, minDamage: 60, maxDamage: 100, speed: 2, range: 8, isEnemy: true, image: '/mobs/velikan.png', combatType: 'ranged', description: 'Горный исполин. Дальний бой.' },
 };
 
 export interface MapNode {

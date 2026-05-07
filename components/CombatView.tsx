@@ -29,12 +29,27 @@ const GRID_HEIGHT = 8;
 
 interface Projectile {
   id: string;
-  type: 'arrow' | 'fireball' | 'lightning';
+  type: 'arrow' | 'fireball' | 'lightning' | 'bite' | 'slash';
   startX: number;
   startY: number;
   endX: number;
   endY: number;
 }
+
+interface AttackEffect {
+  id: string;
+  type: 'slash' | 'hit' | 'fire' | 'lightning_hit';
+  x: number;
+  y: number;
+  size: number;
+}
+
+// Helper to calculate Manhattan distance between rectangular units
+const getManhattanDist = (u1x: number, u1y: number, u1s: number, u2x: number, u2y: number, u2s: number) => {
+  const dx = Math.max(0, u1x - (u2x + u2s - 1), u2x - (u1x + u1s - 1));
+  const dy = Math.max(0, u1y - (u2y + u2s - 1), u2y - (u1y + u1s - 1));
+  return dx + dy;
+};
 
 export default function CombatView({ node, onEnd }: CombatViewProps) {
   const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment } = useGame();
@@ -44,8 +59,11 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const defMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.defenseBonus || 0), 0) / 100;
   const hpMod  = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.hpBonus || 0), 0) / 100;
 
-  // Projectile state
+  // Visual effects state
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
+  const [effects, setEffects] = useState<AttackEffect[]>([]);
+  const [selectedUnitInfo, setSelectedUnitInfo] = useState<CombatUnit | null>(null);
+  const [infoMode, setInfoMode] = useState(false);
 
   // Initialize teams
   const [units, setUnits] = useState<CombatUnit[]>(() => {
@@ -100,9 +118,11 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   // Forward declarations for ESLint issues
   const processAttack = (currentUnits: CombatUnit[], attacker: CombatUnit, defender: CombatUnit) => {
     const attackerInfo = UNITS_INFO[attacker.unitId];
+    const defenderInfo = UNITS_INFO[defender.unitId];
     
-    // Add projectile if ranged
+    // Trigger Effects
     if (attackerInfo.range > 1) {
+      // Ranged Attack Projectile
       let type: 'arrow' | 'fireball' | 'lightning' = 'arrow';
       if (attacker.unitId === 'mage') type = 'fireball';
       if (attacker.unitId === 'titan' || attacker.unitId === 'giant') type = 'lightning';
@@ -112,15 +132,40 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         type,
         startX: attacker.x + (attackerInfo.size === 2 ? 0.5 : 0),
         startY: attacker.y + (attackerInfo.size === 2 ? 0.5 : 0),
-        endX: defender.x + (UNITS_INFO[defender.unitId].size === 2 ? 0.5 : 0),
-        endY: defender.y + (UNITS_INFO[defender.unitId].size === 2 ? 0.5 : 0),
+        endX: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
+        endY: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
       };
       setProjectiles(prev => [...prev, newProjectile]);
-      setTimeout(() => setProjectiles(prev => prev.filter(p => p.id !== newProjectile.id)), 600);
+      setTimeout(() => {
+        setProjectiles(prev => prev.filter(p => p.id !== newProjectile.id));
+        // Hit effect
+        const hitType: AttackEffect['type'] = (type === 'fireball') ? 'fire' : (type === 'lightning' ? 'lightning_hit' : 'hit');
+        const newEffect: AttackEffect = {
+          id: Math.random().toString(),
+          type: hitType,
+          x: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
+          y: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
+          size: defenderInfo.size || 1
+        };
+        setEffects(prev => [...prev, newEffect]);
+        setTimeout(() => setEffects(prev => prev.filter(e => e.id !== newEffect.id)), 500);
+      }, 500);
+    } else {
+      // Melee Attack Effect
+      const effectType: AttackEffect['type'] = (attacker.unitId === 'dragon' || attacker.unitId === 'demon') ? 'fire' : 'slash';
+      const newEffect: AttackEffect = {
+        id: Math.random().toString(),
+        type: effectType,
+        x: defender.x + (defenderInfo.size === 2 ? 0.5 : 0),
+        y: defender.y + (defenderInfo.size === 2 ? 0.5 : 0),
+        size: defenderInfo.size || 1
+      };
+      setEffects(prev => [...prev, newEffect]);
+      setTimeout(() => setEffects(prev => prev.filter(e => e.id !== newEffect.id)), 500);
     }
 
-    const attInfo = UNITS_INFO[attacker.unitId];
-    const defInfo = UNITS_INFO[defender.unitId];
+    const attInfo = attackerInfo;
+    const defInfo = defenderInfo;
 
     const effAttack = attacker.isEnemy ? attInfo.attack : Math.floor(attInfo.attack * atkMod);
     const effDefense = defender.isEnemy ? defInfo.defense : Math.floor(defInfo.defense * defMod);
@@ -132,8 +177,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     let totalDmg = rawDmg * attacker.count;
     
     const statDiff = effAttack - effDefense;
-    const multiplier = Math.max(0.01, 1 + (statDiff * 0.05));
+    const multiplier = Math.max(0.05, 1 + (statDiff * 0.05)); // Floor at 5% damage instead of 1%
     totalDmg = Math.floor(totalDmg * multiplier);
+    
+    if (totalDmg < 1 && attacker.count > 0) totalDmg = 1; // Ensure at least 1 dmg if they hit
     
     let remainingStackHP = (defender.count - 1) * effUnitHp + defender.hp - totalDmg;
     let killed = 0;
@@ -172,21 +219,18 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     
     targets.forEach(t => {
       const targetSize = UNITS_INFO[t.unitId].size || 1;
-      const tCX = t.x + (targetSize - 1) / 2;
-      const tCY = t.y + (targetSize - 1) / 2;
       const myInfo = UNITS_INFO[myUnit.unitId];
       const mySize = myInfo.size || 1;
-      const myCX = myUnit.x + (mySize - 1) / 2;
-      const myCY = myUnit.y + (mySize - 1) / 2;
 
-      const d = Math.abs(tCX - myCX) + Math.abs(tCY - myCY);
+      const d = getManhattanDist(myUnit.x, myUnit.y, mySize, t.x, t.y, targetSize);
       if (d < minDist) { minDist = d; closest = t; }
     });
 
     const info = UNITS_INFO[myUnit.unitId];
     const ranges = info.range;
+    const mySize = info.size || 1;
     
-    if (minDist <= ranges + (info.size || 1 > 1 ? 0.5 : 0)) {
+    if (minDist <= ranges + (mySize > 1 ? 0.5 : 0)) {
       processAttack(currentUnits, myUnit, closest);
     } else {
       const speed = info.speed;
@@ -212,13 +256,9 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         if (!moved) break;
         steps--;
         
-        const cX = newX + (size - 1) / 2;
-        const cY = newY + (size - 1) / 2;
         const targetSize = UNITS_INFO[closest.unitId].size || 1;
-        const tCX = closest.x + (targetSize - 1) / 2;
-        const tCY = closest.y + (targetSize - 1) / 2;
-        const currentDist = Math.abs(cX - tCX) + Math.abs(cY - tCY);
-        if (currentDist <= ranges + (size > 1 ? 0.5 : 0)) break;
+        const currentDist = getManhattanDist(newX, newY, size, closest.x, closest.y, targetSize);
+        if (currentDist <= ranges) break;
       }
       
       const movedUnits = currentUnits.map(u => u.id === myUnit.id ? { ...u, x: newX, y: newY, hasActed: true } : u);
@@ -229,20 +269,24 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   };
 
   const determineNextActiveUnit = (currentUnits: CombatUnit[]) => {
-    if (gameOver) return;
+    if (gameOver || !currentUnits.length) return;
     
     const aliveUnits = currentUnits.filter(u => u.count > 0);
     const alivePlayer = aliveUnits.filter(u => !u.isEnemy);
     const aliveEnemy = aliveUnits.filter(u => u.isEnemy);
 
     if (alivePlayer.length === 0) {
-      setGameOver('defeat');
-      addLog("Вы проиграли...");
+      if (!gameOver) {
+        setGameOver('defeat');
+        addLog("Вы проиграли...");
+      }
       return;
     }
     if (aliveEnemy.length === 0) {
-      setGameOver('victory');
-      addLog("Победа!");
+      if (!gameOver) {
+        setGameOver('victory');
+        addLog("Победа!");
+      }
       return;
     }
 
@@ -254,8 +298,12 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       addLog("Новый раунд.");
       const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false }));
       setUnits(refreshedUnits);
-      // Small timeout before starting the next round to prevent instant loops
-      setTimeout(() => determineNextActiveUnit(refreshedUnits), 500);
+      
+      // Safety timeout to avoid recursive loops
+      setTimeout(() => {
+        const stillAlive = refreshedUnits.filter(u => u.count > 0);
+        if (stillAlive.length > 0) determineNextActiveUnit(stillAlive);
+      }, 600);
       return;
     }
     
@@ -312,35 +360,37 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   };
 
   const handleCellClick = (x: number, y: number) => {
+    const targetPos = getUnitAt(x, y);
+
+    if (infoMode) {
+      if (targetPos) {
+        setSelectedUnitInfo(targetPos);
+      }
+      return;
+    }
+
+    setSelectedUnitInfo(null);
     if (turn !== 'player' || gameOver) return;
     const activeUnit = units.find(u => u.id === activeUnitId);
     if (!activeUnit) return;
 
-    const targetPos = getUnitAt(x, y);
     const activeInfo = UNITS_INFO[activeUnit.unitId];
     const activeSize = activeInfo.size || 1;
     
-    // Dist from center to center? Or closest tile?
-    // Let's use center-to-center for simpler range math
-    const centerX = activeUnit.x + (activeSize - 1) / 2;
-    const centerY = activeUnit.y + (activeSize - 1) / 2;
-    
-    let dist = 100;
-    if (targetPos) {
-      const targetSize = UNITS_INFO[targetPos.unitId].size || 1;
-      const tCenterX = targetPos.x + (targetSize - 1) / 2;
-      const tCenterY = targetPos.y + (targetSize - 1) / 2;
-      dist = Math.abs(centerX - tCenterX) + Math.abs(centerY - tCenterY);
-    } else {
-      dist = Math.abs(centerX - x) + Math.abs(centerY - y);
-    }
-
     const speed = activeInfo.speed;
     const ranges = activeInfo.range;
 
+    let dist = 100;
+    if (targetPos) {
+      const targetSize = UNITS_INFO[targetPos.unitId].size || 1;
+      dist = getManhattanDist(activeUnit.x, activeUnit.y, activeSize, targetPos.x, targetPos.y, targetSize);
+    } else {
+      dist = getManhattanDist(activeUnit.x, activeUnit.y, activeSize, x, y, 1);
+    }
+
     if (targetPos) {
       if (targetPos.isEnemy) {
-        if (dist <= ranges + (activeSize > 1 ? 0.5 : 0)) {
+        if (dist <= ranges) {
           processAttack(units, activeUnit, targetPos);
         } else {
           addLog("Враг слишком далеко.");
@@ -417,10 +467,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       }
       
       const activeSize = activeUnit ? (UNITS_INFO[activeUnit.unitId].size || 1) : 1;
-      const dist = activeUnit ? (Math.abs(activeUnit.x + (activeSize-1)/2 - x) + Math.abs(activeUnit.y + (activeSize-1)/2 - y)) : Infinity;
+      const dist = activeUnit ? getManhattanDist(activeUnit.x, activeUnit.y, activeSize, x, y, 1) : Infinity;
       const isAllowedMove = turn === 'player' && activeUnit && !uUnderTile && dist <= moveRadius && isAreaFree(x, y, activeSize, activeUnit.id, units);
       
-      const isPickableTarget = turn === 'player' && activeUnit && uUnderTile?.isEnemy && dist <= (UNITS_INFO[activeUnit.unitId]?.range || 1) + (activeSize > 1 ? 0.5 : 0);
+      const isPickableTarget = turn === 'player' && activeUnit && uUnderTile?.isEnemy && dist <= (UNITS_INFO[activeUnit.unitId]?.range || 1);
 
       gridCells.push(
         <div 
@@ -436,9 +486,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           {uUnderTile && isOrigin && (
             <motion.div 
               layoutId={uUnderTile.id}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent grid click
+                handleCellClick(x, y); 
+              }}
               transition={{ type: "spring", bounce: 0, duration: 0.3 }}
               className={cn(
-                "relative z-10 rounded bg-stone-900 border overflow-visible",
+                "relative z-10 rounded bg-stone-900 border overflow-visible cursor-pointer",
                 uUnderTile.isEnemy ? "border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.4)]" : "border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.4)]",
                 uUnderTile.id === activeUnitId && "border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] z-20"
               )}
@@ -521,25 +575,148 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 scale: 1,
                 opacity: 1
               }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
               className="absolute w-4 h-4 z-[100] flex items-center justify-center pointer-events-none"
               style={{ transform: 'translate(-50%, -50%)' }}
             >
               {p.type === 'arrow' && <div className="w-4 h-0.5 bg-stone-300 shadow-[0_0_5px_white]"></div>}
-              {p.type === 'fireball' && <div className="w-4 h-4 bg-orange-500 rounded-full shadow-[0_0_15px_#f97316]"></div>}
-              {p.type === 'lightning' && <div className="w-1 h-8 bg-blue-300 shadow-[0_0_20px_#7dd3fc] rotate-45 animate-pulse"></div>}
+              {p.type === 'fireball' && <div className="w-5 h-5 bg-orange-600 rounded-full shadow-[0_0_20px_#f97316] relative overflow-visible">
+                <div className="absolute inset-0 bg-yellow-400 rounded-full animate-pulse blur-sm"></div>
+              </div>}
+              {p.type === 'lightning' && <div className="w-1 h-12 bg-blue-100 shadow-[0_0_20px_#7dd3fc] rotate-45 animate-pulse border-white border"></div>}
+            </motion.div>
+          ))}
+
+          {/* Hit Effects */}
+          {effects.map(e => (
+            <motion.div
+              key={e.id}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: [1, 1.5, 1], rotate: [0, 45, 0] }}
+              exit={{ opacity: 0 }}
+              className="absolute z-[110] pointer-events-none"
+              style={{
+                left: `${(e.x + (e.size-1)/2 + 0.5) * (100/GRID_WIDTH)}%`,
+                top: `${(e.y + (e.size-1)/2 + 0.5) * (100/GRID_HEIGHT)}%`,
+                width: '60px',
+                height: '60px',
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              {e.type === 'slash' && (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-12 h-1 bg-white/80 blur-[1px] rotate-45 shadow-[0_0_10px_white]"></div>
+                </div>
+              )}
+              {e.type === 'hit' && (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-white rounded-full animate-ping"></div>
+                </div>
+              )}
+              {e.type === 'fire' && (
+                <div className="w-full h-full flex items-center justify-center relative">
+                   <motion.div 
+                     initial={{ scale: 0, opacity: 0 }}
+                     animate={{ scale: [1, 2, 0], opacity: [1, 0.8, 0] }}
+                     className="absolute inset-0 bg-orange-500 rounded-full blur-xl"
+                   />
+                   <div className="w-8 h-8 bg-red-600 rounded-full blur-md animate-bounce"></div>
+                   <div className="w-4 h-4 bg-yellow-400 rounded-full blur-sm absolute"></div>
+                </div>
+              )}
+              {e.type === 'lightning_hit' && (
+                <div className="w-full h-full flex items-center justify-center">
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [1, 0, 1, 0] }}
+                    className="w-1 h-20 bg-blue-200 blur-[2px] rotate-45 shadow-[0_0_15px_#0ea5e9]"
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 1, 0, 1] }}
+                    className="w-1 h-20 bg-blue-200 blur-[2px] -rotate-45 shadow-[0_0_15px_#0ea5e9] absolute"
+                  />
+                </div>
+              )}
             </motion.div>
           ))}
         </div>
       </div>
 
-      {/* Combat Log */}
-      <div className="mt-4 w-[95%] max-w-[500px] h-28 wow-panel p-2 overflow-y-auto text-[10px] font-mono flex flex-col-reverse text-stone-400">
-        {log.map((m, i) => (
-          <div key={i} className={i === 0 ? "text-stone-200 font-bold" : ""}>
-            &gt; {m}
-          </div>
-        ))}
+      {/* Info Panel / Tooltips */}
+      <AnimatePresence>
+        {selectedUnitInfo && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-32 left-1/2 -translate-x-1/2 w-[95%] max-w-[400px] bg-stone-950/95 border border-stone-800 rounded-lg p-3 z-[150] shadow-2xl backdrop-blur-md"
+          >
+            <button 
+              onClick={() => setSelectedUnitInfo(null)}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full text-white text-xs flex items-center justify-center border border-white z-[160]"
+            >✕</button>
+            <div className="flex gap-3">
+              <div className="w-16 h-16 rounded bg-stone-900 border border-stone-700 overflow-hidden flex-shrink-0">
+                <img src={UNITS_INFO[selectedUnitInfo.unitId].image} alt="" className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <h3 className="font-bold text-amber-500 uppercase tracking-tighter">{UNITS_INFO[selectedUnitInfo.unitId].name} <span className="text-stone-500 text-xs">x{selectedUnitInfo.count}</span></h3>
+                  <div className="text-[10px] bg-stone-800 px-1.5 py-0.5 rounded text-stone-400 uppercase font-mono">
+                    {UNITS_INFO[selectedUnitInfo.unitId].combatType === 'melee' ? 'Ближний' : 'Дальний'}
+                  </div>
+                </div>
+                <p className="text-[10px] text-stone-300 italic mb-1 leading-tight">{UNITS_INFO[selectedUnitInfo.unitId].description}</p>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="text-[9px] text-stone-400 flex flex-col">
+                    <span className="uppercase opacity-50">Выносливость</span>
+                    <span className="text-red-400 font-bold">{selectedUnitInfo.hp} / {selectedUnitInfo.isEnemy ? UNITS_INFO[selectedUnitInfo.unitId].hp : Math.floor(UNITS_INFO[selectedUnitInfo.unitId].hp * hpMod)} HP</span>
+                  </div>
+                  <div className="text-[9px] text-stone-400 flex flex-col">
+                    <span className="uppercase opacity-50">Дистанция хода</span>
+                    <span className="text-blue-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].speed} шага</span>
+                  </div>
+                  <div className="text-[9px] text-stone-400 flex flex-col">
+                    <span className="uppercase opacity-50">Урон</span>
+                    <span className="text-amber-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].minDamage}-{UNITS_INFO[selectedUnitInfo.unitId].maxDamage}</span>
+                  </div>
+                  <div className="text-[9px] text-stone-400 flex flex-col">
+                    <span className="uppercase opacity-50">Атака</span>
+                    <span className="text-stone-300 font-bold uppercase tracking-widest text-[7px]">Обычная</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="mt-4 w-full flex flex-col items-center gap-2">
+        {/* Info Mode Toggle */}
+        <button 
+          onClick={() => {
+            setInfoMode(!infoMode);
+            setSelectedUnitInfo(null);
+          }}
+          className={cn(
+            "px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest border transition-all shadow-lg active:scale-95",
+            infoMode 
+              ? "bg-red-500/20 border-red-500 text-red-500 shadow-red-500/20" 
+              : "bg-green-500/20 border-green-500 text-green-500 shadow-green-500/20"
+          )}
+        >
+          {infoMode ? "❌ ЗАКРЫТЬ ИНФО" : "🟢 ИНФО (ОСМОТР)"}
+        </button>
+
+        {/* Combat Log */}
+        <div className="w-[95%] max-w-[500px] h-24 wow-panel p-2 overflow-y-auto text-[10px] font-mono flex flex-col-reverse text-stone-400">
+          {log.map((m, i) => (
+            <div key={i} className={i === 0 ? "text-stone-200 font-bold" : ""}>
+              &gt; {m}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Game Over Screen */}
