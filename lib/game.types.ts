@@ -23,37 +23,37 @@ export interface BuildingInfo {
 export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
   barracks: { 
     id: 'barracks', name: 'Казарма', icon: 'Sword', image: '/buildings/barracks.webp',
-    baseCost: { gold: 200, wood: 100, stone: 100, food: 0, crystals: 0 }, costMultiplier: 1.5, 
+    baseCost: { gold: 2500, wood: 2500, stone: 2500, food: 2500, crystals: 0 }, costMultiplier: 2, 
     description: 'Позволяет нанимать войска' 
   },
   farm: { 
     id: 'farm', name: 'Ферма', icon: 'Wheat', image: '/buildings/granary.webp',
-    baseCost: { gold: 50, wood: 20, stone: 0, food: 0, crystals: 0 }, costMultiplier: 1.3,
+    baseCost: { gold: 50, wood: 50, stone: 0, food: 0, crystals: 0 }, costMultiplier: 2,
     production: { food: 5 }, description: 'Производит еду (+5/ур. в тик)' 
   },
   mine: { 
     id: 'mine', name: 'Шахта', icon: 'Coins', image: '/buildings/mine.webp',
-    baseCost: { gold: 0, wood: 50, stone: 50, food: 50, crystals: 0 }, costMultiplier: 1.4,
+    baseCost: { gold: 0, wood: 80, stone: 80, food: 80, crystals: 0 }, costMultiplier: 2,
     production: { gold: 5, stone: 5 }, description: 'Добывает золото и камень (+5/ур. в тик)' 
   },
   mill: { 
     id: 'mill', name: 'Лесопилка', icon: 'Trees', image: '/buildings/woodforge.png',
-    baseCost: { gold: 50, wood: 0, stone: 0, food: 20, crystals: 0 }, costMultiplier: 1.3,
+    baseCost: { gold: 75, wood: 0, stone: 0, food: 50, crystals: 0 }, costMultiplier: 2,
     production: { wood: 5 }, description: 'Добывает дерево (+5/ур. в тик)' 
   },
   quarry: { 
     id: 'quarry', name: 'Каменоломня', icon: 'Mountain', image: '/buildings/stoneforge.png',
-    baseCost: { gold: 50, wood: 20, stone: 0, food: 20, crystals: 0 }, costMultiplier: 1.3,
+    baseCost: { gold: 50, wood: 25, stone: 0, food: 25, crystals: 0 }, costMultiplier: 2,
     production: { stone: 5 }, description: 'Добывает камень (+5/ур. в тик)' 
   },
   altar: { 
     id: 'altar', name: 'Алтарь', icon: 'Sword', image: '/buildings/Altar.webp',
-    baseCost: { gold: 500, wood: 200, stone: 200, food: 0, crystals: 0 }, costMultiplier: 1.5, 
+    baseCost: { gold: 500, wood: 200, stone: 200, food: 0, crystals: 0 }, costMultiplier: 2, 
     description: 'Дает бонусы для армии' 
   },
   magistrat: { 
     id: 'magistrat', name: 'Магистрат', icon: 'Book', image: '/buildings/magistrat.webp',
-    baseCost: { gold: 400, wood: 300, stone: 300, food: 0, crystals: 0 }, costMultiplier: 1.5, 
+    baseCost: { gold: 400, wood: 300, stone: 300, food: 0, crystals: 0 }, costMultiplier: 2, 
     description: 'Исследования для армии' 
   },
 };

@@ -290,7 +290,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       }
       
       console.log('DEBUG: p0 checking unit id:', id, 'count:', count, 'info:', info);
-      if (count > 0 && y0 + (info.size || 1) <= GRID_HEIGHT) {
+      if (count > 0) {
         console.log('DEBUG: p0 adding unit:', id);
         initialUnits.push({
           id: `p0-${id}`,
@@ -318,7 +318,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         }
 
         console.log('DEBUG: p1 checking unit id:', id, 'count:', count, 'info:', info);
-        if (count > 0 && y1 + (info.size || 1) <= GRID_HEIGHT) {
+        if (count > 0) {
           console.log('DEBUG: p1 adding unit:', id);
           initialUnits.push({
             id: `p1-${id}`,
@@ -433,6 +433,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     checkWinCondition(finalUnits);
   };
 
+  const [isHealMode, setIsHealMode] = useState(false);
+
   // --- ACTIONS ---
   const handleCellClick = (x: number, y: number) => {
     if (turn !== myIndex || gameOver) return;
@@ -441,6 +443,17 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
     const uAt = getUnitAt(x, y);
     const info = UNITS_INFO[activeUnit.unitId];
+    
+    if (isHealMode) {
+      if (uAt && uAt.playerIndex === myIndex && uAt.count < uAt.startCount) {
+        localHeal(activeUnit.id, uAt.id);
+        setIsHealMode(false);
+      } else {
+        setIsHealMode(false);
+      }
+      return;
+    }
+
     const dx = Math.max(0, Math.max(x - (activeUnit.x + (info.size || 1) - 1), activeUnit.x - (x + 1 - 1)));
     const dy = Math.max(0, Math.max(y - (activeUnit.y + (info.size || 1) - 1), activeUnit.y - (y + 1 - 1)));
     const dist = dx + dy;
@@ -451,9 +464,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         if (dist <= info.range) {
           localAttack(activeUnit.id, uAt.id);
         }
-      } else if (activeUnit.unitId === 'driada' && uAt.count < uAt.startCount) {
-        // Heal
-        localHeal(activeUnit.id, uAt.id);
       }
     } else {
       // Move
@@ -790,13 +800,33 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         </div>
 
         {/* Console */}
-        <div className="w-full bg-stone-950/80 border border-stone-800 rounded p-2 h-24 overflow-hidden">
+        <div className="w-full bg-stone-950/80 border border-stone-800 rounded p-2 h-24 overflow-hidden mb-2">
            {log.map((m, i) => (
              <p key={i} className={cn("text-[10px] font-mono leading-none mb-1", i === 0 ? "text-amber-400 font-bold" : "text-stone-500")}>
                [{round}] {m}
              </p>
            ))}
         </div>
+
+        {/* Battle Controls */}
+        {activeUnitId && units.find(u => u.id === activeUnitId)?.playerIndex === myIndex && (
+          <div className="w-full flex gap-2">
+            <button 
+              onClick={() => skipTurn()}
+              className="wow-button flex-1 p-2 text-[10px] font-black uppercase tracking-tighter"
+            >
+              Пас
+            </button>
+            {units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
+              <button 
+                onClick={() => setIsHealMode(true)}
+                className={cn("wow-button flex-1 p-2 flex items-center justify-center", isHealMode && "bg-blue-600")}
+              >
+                <img src="/units/driada_heal.png" className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   };
