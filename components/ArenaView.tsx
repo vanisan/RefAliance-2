@@ -345,7 +345,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   // --- TIMER LOGIC ---
   useEffect(() => {
-    if (view !== 'battle' || gameOver) return;
+    if (view !== 'battle' || gameOver || match?.status === 'waiting') return;
     
     const interval = setInterval(() => {
       setTimer(t => {
@@ -786,6 +786,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
         {/* Battlefield */}
         <div className="relative w-full aspect-square bg-stone-900/50 border-4 border-stone-800 rounded shadow-2xl overflow-hidden active-battle-grid">
+           {match?.status === 'waiting' && (
+             <div className="absolute inset-0 bg-stone-950/80 z-50 flex flex-col items-center justify-center">
+               <Trophy className="w-12 h-12 text-amber-500 mb-4 animate-bounce" />
+               <h2 className="text-xl font-black uppercase tracking-widest text-amber-400">Ожидание Противника</h2>
+               <p className="text-xs text-stone-400 mt-2">Арена ждет героев...</p>
+             </div>
+           )}
            <div 
              className="grid w-full h-full"
              style={{ gridTemplateColumns: `repeat(${GRID_WIDTH}, 1fr)`, gridTemplateRows: `repeat(${GRID_HEIGHT}, 1fr)` }}
