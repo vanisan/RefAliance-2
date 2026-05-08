@@ -168,14 +168,63 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               
               // Map migration/refresh
               const savedNodes = data.mapNodes || [];
-              if (savedNodes.length < INITIAL_MAP_NODES.length) {
-                setMapNodes(INITIAL_MAP_NODES);
-              } else {
-                setMapNodes(savedNodes);
+              let mergedNodes = [...INITIAL_MAP_NODES];
+              
+              if (savedNodes.length > 0) {
+                mergedNodes = mergedNodes.map((n, idx) => {
+                  if (idx < savedNodes.length) {
+                    return { ...n, cleared: savedNodes[idx].cleared };
+                  }
+                  return n;
+                });
               }
+              setMapNodes(mergedNodes);
 
               setEquipment(data.equipment || { weapon: null, chest: null, boots: null, ring: null });
               setPlayerName(data.playerName || displayName);
+
+              // Offline resource generation
+              if (data.lastUpdate) {
+                const lastUpdate = new Date(data.lastUpdate).getTime();
+                const now = Date.now();
+                const diffMs = now - lastUpdate;
+                
+                if (diffMs > 60000) { // More than 1 minute offline
+                  const ticksMissed = Math.floor(diffMs / 5000); // 1 tick = 5s
+                  // Cap offline progress to 24 hours (17280 ticks) to prevent infinity/bugs
+                  const actualTicks = Math.min(ticksMissed, 17280);
+                  
+                  if (actualTicks > 0) {
+                    setResources(prev => {
+                      const baseProd = 0.5;
+                      let totalProd: Partial<Resources> = {
+                        gold: baseProd, wood: baseProd, stone: baseProd, food: baseProd
+                      };
+                      const userBuildings = data.buildings || [];
+                      userBuildings.forEach((b: Building | null) => {
+                        if (b && BUILDINGS_INFO[b.id].production) {
+                          const prod = BUILDINGS_INFO[b.id].production;
+                          if (prod?.gold) totalProd.gold = (totalProd.gold || 0) + prod.gold * b.level;
+                          if (prod?.wood) totalProd.wood = (totalProd.wood || 0) + prod.wood * b.level;
+                          if (prod?.stone) totalProd.stone = (totalProd.stone || 0) + prod.stone * b.level;
+                          if (prod?.food) totalProd.food = (totalProd.food || 0) + prod.food * b.level;
+                        }
+                      });
+                      
+                      const offlineGains: Partial<Resources> = {
+                        gold: (totalProd.gold || 0) * actualTicks,
+                        wood: (totalProd.wood || 0) * actualTicks,
+                        stone: (totalProd.stone || 0) * actualTicks,
+                        food: (totalProd.food || 0) * actualTicks,
+                        crystals: 0
+                      };
+                      
+                      console.log(`Earned offline resources for ${actualTicks} ticks`);
+                      return addResources(prev, offlineGains);
+                    });
+                  }
+                }
+              }
             }
           } else {
             // New user, save default state
@@ -238,9 +287,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const tick = setInterval(() => {
       setMapRefreshTimer(prev => {
         if (prev <= 5) {
-          // In campaign mode, we might not want to refresh cleared status of nodes 
-          // unless it's designed for farming. For now, let's keep it but only for the current level nodes.
-          setMapNodes(nodes => nodes.map(n => n.type === 'combat' && n.campaignLevel === currentCampaignLevel ? { ...n, cleared: false } : n));
           return 600;
         }
         return prev - 5;
