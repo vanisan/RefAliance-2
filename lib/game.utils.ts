@@ -25,6 +25,24 @@ export const calculateArmyPower = (army: Record<string, number>): number => {
 };
 
 export const getUpgradeCost = (buildingId: BuildingId, currentLevel: number): Resources => {
+  if (buildingId === 'barracks') {
+    let costAmount = 2000;
+    if (currentLevel === 0) costAmount = 1000; // Unlocking level 1 could be left as baseCost, but user says 2k? "казарма теперь стоит 2к всех ресурсов. на 1 уровне она позволяет нанять... 2 ур казармы стоит 10к..."
+    if (currentLevel === 0) costAmount = 2000;
+    else if (currentLevel === 1) costAmount = 10000;
+    else if (currentLevel === 2) costAmount = 20000;
+    else if (currentLevel === 3) costAmount = 30000;
+    else costAmount = 50000;
+
+    return {
+      gold: costAmount,
+      wood: costAmount,
+      stone: costAmount,
+      food: costAmount,
+      crystals: 0
+    };
+  }
+
   const info = BUILDINGS_INFO[buildingId];
   const multiplier = Math.pow(info.costMultiplier, currentLevel); // lv 0 to 1 will use multiplier^0 = 1
   return {

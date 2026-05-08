@@ -42,7 +42,7 @@ const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 10
 const defaultArmy: Record<UnitId, number> = { 
   knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
   goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-  assassin: 0, hydra: 0, souleater: 0 
+  assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0 
 };
 
 const GameContext = createContext<GameState | null>(null);
@@ -171,9 +171,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               let mergedNodes = [...INITIAL_MAP_NODES];
               
               if (savedNodes.length > 0) {
-                mergedNodes = mergedNodes.map((n, idx) => {
-                  if (idx < savedNodes.length) {
-                    return { ...n, cleared: savedNodes[idx].cleared };
+                mergedNodes = mergedNodes.map((n) => {
+                  const savedNode = savedNodes.find((s: MapNode) => s.id === n.id);
+                  if (savedNode) {
+                    return { ...n, cleared: savedNode.cleared };
                   }
                   return n;
                 });
@@ -283,14 +284,23 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   }, [user, playerName, resources, palaceLevel, buildings, army, mapNodes, equipment, currentCampaignLevel]);
   
   // Game Loop - Production
+  const lastTickRef = useRef<number>(Date.now());
   useEffect(() => {
+    lastTickRef.current = Date.now();
     const tick = setInterval(() => {
+      const now = Date.now();
+      const elapsedMs = now - lastTickRef.current;
+      lastTickRef.current = now;
+      
+      const multiplier = elapsedMs / 5000;
+      
       setMapRefreshTimer(prev => {
-        if (prev <= 5) {
+        if (prev <= 5 * multiplier) {
           return 600;
         }
-        return prev - 5;
+        return prev - 5 * multiplier;
       });
+      
       setResources(prev => {
         const baseProd = 0.5; // 1 unit per 10s, tick is 5s
         let totalProd: Partial<Resources> = {
@@ -306,9 +316,16 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           }
         });
         
-        return addResources(prev, totalProd);
+        const finalProd: Partial<Resources> = {
+          gold: (totalProd.gold || 0) * multiplier,
+          wood: (totalProd.wood || 0) * multiplier,
+          stone: (totalProd.stone || 0) * multiplier,
+          food: (totalProd.food || 0) * multiplier,
+        };
+        
+        return addResources(prev, finalProd);
       });
-    }, 5000); // Resource tick every 5 seconds
+    }, 5000); // Resource tick attempt every 5 seconds
     
     return () => clearInterval(tick);
   }, [buildings, currentCampaignLevel]);

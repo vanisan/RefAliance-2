@@ -17,11 +17,12 @@ export default function PalaceView() {
     if (selectedCell === null) return;
     
     const info = BUILDINGS_INFO[buildingId];
-    if (!hasEnoughResources(info.baseCost, resources)) {
+    const cost = getUpgradeCost(buildingId, 0);
+    if (!hasEnoughResources(cost, resources)) {
       return; // Could add a toast here
     }
 
-    setResources(deductResources(resources, info.baseCost));
+    setResources(deductResources(resources, cost));
     const newBuildings = [...buildings];
     newBuildings[selectedCell] = { id: buildingId, name: info.name, level: 1 };
     setBuildings(newBuildings);
@@ -200,7 +201,8 @@ export default function PalaceView() {
             ) : (
               <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto pr-1 pb-4">
                 {Object.values(BUILDINGS_INFO).map((info) => {
-                  const canAfford = hasEnoughResources(info.baseCost, resources);
+                  const cost = getUpgradeCost(info.id, 0);
+                  const canAfford = hasEnoughResources(cost, resources);
                   return (
                     <button
                       key={info.id}
@@ -225,7 +227,7 @@ export default function PalaceView() {
                       )}
                       <div className="mt-1 flex items-center justify-between w-full">
                         <span className="text-[9px] uppercase font-bold tracking-widest text-stone-500">Стоимость</span>
-                        {renderCost(info.baseCost)}
+                        {renderCost(cost)}
                       </div>
                     </button>
                   );

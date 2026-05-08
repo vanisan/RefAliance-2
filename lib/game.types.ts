@@ -58,7 +58,26 @@ export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
   },
 };
 
-export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater';
+export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin';
+
+export interface ArenaPlayer {
+  id: string;
+  name: string;
+  army: Record<UnitId, number>;
+  hpMod: number;
+  atkMod: number;
+  defMod: number;
+}
+
+export interface ArenaMatchState {
+  id: string;
+  players: [ArenaPlayer, ArenaPlayer];
+  turn: 0 | 1; // Index of the player whose turn it is
+  activeUnitId: string | null;
+  timer: number;
+  status: 'waiting' | 'playing' | 'finished';
+  winner: string | null;
+}
 
 export interface UnitInfo {
   id: UnitId;
@@ -76,7 +95,7 @@ export interface UnitInfo {
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_15' | 'heal_resurrect';
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -166,6 +185,16 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     id: 'assassin', name: 'Убийца', hp: 120, attack: 30, defense: 15, minDamage: 15, maxDamage: 30, speed: 5, range: 1, 
     cost: { gold: 500, stone: 0, wood: 0, food: 100, crystals: 5 }, isEnemy: false, image: '/units/assasin.png',
     combatType: 'melee', special: 'double_attack', description: 'Скрытный убийца. Ближний бой. Атака: двойная.'
+  },
+  paladin: {
+    id: 'paladin', name: 'Паладин', hp: 200, attack: 20, defense: 30, minDamage: 15, maxDamage: 25, speed: 2, range: 1,
+    cost: { gold: 800, food: 400, stone: 0, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/paladin.png',
+    combatType: 'melee', special: 'aura_def_15', description: 'Святой воин. Союзники в радиусе 1 кл. получают +15 защиты.'
+  },
+  driada: {
+    id: 'driada', name: 'Дриада', hp: 130, attack: 15, defense: 10, minDamage: 10, maxDamage: 20, speed: 3, range: 4,
+    cost: { gold: 700, food: 100, wood: 400, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/driada.png',
+    combatType: 'ranged', special: 'heal_resurrect', description: 'Дитя леса. Раз за ход может воскресить 1-3 убитых в бою существ.'
   },
   hydra: { 
     id: 'hydra', name: 'Гидра', hp: 700, attack: 200, defense: 45, minDamage: 100, maxDamage: 200, speed: 2, range: 1, size: 2,

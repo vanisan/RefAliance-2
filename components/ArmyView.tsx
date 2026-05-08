@@ -16,7 +16,7 @@ export default function ArmyView() {
 
   const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
     knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, assassin: 1, goblin: 0, orc: 0,
-    skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0
+    skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0, driada: 1, paladin: 1
   });
 
   const handleHire = (unitId: UnitId) => {
@@ -59,7 +59,12 @@ export default function ArmyView() {
     </div>
   );
 
-  const recruitableUnits: UnitId[] = ['knight', 'archer', 'berserk', 'mage', 'assassin', 'dragon', 'titan'];
+  let recruitableUnits: UnitId[] = [];
+  if (barracksLevel >= 1) recruitableUnits.push('knight', 'archer');
+  if (barracksLevel >= 2) recruitableUnits.push('berserk', 'mage');
+  if (barracksLevel >= 3) recruitableUnits.push('assassin');
+  if (barracksLevel >= 4) recruitableUnits.push('driada', 'paladin');
+  if (barracksLevel >= 5) recruitableUnits.push('dragon', 'titan');
 
   return (
     <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto bg-stone-900/30">

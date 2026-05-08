@@ -2,9 +2,10 @@ import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO } from '../lib/game.types';
 import { formatNumber, cn } from '../lib/game.utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield } from 'lucide-react';
+import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import ShopView from './ShopView';
+import ArenaView from './ArenaView';
 
 interface MapViewProps {
   onStartCombat: (node: MapNode) => void;
@@ -14,6 +15,8 @@ export default function MapView({ onStartCombat }: MapViewProps) {
   const { mapNodes, mapRefreshTimer, army, currentCampaignLevel, setCurrentCampaignLevel } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
   const [showShop, setShowShop] = useState(false);
+
+  const [showArena, setShowArena] = useState(false);
 
   const currentLevelNodes = mapNodes.filter(n => n.campaignLevel === currentCampaignLevel || n.campaignLevel === 'all');
   const enemyNodes = currentLevelNodes.filter(n => n.type === 'combat' || n.type === 'boss');
@@ -99,8 +102,9 @@ export default function MapView({ onStartCombat }: MapViewProps) {
       {/* Overlays */}
       <AnimatePresence>
         {showShop && <ShopView onClose={() => setShowShop(false)} />}
+        {showArena && <ArenaView onClose={() => setShowArena(false)} />}
         
-        {selectedNode && !showShop && (
+        {selectedNode && !showShop && !showArena && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -136,6 +140,15 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                  <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
                    <div className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-blue-400"/> Библиотека</div>
                    <span className="text-[9px] text-stone-500">(В разработке)</span>
+                 </button>
+                 <button 
+                  onClick={() => {
+                    setSelectedNode(null);
+                    setShowArena(true);
+                  }}
+                  className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                   <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500"/> Арена</div>
+                   <span className="text-[9px] text-amber-400 animate-pulse font-black">LIVE PvP</span>
                  </button>
                </div>
             ) : selectedNode.cleared ? (

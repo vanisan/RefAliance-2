@@ -18,6 +18,7 @@ type CombatUnit = {
   id: string; // unique instance id
   unitId: UnitId;
   count: number;
+  startCount: number;
   hp: number; // HP of the top unit in stack
   isEnemy: boolean;
   x: number;
@@ -39,7 +40,7 @@ interface Projectile {
 
 interface AttackEffect {
   id: string;
-  type: 'slash' | 'hit' | 'fire' | 'lightning_hit';
+  type: 'slash' | 'hit' | 'fire' | 'lightning_hit' | 'heal';
   x: number;
   y: number;
   size: number;
@@ -78,6 +79,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           id: `p-${id}`, 
           unitId: id as UnitId, 
           count, 
+          startCount: count,
           hp: Math.floor(info.hp * hpMod), 
           isEnemy: false, 
           x: 0, 
@@ -97,6 +99,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           id: `e-${e.unitId}-${idx}-${eY}`, 
           unitId: e.unitId, 
           count: e.count, 
+          startCount: e.count,
           hp: info.hp, 
           isEnemy: true, 
           x: GRID_WIDTH - size, 
@@ -118,12 +121,28 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
   // Forward declarations for ESLint issues
   // Helper to calculate damage
-  const calculateDamage = (attacker: CombatUnit, defender: CombatUnit, isCounter = false) => {
+  const calculateDamage = (attacker: CombatUnit, defender: CombatUnit, isCounter = false, currentUnits: CombatUnit[] = units) => {
     const attInfo = UNITS_INFO[attacker.unitId];
     const defInfo = UNITS_INFO[defender.unitId];
 
     const effAttack = attacker.isEnemy ? attInfo.attack : Math.floor(attInfo.attack * atkMod);
-    const effDefense = defender.isEnemy ? defInfo.defense : Math.floor(defInfo.defense * defMod);
+    let effDefense = defender.isEnemy ? defInfo.defense : Math.floor(defInfo.defense * defMod);
+    
+    // Paladin Aura (+15 Defense in 1 cell radius)
+    const defSize = defInfo.size || 1;
+    const hasPaladinAura = currentUnits.some(u => {
+      if (u.isEnemy !== defender.isEnemy || u.unitId !== 'paladin' || u.count <= 0) return false;
+      // Distance calculation considering size
+      const uSize = UNITS_INFO[u.unitId]?.size || 1;
+      const dx = Math.max(0, Math.max(u.x - (defender.x + defSize - 1), defender.x - (u.x + uSize - 1)));
+      const dy = Math.max(0, Math.max(u.y - (defender.y + defSize - 1), defender.y - (u.y + uSize - 1)));
+      return dx <= 1 && dy <= 1;
+    });
+    
+    if (hasPaladinAura) {
+      effDefense += 15;
+    }
+
     const effMinDmg = attacker.isEnemy ? attInfo.minDamage : Math.floor(attInfo.minDamage * atkMod);
     const effMaxDmg = attacker.isEnemy ? attInfo.maxDamage : Math.floor(attInfo.maxDamage * atkMod);
     const effUnitHp = defender.isEnemy ? defInfo.hp : Math.floor(defInfo.hp * hpMod);
@@ -398,6 +417,40 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     return true;
   };
 
+  const handleHeal = (targetId: string) => {
+    if (turn !== 'player' || gameOver || infoMode) return;
+    const activeUnit = units.find(u => u.id === activeUnitId);
+    if (!activeUnit || activeUnit.unitId !== 'driada') return;
+
+    const targetPos = units.find(u => u.id === targetId);
+    if (!targetPos || targetPos.isEnemy || targetPos.count >= targetPos.startCount) return;
+
+    // missing troops
+    const lost = targetPos.startCount - targetPos.count;
+    // Heal random 1-3 but not more than lost
+    const healAmount = Math.min(lost, Math.floor(Math.random() * 3) + 1);
+
+    const updatedUnits = units.map(u => {
+      if (u.id === activeUnit.id) return { ...u, hasActed: true };
+      if (u.id === targetPos.id) return { ...u, count: u.count + healAmount };
+      return u;
+    });
+
+    addLog(`Дриада воскрешает ${healAmount} ${UNITS_INFO[targetPos.unitId].name}!`);
+    setUnits(updatedUnits);
+    
+    // Add visual effect
+    const tx = targetPos.x;
+    const ty = targetPos.y;
+    const effId = getRandomId('effect');
+    setEffects(prev => [...prev, { id: effId, type: 'heal', x: tx, y: ty, size: UNITS_INFO[targetPos.unitId].size || 1 }]);
+    setTimeout(() => {
+      setEffects(prev => prev.filter(e => e.id !== effId));
+    }, 700);
+
+    determineNextActiveUnit(updatedUnits);
+  };
+
   const handleCellClick = (x: number, y: number) => {
     const targetPos = getUnitAt(x, y);
 
@@ -464,7 +517,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       const nextArmy: Record<UnitId, number> = { 
         knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
         goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-        assassin: 0, hydra: 0, souleater: 0 
+        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0 
       };
       units.forEach(u => {
         if (!u.isEnemy && u.count > 0) {
@@ -483,7 +536,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       setArmy({ 
         knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
         goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-        assassin: 0, hydra: 0, souleater: 0
+        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0
       }); // Hardcore loss
     }
     onEnd();
@@ -512,15 +565,23 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       const isAllowedMove = turn === 'player' && activeUnit && !uUnderTile && dist <= moveRadius && isAreaFree(x, y, activeSize, activeUnit.id, units);
       
       const isPickableTarget = turn === 'player' && activeUnit && uUnderTile?.isEnemy && dist <= (UNITS_INFO[activeUnit.unitId]?.range || 1);
+      
+      const isPickableHealTarget = turn === 'player' && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && !uUnderTile.isEnemy && uUnderTile.count < uUnderTile.startCount;
+      const isUnhealableTarget = turn === 'player' && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && !uUnderTile.isEnemy && uUnderTile.count >= uUnderTile.startCount;
+
+      const isPaladinAuraZone = activeUnit && activeUnit.unitId === 'paladin' && getManhattanDist(activeUnit.x, activeUnit.y, activeSize, x, y, 1) <= 1;
 
       gridCells.push(
         <div 
           key={`${x}-${y}`} 
-          onClick={() => handleCellClick(x, y)}
+          onClick={() => isPickableHealTarget ? handleHeal(uUnderTile.id) : handleCellClick(x, y)}
           className={cn(
             "relative w-full aspect-square border border-stone-700/30 flex items-center justify-center transition-colors overflow-visible",
             isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/20",
-            isPickableTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/20 z-10"
+            isPickableTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/20 z-10",
+            isPickableHealTarget && "bg-blue-500/20 cursor-pointer hover:bg-blue-500/40 z-10",
+            isUnhealableTarget && "bg-red-500/5 z-0",
+            isPaladinAuraZone && "bg-yellow-500/20"
           )}
         >
           {isAllowedMove && <div className="w-1.5 h-1.5 rounded-full bg-green-500/30"></div>}
@@ -529,12 +590,18 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               layoutId={uUnderTile.id}
               onClick={(e) => {
                 e.stopPropagation(); // Prevent grid click
-                handleCellClick(x, y); 
+                isPickableHealTarget ? handleHeal(uUnderTile.id) : handleCellClick(x, y); 
               }}
               transition={{ type: "spring", bounce: 0, duration: 0.3 }}
               className={cn(
                 "relative z-10 rounded bg-stone-900 border overflow-visible cursor-pointer",
-                uUnderTile.isEnemy ? "border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.4)]" : "border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.4)]",
+                uUnderTile.isEnemy 
+                  ? "border-red-500 shadow-[0_0_5px_rgba(255,0,0,0.4)]" 
+                  : isUnhealableTarget
+                    ? "border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.7)]"
+                    : isPickableHealTarget 
+                      ? "border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.8)]"
+                      : "border-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.4)]",
                 uUnderTile.id === activeUnitId && "border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] z-20"
               )}
               style={{
@@ -586,6 +653,21 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           <span className="text-[10px] text-stone-500 font-mono uppercase">Раунд {round}</span>
         </div>
       </div>
+
+      {/* Driada Tip */}
+      <AnimatePresence>
+        {turn === 'player' && units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-950/90 border border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] text-blue-200 px-4 py-2 rounded flex flex-col items-center justify-center text-xs font-bold text-center z-[100]"
+          >
+            СКИЛЛ ДРИАДЫ: Кликните на союзника (синий цвет), чтобы воскресить павших.
+            <span className="text-red-400/80 text-[9px] mt-0.5">Красные отряды полны или не воскрешаются</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Battlefield Grid */}
       <div className="bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
@@ -652,6 +734,12 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               {e.type === 'hit' && (
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-white rounded-full animate-ping"></div>
+                </div>
+              )}
+              {e.type === 'heal' && (
+                <div className="w-full h-full flex items-center justify-center">
+                  <img src="/units/driadaheal.png" alt="Heal" className="w-[120px] h-[120px] absolute z-50 animate-pulse object-contain pointer-events-none drop-shadow-[0_0_15px_#10b981]" style={{ transform: 'translateY(-20%)' }} />
+                  <div className="w-16 h-16 border-4 border-green-500 rounded-full animate-ping shadow-[0_0_15px_#22c55e]"></div>
                 </div>
               )}
               {e.type === 'fire' && (
