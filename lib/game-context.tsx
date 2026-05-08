@@ -46,7 +46,8 @@ const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 10
 const defaultArmy: Record<UnitId, number> = { 
   knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
   goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-  assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0 
+  assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
+  banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
 };
 
 const GameContext = createContext<GameState | null>(null);
@@ -68,7 +69,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [authLoading, setAuthLoading] = useState(true);
 
   const getLeaderboard = async () => {
-    if (!user) return [];
+    if (!user || !supabase) return [];
     try {
       const { data, error } = await supabase
         .from('users')
@@ -84,7 +85,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetProgress = async () => {
-    if (!user) return;
+    if (!user || !supabase) return;
     setResources(defaultResources);
     setPalaceLevel(1);
     setBuildings(Array(16).fill(null));
@@ -117,6 +118,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // Auth & Sync
   useEffect(() => {
+    if (!supabase) {
+      setAuthLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserResult(session?.user || null);
     }).catch(err => {
@@ -131,6 +137,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
 
     async function handleUserResult(u: User | null) {
+      if (!supabase) return;
       setUser(u);
       
       if (u) {
@@ -264,9 +271,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // Sync to Cloud
   useEffect(() => {
-    if (!user || !initialLoadDone.current) return;
+    if (!user || !initialLoadDone.current || !supabase) return;
 
     const timer = setTimeout(async () => {
+      if (!supabase) return;
       try {
         const armyPower = calculateArmyPower(army);
         const { error } = await supabase.from('users').update({

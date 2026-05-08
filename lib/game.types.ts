@@ -58,7 +58,7 @@ export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
   },
 };
 
-export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin';
+export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid';
 
 export interface ArenaPlayer {
   id: string;
@@ -95,7 +95,7 @@ export interface UnitInfo {
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_15' | 'heal_resurrect';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_15' | 'heal_resurrect' | 'splash_50';
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -206,6 +206,26 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     isEnemy: true, image: '/mobs/souleater.png', combatType: 'melee', special: 'double_attack',
     description: 'Демоническая тварь. Ближний бой. Атака: двойная.'
   },
+  banshee: {
+    id: 'banshee', name: 'Банши', hp: 200, attack: 60, defense: 20, minDamage: 50, maxDamage: 70, speed: 3, range: 1,
+    isEnemy: true, image: '/units/banshee.png', combatType: 'melee',
+    description: 'Призрак с ужасающим воплем. Способна быстро сокращать дистанцию. Ближний бой.'
+  },
+  arachnid: {
+    id: 'arachnid', name: 'Арахнид', hp: 260, attack: 80, defense: 15, minDamage: 70, maxDamage: 90, speed: 5, range: 1,
+    isEnemy: true, image: '/units/arachnid.png', combatType: 'melee',
+    description: 'Огромный паук. Высокая скорость перемещения. Ближний бой.'
+  },
+  frostdragon: {
+    id: 'frostdragon', name: 'Ледяной дракон', hp: 400, attack: 110, defense: 50, minDamage: 100, maxDamage: 120, speed: 10, range: 1, size: 2,
+    isEnemy: true, image: '/units/frostdragon.png', combatType: 'melee',
+    description: 'Повелитель стужи. Мгновенно перемещается по полю боя. Ближний бой.'
+  },
+  archidruid: {
+    id: 'archidruid', name: 'Архидруид', hp: 500, attack: 120, defense: 50, minDamage: 100, maxDamage: 140, speed: 2, range: 5,
+    cost: { gold: 8000, food: 250, crystals: 10, wood: 0, stone: 0 }, isEnemy: false, image: '/units/archiduid.png',
+    combatType: 'ranged', special: 'splash_50', description: 'Верховный защитник природы. Дальний бой. Атака: сплеш-урон 50% в радиусе 1 кл.'
+  },
 };
 
 export interface MapNode {
@@ -268,7 +288,13 @@ export const INITIAL_MAP_NODES: MapNode[] = [
   { id: '1-8-finalboss', name: 'Повелитель тьмы', type: 'boss', x: 60, y: 30, enemies: [{ unitId: 'skelet', count: 666 }, { unitId: 'hydra', count: 66 }, { unitId: 'giant', count: 66 }, { unitId: 'hydra', count: 66 }, { unitId: 'skelet', count: 666 }], reward: { gold: 250000, crystals: 1000 }, itemReward: 'weapon-legend', cleared: false, campaignLevel: '1-8' },
 
   // World 2
-  { id: '2-1-1', name: 'Врата Второго Мира', type: 'combat', x: 50, y: 50, enemies: [{ unitId: 'demon', count: 50 }, { unitId: 'hydra', count: 20 }], reward: { gold: 50000, crystals: 200 }, cleared: false, campaignLevel: '2-1' }
+  { id: '2-1-1', name: 'Врата Второго Мира', type: 'combat', x: 20, y: 30, enemies: [{ unitId: 'banshee', count: 40 }, { unitId: 'skelet', count: 200 }], reward: { gold: 50000 }, cleared: false, campaignLevel: '2-1' },
+  { id: '2-1-2', name: 'Тени пустоты', type: 'combat', x: 80, y: 70, enemies: [{ unitId: 'banshee', count: 80 }, { unitId: 'vampire', count: 120 }], reward: { gold: 60000 }, cleared: false, campaignLevel: '2-1' },
+
+  // Level 2-2
+  { id: '2-2-1', name: 'Гнездо Арахнидов', type: 'combat', x: 15, y: 20, enemies: [{ unitId: 'frostdragon', count: 15 }, { unitId: 'arachnid', count: 150 }, { unitId: 'arachnid', count: 150 }, { unitId: 'arachnid', count: 150 }, { unitId: 'arachnid', count: 150 }], reward: { gold: 75000 }, cleared: false, campaignLevel: '2-2' },
+  { id: '2-2-2', name: 'Паучий шепот', type: 'combat', x: 50, y: 55, enemies: [{ unitId: 'frostdragon', count: 20 }, { unitId: 'banshee', count: 100 }, { unitId: 'banshee', count: 100 }, { unitId: 'arachnid', count: 333 }, { unitId: 'arachnid', count: 333 }], reward: { gold: 85000 }, cleared: false, campaignLevel: '2-2' },
+  { id: '2-2-3', name: 'Сердце паутины', type: 'boss', x: 80, y: 20, enemies: [{ unitId: 'banshee', count: 80 }, { unitId: 'banshee', count: 80 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }], reward: { gold: 120000 }, cleared: false, campaignLevel: '2-2' }
 ];
 
 export const LEGENDARY_WEAPON: EquipmentItem = {

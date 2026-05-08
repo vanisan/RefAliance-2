@@ -1,20 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kyetmbqrwsmdejnlcpaf.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_dby3kLx_hNiyD1WXaPDCxQ_PzVxhklj';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error(JSON.stringify({
+      message: "Supabase configuration is missing.",
+      details: "Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your project secrets (Gear icon -> Secrets).",
+      hint: "Make sure you have copied the correct URL and Anon Key from your Supabase dashboard.",
+      code: "MISSING_CONFIG"
+    }));
+  }
+  
   try {
     return await fetch(url, options);
   } catch (err: any) {
-    if (err.message && err.message.includes('Failed to fetch')) {
-      console.error("Supabase connection failed. If you are using the default placeholder URL, it may have been shut down.");
-      console.error("Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your AI Studio Secrets (gear icon).");
-    }
+    console.error("Supabase request failed:", err);
     throw err;
   }
 };
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  global: { fetch: customFetch }
-});
+// Only initialize if keys are present to avoid crashing on startup
+export const supabase = (supabaseUrl && supabaseKey) 
+  ? createClient(supabaseUrl, supabaseKey, {
+      global: { fetch: customFetch }
+    })
+  : null;

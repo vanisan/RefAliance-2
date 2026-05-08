@@ -66,6 +66,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const [effects, setEffects] = useState<AttackEffect[]>([]);
   const [selectedUnitInfo, setSelectedUnitInfo] = useState<CombatUnit | null>(null);
 
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
   const channelRef = useRef<RealtimeChannel | null>(null);
   const lobbyChannelRef = useRef<RealtimeChannel | null>(null);
 
@@ -77,7 +79,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   // --- LOBBY LOGIC ---
   useEffect(() => {
-    if (!user) return;
+    if (!user || !supabase) {
+      if (!supabase) setConnectionError("Supabase не настроен. Арена временно недоступна.");
+      return;
+    }
 
     const channel = supabase.channel('arena:lobby', {
       config: { presence: { key: user.id } }
@@ -166,6 +171,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const startMatch = (id: string, p0: ArenaPlayer, role: 0 | 1, p1?: ArenaPlayer) => {
+    if (!supabase) return;
     setMyIndex(role);
     const matchData: ArenaMatchState = {
       id,
@@ -680,6 +686,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   // --- RENDERING ---
   const renderLobby = () => (
     <div className="flex flex-col items-center w-full max-w-md gap-4">
+      {connectionError && (
+        <div className="bg-red-950/50 border border-red-500 p-4 rounded text-red-200 text-xs w-full text-center mb-4">
+          <p className="font-bold mb-1">Ошибка подключения</p>
+          <p>{connectionError}</p>
+          <p className="mt-2 text-[10px] opacity-80">Пожалуйста, добавьте ключи Supabase в секреты (Gear icon -&gt; Secrets) для активации Арены.</p>
+        </div>
+      )}
       <div className="wow-panel w-full p-4 flex flex-col items-center">
         <Trophy className="w-12 h-12 text-amber-500 mb-2 animate-bounce" />
         <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow">Арена Героев</h2>

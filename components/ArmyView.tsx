@@ -1,7 +1,7 @@
 import { useGame } from '../lib/game-context';
 import { UNITS_INFO, UnitId } from '../lib/game.types';
 import { hasEnoughResources, deductResources, formatNumber } from '../lib/game.utils';
-import { Coins, Trees, Mountain, Wheat, UserPlus, Shield, Users } from 'lucide-react';
+import { Coins, Trees, Mountain, Wheat, UserPlus, Shield, Users, Gem } from 'lucide-react';
 import { useState } from 'react';
 
 export default function ArmyView() {
@@ -18,7 +18,8 @@ export default function ArmyView() {
 
   const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
     knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, assassin: 1, goblin: 0, orc: 0,
-    skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0, driada: 1, paladin: 1
+    skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0, driada: 1, paladin: 1,
+    banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
   });
 
   const handleHire = (unitId: UnitId) => {
@@ -33,6 +34,7 @@ export default function ArmyView() {
       wood: (info.cost.wood || 0) * count,
       stone: (info.cost.stone || 0) * count,
       food: (info.cost.food || 0) * count,
+      crystals: (info.cost.crystals || 0) * count,
     };
 
     if (!hasEnoughResources(totalCost, resources)) return;
@@ -58,6 +60,7 @@ export default function ArmyView() {
       {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-0.5"/>{formatNumber(cost.wood * count)}</span>}
       {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-0.5"/>{formatNumber(cost.stone * count)}</span>}
       {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-0.5"/>{formatNumber(cost.food * count)}</span>}
+      {cost.crystals > 0 && <span className="flex items-center text-cyan-400"><Gem className="w-3 h-3 mr-0.5"/>{formatNumber(cost.crystals * count)}</span>}
     </div>
   );
 
@@ -67,6 +70,7 @@ export default function ArmyView() {
   if (barracksLevel >= 3) recruitableUnits.push('assassin');
   if (barracksLevel >= 4) recruitableUnits.push('driada', 'paladin');
   if (barracksLevel >= 5) recruitableUnits.push('dragon', 'titan');
+  if (barracksLevel >= 8) recruitableUnits.push('archidruid');
 
   return (
     <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto bg-stone-900/30">
@@ -114,6 +118,7 @@ export default function ArmyView() {
             wood: (info.cost?.wood || 0) * count,
             stone: (info.cost?.stone || 0) * count,
             food: (info.cost?.food || 0) * count,
+            crystals: (info.cost?.crystals || 0) * count,
           };
           const canAfford = hasEnoughResources(totalCost, resources);
           const hasSpace = currentTroops + count <= maxTroops;

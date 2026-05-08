@@ -40,7 +40,7 @@ interface Projectile {
 
 interface AttackEffect {
   id: string;
-  type: 'slash' | 'hit' | 'fire' | 'lightning_hit' | 'heal';
+  type: 'slash' | 'hit' | 'fire' | 'lightning_hit' | 'heal' | 'ice';
   x: number;
   y: number;
   size: number;
@@ -192,7 +192,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
         }, 500);
       } else {
-        const effectType: AttackEffect['type'] = (aId === 'dragon' || aId === 'demon' || aId === 'hydra') ? 'fire' : 'slash';
+        let effectType: AttackEffect['type'] = 'slash';
+        if (aId === 'dragon' || aId === 'demon' || aId === 'hydra') effectType = 'fire';
+        if (aId === 'frostdragon') effectType = 'ice';
+        
         const effectId = getRandomId('e-melee');
         setEffects(prev => [...prev, { id: effectId, type: effectType, x: dx, y: dy, size: ds }]);
         setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
@@ -223,25 +226,68 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     let { newCount, newTopHP } = applyDamage(attacker, defender, currentUnits);
     let currentDefender = { ...defender, count: newCount, hp: newTopHP };
 
-    // Double Attack Logic
+    // Splash Damage Logic (Archidruid - special: 'splash_50')
+    let splashTargets: { id: string, damage: number }[] = [];
+    if (attackerInfo.special === 'splash_50') {
+      const { totalDmg } = calculateDamage(attacker, defender, false, currentUnits);
+      const splashDmgBase = Math.floor(totalDmg * 0.5);
+      
+      if (splashDmgBase > 0) {
+        currentUnits.forEach(u => {
+          if (u.id !== defender.id && u.isEnemy === defender.isEnemy && u.count > 0) {
+            const uSize = UNITS_INFO[u.unitId].size || 1;
+            const defSize = UNITS_INFO[defender.unitId].size || 1;
+            const dx = Math.max(0, Math.max(u.x - (defender.x + defSize - 1), defender.x - (u.x + uSize - 1)));
+            const dy = Math.max(0, Math.max(u.y - (defender.y + defSize - 1), defender.y - (u.y + uSize - 1)));
+            
+            if (dx <= 1 && dy <= 1) {
+              splashTargets.push({ id: u.id, damage: splashDmgBase });
+            }
+          }
+        });
+      }
+    }
+
+    const finalizeAttack = (finalDefender: CombatUnit, splashHits: { id: string, damage: number }[] = []) => {
+      const updatedUnits = currentUnits.map(u => {
+        if (u.id === attacker.id) return { ...u, hasActed: true };
+        if (u.id === defender.id) return finalDefender;
+        
+        const splash = splashHits.find(s => s.id === u.id);
+        if (splash) {
+          const uInfo = UNITS_INFO[u.unitId];
+          const { effUnitHp } = calculateDamage(attacker, u, false, currentUnits);
+          let remainingHP = (u.count - 1) * effUnitHp + u.hp - splash.damage;
+          let count = Math.max(0, Math.ceil(remainingHP / effUnitHp));
+          let topHP = remainingHP <= 0 ? 0 : (remainingHP % effUnitHp === 0 ? effUnitHp : remainingHP % effUnitHp);
+          
+          // Visual effect for splash
+          const effId = getRandomId('spl');
+          setTimeout(() => {
+            setEffects(prev => [...prev, { id: effId, type: 'fire', x: u.x, y: u.y, size: uInfo.size || 1 }]);
+            setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effId)), 500);
+          }, 300);
+          
+          return { ...u, count, hp: topHP };
+        }
+        return u;
+      });
+      setUnits(updatedUnits);
+      setTimeout(() => checkWinCondition(updatedUnits), 600);
+    };
+
+    // Double Attack Logic (cannot trigger with splash in this simplified version, or handled separately)
     if (attackerInfo.special === 'double_attack' && newCount > 0) {
       setTimeout(() => {
         triggerEffect(attacker.unitId, defender.unitId, defender.x, defender.y, defenderInfo.size || 1);
         const secondHit = applyDamage(attacker, currentDefender, currentUnits);
         currentDefender = { ...currentDefender, count: secondHit.newCount, hp: secondHit.newTopHP };
-        
-        const finalUnits = currentUnits.map(u => {
-          if (u.id === attacker.id) return { ...u, hasActed: true };
-          if (u.id === defender.id) return currentDefender;
-          return u;
-        });
-        setUnits(finalUnits);
-        checkWinCondition(finalUnits);
+        finalizeAttack(currentDefender);
       }, 600);
       return; 
     }
 
-    // Counter Attack Logic (Hydra)
+    // Counter Attack Logic (Hydra etc)
     if (defenderInfo.special === 'counter_attack_50' && attackerInfo.range === 1 && newCount > 0) {
       setTimeout(() => {
         triggerEffect(defender.unitId, attacker.unitId, attacker.x, attacker.y, attackerInfo.size || 1);
@@ -249,6 +295,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         const finalUnits = currentUnits.map(u => {
           if (u.id === attacker.id) return { ...u, count: res.newCount, hp: res.newTopHP, hasActed: true };
           if (u.id === defender.id) return currentDefender;
+          // Note: Splash and counter from main defender can't easily coexist in this block without more complexity
           return u;
         });
         setUnits(finalUnits);
@@ -257,14 +304,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       return;
     }
 
-    const updatedUnits = currentUnits.map(u => {
-      if (u.id === attacker.id) return { ...u, hasActed: true };
-      if (u.id === defender.id) return currentDefender;
-      return u;
-    });
-
-    setUnits(updatedUnits);
-    setTimeout(() => checkWinCondition(updatedUnits), 600);
+    finalizeAttack(currentDefender, splashTargets);
   };
 
   const handleAI = (currentUnits: CombatUnit[], myUnit: CombatUnit) => {
@@ -488,6 +528,47 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       if (targetPos.isEnemy) {
         if (dist <= ranges) {
           processAttack(units, activeUnit, targetPos);
+        } else if (activeUnit.unitId === 'banshee' && dist <= speed + ranges - 1) { // Only 'banshee' can move and attack
+          // Simple logic: find a cell adjacent to target that is reachable
+          const targetSize = UNITS_INFO[targetPos.unitId].size || 1;
+          let bestX = -1;
+          let bestY = -1;
+          let minSteps = 999;
+
+          // Check all cells adjacent to target
+          for (let ty = targetPos.y - 1; ty <= targetPos.y + targetSize; ty++) {
+            for (let tx = targetPos.x - 1; tx <= targetPos.x + targetSize; tx++) {
+              if (tx < 0 || tx >= GRID_WIDTH || ty < 0 || ty >= GRID_HEIGHT) continue;
+              
+              // Is this cell adjacent to target?
+              const distToTarget = getManhattanDist(tx, ty, activeSize, targetPos.x, targetPos.y, targetSize);
+              if (distToTarget <= ranges) {
+                // Is it reachable for us?
+                const distToMe = getManhattanDist(tx, ty, activeSize, activeUnit.x, activeUnit.y, activeSize);
+                if (distToMe <= speed && isAreaFree(tx, ty, activeSize, activeUnit.id, units)) {
+                  if (distToMe < minSteps) {
+                    minSteps = distToMe;
+                    bestX = tx;
+                    bestY = ty;
+                  }
+                }
+              }
+            }
+          }
+
+          if (bestX !== -1) {
+            const movedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x: bestX, y: bestY } : u);
+            const updatedActive = { ...activeUnit, x: bestX, y: bestY };
+            addLog(`${activeInfo.name} приближается и атакует!`);
+            
+            // Short delay to show movement before attack
+            setUnits(movedUnits);
+            setTimeout(() => {
+              processAttack(movedUnits, updatedActive, targetPos);
+            }, 300);
+          } else {
+            addLog("Путь к врагу заблокирован.");
+          }
         } else {
           addLog("Враг слишком далеко.");
         }
@@ -521,7 +602,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       const nextArmy: Record<UnitId, number> = { 
         knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
         goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0 
+        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
+        banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
       };
       units.forEach(u => {
         if (!u.isEnemy && u.count > 0) {
@@ -548,7 +630,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       setArmy({ 
         knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
         goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0
+        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
+        banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
       }); // Hardcore loss
     }
     onEnd();
@@ -748,6 +831,17 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                    />
                    <div className="w-8 h-8 bg-red-600 rounded-full blur-md animate-bounce"></div>
                    <div className="w-4 h-4 bg-yellow-400 rounded-full blur-sm absolute"></div>
+                </div>
+              )}
+              {e.type === 'ice' && (
+                <div className="w-full h-full flex items-center justify-center relative">
+                   <motion.div 
+                     initial={{ scale: 0, opacity: 0 }}
+                     animate={{ scale: [1, 2, 0], opacity: [1, 0.8, 0] }}
+                     className="absolute inset-0 bg-blue-300 rounded-full blur-xl"
+                   />
+                   <div className="w-8 h-8 bg-cyan-100 rounded-full blur-md animate-pulse"></div>
+                   <div className="w-4 h-4 bg-white rounded-full blur-sm absolute"></div>
                 </div>
               )}
               {e.type === 'lightning_hit' && (
