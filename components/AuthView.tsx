@@ -44,12 +44,6 @@ export default function AuthView() {
 
     const email = `${encodeLoginToAscii(login.toLowerCase().trim())}${DUMMY_DOMAIN}`;
     
-    if (!supabase) {
-      setErrorMsg("Конфигурация Supabase отсутствует. Проверьте настройки проекта.");
-      setLoading(false);
-      return;
-    }
-
     try {
       if (isRegister) {
         const cleanName = login.trim();
@@ -115,10 +109,6 @@ export default function AuthView() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!supabase) {
-      setErrorMsg("Supabase не настроен.");
-      return;
-    }
     setErrorMsg(null);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -135,7 +125,6 @@ export default function AuthView() {
   };
 
   const handleLogout = async () => {
-    if (!supabase) return;
     try {
       await supabase.auth.signOut();
     } catch (error) {

@@ -118,11 +118,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // Auth & Sync
   useEffect(() => {
-    if (!supabase) {
-      setAuthLoading(false);
-      return;
-    }
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserResult(session?.user || null);
     }).catch(err => {
@@ -137,7 +132,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
 
     async function handleUserResult(u: User | null) {
-      if (!supabase) return;
       setUser(u);
       
       if (u) {

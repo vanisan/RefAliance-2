@@ -690,7 +690,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         <div className="bg-red-950/50 border border-red-500 p-4 rounded text-red-200 text-xs w-full text-center mb-4">
           <p className="font-bold mb-1">Ошибка подключения</p>
           <p>{connectionError}</p>
-          <p className="mt-2 text-[10px] opacity-80">Пожалуйста, добавьте ключи Supabase в секреты (Gear icon -&gt; Secrets) для активации Арены.</p>
+          <p className="mt-2 text-[10px] opacity-80">Пожалуйста, проверьте соединение или ключи Supabase в настройках (Secrets) для активации Арены.</p>
         </div>
       )}
       <div className="wow-panel w-full p-4 flex flex-col items-center">
