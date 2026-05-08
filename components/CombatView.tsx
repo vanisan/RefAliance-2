@@ -24,6 +24,7 @@ type CombatUnit = {
   x: number;
   y: number;
   hasActed: boolean;
+  movedThisTurn?: boolean;
 };
 
 const GRID_WIDTH = 8;
@@ -252,7 +253,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
     const finalizeAttack = (finalDefender: CombatUnit, splashHits: { id: string, damage: number }[] = []) => {
       const updatedUnits = currentUnits.map(u => {
-        if (u.id === attacker.id) return { ...u, hasActed: true };
+        if (u.id === attacker.id) return { ...u, hasActed: true, movedThisTurn: false };
         if (u.id === defender.id) return finalDefender;
         
         const splash = splashHits.find(s => s.id === u.id);
@@ -295,7 +296,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         triggerEffect(defender.unitId, attacker.unitId, attacker.x, attacker.y, attackerInfo.size || 1);
         const res = applyDamage(currentDefender, attacker, currentUnits, true);
         const finalUnits = currentUnits.map(u => {
-          if (u.id === attacker.id) return { ...u, count: res.newCount, hp: res.newTopHP, hasActed: true };
+          if (u.id === attacker.id) return { ...u, count: res.newCount, hp: res.newTopHP, hasActed: true, movedThisTurn: false };
           if (u.id === defender.id) return currentDefender;
           // Note: Splash and counter from main defender can't easily coexist in this block without more complexity
           return u;
@@ -362,7 +363,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         if (currentDist <= ranges) break;
       }
       
-      const movedUnits = currentUnits.map(u => u.id === myUnit.id ? { ...u, x: newX, y: newY, hasActed: true } : u);
+      const movedUnits = currentUnits.map(u => u.id === myUnit.id ? { ...u, x: newX, y: newY, hasActed: true, movedThisTurn: false } : u);
       setUnits(movedUnits);
       addLog(`${info.name} (враг) перемещается.`);
       setTimeout(() => checkWinCondition(movedUnits), 300);
@@ -398,7 +399,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       // New Round
       setRound(r => r + 1);
       addLog("Новый раунд.");
-      const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false }));
+      const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false, movedThisTurn: false }));
       setUnits(refreshedUnits);
       
       // Safety timeout to avoid recursive loops
@@ -530,8 +531,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       if (targetPos.isEnemy) {
         if (dist <= ranges) {
           processAttack(units, activeUnit, targetPos);
-        } else if (activeUnit.unitId === 'banshee' && dist <= speed + ranges - 1) { // Only 'banshee' can move and attack
-          // Simple logic: find a cell adjacent to target that is reachable
+        } else if (activeInfo.special === 'double_action' && !activeUnit.movedThisTurn && dist <= speed + ranges - 1) { 
+          // Move and attack logic
           const targetSize = UNITS_INFO[targetPos.unitId].size || 1;
           let bestX = -1;
           let bestY = -1;
@@ -578,10 +579,18 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     } else {
       // Move for potentially large units
       if (dist <= speed && isAreaFree(x, y, activeSize, activeUnit.id, units)) {
-        const updatedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x, y, hasActed: true } : u);
-        setUnits(updatedUnits);
-        addLog(`${activeInfo.name} переместился.`);
-        determineNextActiveUnit(updatedUnits);
+        if (activeInfo.special === 'double_action' && !activeUnit.movedThisTurn) {
+          // Move but don't end turn
+          const updatedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x, y, movedThisTurn: true, hasActed: false } : u);
+          setUnits(updatedUnits);
+          addLog(`${activeInfo.name} переместилась и готова к удару!`);
+          // We don't call determineNextActiveUnit, so she stays selected
+        } else {
+          const updatedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x, y, hasActed: true, movedThisTurn: false } : u);
+          setUnits(updatedUnits);
+          addLog(`${activeInfo.name} переместился.`);
+          determineNextActiveUnit(updatedUnits);
+        }
       } else {
         addLog("Невозможно переместиться.");
       }

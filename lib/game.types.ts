@@ -95,7 +95,7 @@ export interface UnitInfo {
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action';
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -208,8 +208,8 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   },
   banshee: {
     id: 'banshee', name: 'Банши', hp: 200, attack: 60, defense: 20, minDamage: 50, maxDamage: 70, speed: 3, range: 1,
-    isEnemy: true, image: '/units/banshee.png', combatType: 'melee',
-    description: 'Призрак с ужасающим воплем. Способна быстро сокращать дистанцию. Ближний бой.'
+    isEnemy: true, image: '/units/banshee.png', combatType: 'melee', special: 'double_action',
+    description: 'Призрак с ужасающим воплем. Может совершить два действия за ход. Ближний бой.'
   },
   arachnid: {
     id: 'arachnid', name: 'Арахнид', hp: 260, attack: 80, defense: 15, minDamage: 70, maxDamage: 90, speed: 5, range: 1,
@@ -222,7 +222,7 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     description: 'Повелитель стужи. Мгновенно перемещается по полю боя. Ближний бой.'
   },
   archidruid: {
-    id: 'archidruid', name: 'Архидруид', hp: 500, attack: 120, defense: 50, minDamage: 100, maxDamage: 140, speed: 2, range: 5,
+    id: 'archidruid', name: 'Архидруид', hp: 500, attack: 80, defense: 50, minDamage: 100, maxDamage: 140, speed: 2, range: 5,
     cost: { gold: 8000, food: 250, crystals: 10, wood: 0, stone: 0 }, isEnemy: false, image: '/units/archiduid.png',
     combatType: 'ranged', special: 'splash_50', description: 'Верховный защитник природы. Дальний бой. Атака: сплеш-урон 50% в радиусе 1 кл.'
   },
@@ -259,21 +259,21 @@ export const INITIAL_MAP_NODES: MapNode[] = [
 
   // Level 1-4
   { id: '1-4-1', name: 'Ночные охотники', type: 'combat', x: 15, y: 30, enemies: [{ unitId: 'vampire', count: 5 }, { unitId: 'skelet', count: 30 }], reward: { gold: 1000, crystals: 3 }, cleared: false, campaignLevel: '1-4' },
-  { id: '1-4-2', name: 'Гвардия вампиров', type: 'combat', x: 85, y: 60, enemies: [{ unitId: 'vampire', count: 10 }, { unitId: 'orc', count: 25 }], reward: { gold: 1500, crystals: 4 }, cleared: false, campaignLevel: '1-4' },
+  { id: '1-4-2', name: 'Гвардия вампиров', type: 'combat', x: 85, y: 60, enemies: [{ unitId: 'orc', count: 30 }, { unitId: 'vampire', count: 15 }, { unitId: 'vampire', count: 15 }], reward: { gold: 1500, crystals: 4 }, cleared: false, campaignLevel: '1-4' },
   { id: '1-4-3', name: 'Армия крови', type: 'combat', x: 40, y: 15, enemies: [{ unitId: 'vampire', count: 15 }, { unitId: 'orc', count: 40 }], reward: { gold: 2000, crystals: 5 }, cleared: false, campaignLevel: '1-4' },
   { id: '1-4-boss', name: 'Логово Палача', type: 'boss', x: 55, y: 45, enemies: [{ unitId: 'titan', count: 1 }, { unitId: 'vampire', count: 20 }], reward: { gold: 5000, crystals: 20 }, cleared: false, campaignLevel: '1-4' },
 
   // Level 1-5
-  { id: '1-5-1', name: 'Демонические псы', type: 'combat', x: 25, y: 75, enemies: [{ unitId: 'demon', count: 3 }, { unitId: 'vampire', count: 10 }], reward: { gold: 3000, crystals: 10 }, cleared: false, campaignLevel: '1-5' },
-  { id: '1-5-2', name: 'Легион ада', type: 'combat', x: 75, y: 25, enemies: [{ unitId: 'souleater', count: 5 }, { unitId: 'demon', count: 2 }], reward: { gold: 4000, crystals: 12 }, cleared: false, campaignLevel: '1-5' },
+  { id: '1-5-1', name: 'Демонические псы', type: 'combat', x: 25, y: 75, enemies: [{ unitId: 'vampire', count: 20 }, { unitId: 'demon', count: 5 }, { unitId: 'demon', count: 5 }, { unitId: 'demon', count: 5 }, { unitId: 'demon', count: 5 }], reward: { gold: 3000, crystals: 10 }, cleared: false, campaignLevel: '1-5' },
+  { id: '1-5-2', name: 'Легион ада', type: 'combat', x: 75, y: 25, enemies: [{ unitId: 'souleater', count: 4 }, { unitId: 'demon', count: 4 }, { unitId: 'souleater', count: 4 }, { unitId: 'demon', count: 4 }], reward: { gold: 4000, crystals: 12 }, cleared: false, campaignLevel: '1-5' },
   { id: '1-5-3', name: 'Теневые жатвы', type: 'combat', x: 10, y: 10, enemies: [{ unitId: 'souleater', count: 8 }, { unitId: 'vampire', count: 15 }], reward: { gold: 5000, crystals: 15 }, cleared: false, campaignLevel: '1-5' },
-  { id: '1-5-4', name: 'Пожиратели душ', type: 'combat', x: 90, y: 90, enemies: [{ unitId: 'souleater', count: 12 }, { unitId: 'skelet', count: 100 }], reward: { gold: 7000, crystals: 20 }, cleared: false, campaignLevel: '1-5' },
+  { id: '1-5-4', name: 'Пожиратели душ', type: 'combat', x: 90, y: 90, enemies: [{ unitId: 'souleater', count: 8 }, { unitId: 'souleater', count: 8 }, { unitId: 'skelet', count: 80 }, { unitId: 'skelet', count: 80 }], reward: { gold: 7000, crystals: 20 }, cleared: false, campaignLevel: '1-5' },
 
   // Level 1-6
   { id: '1-6-1', name: 'Озеро Гидр', type: 'combat', x: 35, y: 15, enemies: [{ unitId: 'hydra', count: 1 }, { unitId: 'vampire', count: 10 }], reward: { gold: 8000, crystals: 25 }, cleared: false, campaignLevel: '1-6' },
   { id: '1-6-2', name: 'Пещерные головы', type: 'combat', x: 65, y: 85, enemies: [{ unitId: 'hydra', count: 2 }, { unitId: 'demon', count: 5 }], reward: { gold: 10000, crystals: 30 }, cleared: false, campaignLevel: '1-6' },
-  { id: '1-6-3', name: 'Разрушители гор', type: 'combat', x: 15, y: 65, enemies: [{ unitId: 'hydra', count: 3 }, { unitId: 'souleater', count: 10 }], reward: { gold: 12000, crystals: 35 }, cleared: false, campaignLevel: '1-6' },
-  { id: '1-6-4', name: 'Осадный корпус', type: 'combat', x: 85, y: 35, enemies: [{ unitId: 'giant', count: 8 }, { unitId: 'hydra', count: 2 }], reward: { gold: 15000, crystals: 40 }, cleared: false, campaignLevel: '1-6' },
+  { id: '1-6-3', name: 'Разрушители гор', type: 'combat', x: 15, y: 65, enemies: [{ unitId: 'hydra', count: 2 }, { unitId: 'hydra', count: 2 }, { unitId: 'giant', count: 2 }, { unitId: 'giant', count: 2 }], reward: { gold: 12000, crystals: 35 }, cleared: false, campaignLevel: '1-6' },
+  { id: '1-6-4', name: 'Осадный корпус', type: 'combat', x: 85, y: 35, enemies: [{ unitId: 'giant', count: 8 }, { unitId: 'hydra', count: 2 }, { unitId: 'skelet', count: 100 }, { unitId: 'skelet', count: 100 }], reward: { gold: 15000, crystals: 40 }, cleared: false, campaignLevel: '1-6' },
   { id: '1-6-5', name: 'Великаны-лорды', type: 'combat', x: 50, y: 20, enemies: [{ unitId: 'giant', count: 10 }, { unitId: 'hydra', count: 3 }], reward: { gold: 18000, crystals: 50 }, cleared: false, campaignLevel: '1-6' },
 
   // Level 1-7

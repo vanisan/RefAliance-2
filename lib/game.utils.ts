@@ -33,7 +33,7 @@ export const getUpgradeCost = (buildingId: BuildingId, currentLevel: number): Re
     wood: Math.floor(info.baseCost.wood * multiplier),
     stone: Math.floor(info.baseCost.stone * multiplier),
     food: Math.floor(info.baseCost.food * multiplier),
-    crystals: 0,
+    crystals: Math.floor((info.baseCost.crystals || 0) * multiplier),
   };
 };
 
