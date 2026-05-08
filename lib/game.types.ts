@@ -95,7 +95,7 @@ export interface UnitInfo {
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_15' | 'heal_resurrect' | 'splash_50';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50';
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -187,9 +187,9 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     combatType: 'melee', special: 'double_attack', description: 'Скрытный убийца. Ближний бой. Атака: двойная.'
   },
   paladin: {
-    id: 'paladin', name: 'Паладин', hp: 200, attack: 20, defense: 30, minDamage: 15, maxDamage: 25, speed: 2, range: 1,
+    id: 'paladin', name: 'Паладин', hp: 200, attack: 20, defense: 50, minDamage: 15, maxDamage: 25, speed: 2, range: 1,
     cost: { gold: 800, food: 400, stone: 0, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/paladin.png',
-    combatType: 'melee', special: 'aura_def_15', description: 'Святой воин. Союзники в радиусе 1 кл. получают +15 защиты.'
+    combatType: 'melee', special: 'aura_def_20', description: 'Святой воин. Союзники в радиусе 1 кл. получают +20 защиты.'
   },
   driada: {
     id: 'driada', name: 'Дриада', hp: 130, attack: 15, defense: 10, minDamage: 10, maxDamage: 20, speed: 3, range: 4,

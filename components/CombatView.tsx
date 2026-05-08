@@ -129,7 +129,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     const effAttack = attacker.isEnemy ? attInfo.attack : Math.floor(attInfo.attack * atkMod);
     let effDefense = defender.isEnemy ? defInfo.defense : Math.floor(defInfo.defense * defMod);
     
-    // Paladin Aura (+15 Defense in 1 cell radius)
+    // Paladin Aura (+20 Defense in 1 cell radius)
     const defSize = defInfo.size || 1;
     const hasPaladinAura = currentUnits.some(u => {
       if (u.isEnemy !== defender.isEnemy || u.unitId !== 'paladin' || u.count <= 0) return false;
@@ -141,7 +141,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     });
     
     if (hasPaladinAura) {
-      effDefense += 15;
+      effDefense += 20;
     }
 
     const effMinDmg = attacker.isEnemy ? attInfo.minDamage : Math.floor(attInfo.minDamage * atkMod);
