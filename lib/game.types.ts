@@ -1,7 +1,7 @@
 export type ResourceType = 'gold' | 'stone' | 'wood' | 'food' | 'crystals';
 export type Resources = Record<ResourceType, number>;
 
-export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat';
+export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge';
 
 export interface Building {
   id: BuildingId;
@@ -56,9 +56,14 @@ export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
     baseCost: { gold: 400, wood: 300, stone: 300, food: 0, crystals: 0 }, costMultiplier: 2, 
     description: 'Исследования для армии' 
   },
+  forge: { 
+    id: 'forge', name: 'Кузня', icon: 'Hammer', image: '/buildings/mine.webp', // Using mine placeholder if forge image missing
+    baseCost: { gold: 1000, wood: 1000, stone: 1000, food: 0, crystals: 0 }, costMultiplier: 2, 
+    description: 'Позволяет покупать осадные орудия для защиты' 
+  },
 };
 
-export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid';
+export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower';
 
 export interface ArenaPlayer {
   id: string;
@@ -67,6 +72,8 @@ export interface ArenaPlayer {
   hpMod: number;
   atkMod: number;
   defMod: number;
+  resources?: Resources;
+  siegeUnits?: (UnitId | null)[]; // 4 slots
 }
 
 export interface ArenaMatchState {
@@ -225,6 +232,26 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     id: 'archidruid', name: 'Архидруид', hp: 500, attack: 80, defense: 50, minDamage: 100, maxDamage: 140, speed: 2, range: 5,
     cost: { gold: 8000, food: 250, crystals: 10, wood: 0, stone: 0 }, isEnemy: false, image: '/units/archiduid.png',
     combatType: 'ranged', special: 'splash_50', description: 'Верховный защитник природы. Дальний бой. Атака: сплеш-урон 50% в радиусе 1 кл.'
+  },
+  balista: {
+    id: 'balista', name: 'Баллиста', hp: 100, attack: 40, defense: 10, minDamage: 30, maxDamage: 50, speed: 0, range: 20,
+    cost: { gold: 1000, wood: 200, stone: 200, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/balista.png',
+    combatType: 'ranged', description: 'Осадное орудие. Атака через всё поле.'
+  },
+  elven_balista: {
+    id: 'elven_balista', name: 'Эльфийская баллиста', hp: 250, attack: 80, defense: 20, minDamage: 60, maxDamage: 100, speed: 0, range: 20,
+    cost: { gold: 3000, wood: 400, stone: 400, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/elvenbalista.png',
+    combatType: 'ranged', description: 'Улучшенное осадное орудие эльфов. Атака через всё поле.'
+  },
+  archer_tower: {
+    id: 'archer_tower', name: 'Башня лучников', hp: 600, attack: 200, defense: 40, minDamage: 150, maxDamage: 250, speed: 0, range: 20,
+    cost: { gold: 10000, wood: 800, stone: 800, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/archertower.png',
+    combatType: 'ranged', description: 'Мощная оборонительная башня. Атака через всё поле.'
+  },
+  mage_tower: {
+    id: 'mage_tower', name: 'Башня магов', hp: 1000, attack: 400, defense: 60, minDamage: 300, maxDamage: 500, speed: 0, range: 20,
+    cost: { gold: 35000, wood: 2000, stone: 2000, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/magetower.png',
+    combatType: 'ranged', description: 'Вершина магической защиты. Атака через всё поле.'
   },
 };
 

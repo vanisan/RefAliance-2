@@ -25,6 +25,7 @@ interface GameState {
   mapRefreshTimer: number;
   equipment: Record<EquipmentSlot, EquipmentItem | null>;
   currentCampaignLevel: string;
+  siegeUnits: (UnitId | null)[];
   user: User | null;
   authLoading: boolean;
   getLeaderboard: () => Promise<any[]>;
@@ -32,9 +33,10 @@ interface GameState {
   
   // Actions
   setResources: (res: Resources | ((prev: Resources) => Resources)) => void;
-  setBuildings: (b: (Building | null)[]) => void;
-  setArmy: (army: Record<UnitId, number>) => void;
-  setMapNodes: (nodes: MapNode[]) => void;
+  setBuildings: (b: (Building | null)[] | ((prev: (Building | null)[]) => (Building | null)[])) => void;
+  setArmy: (army: Record<UnitId, number> | ((prev: Record<UnitId, number>) => Record<UnitId, number>)) => void;
+  setSiegeUnits: (units: (UnitId | null)[] | ((prev: (UnitId | null)[]) => (UnitId | null)[])) => void;
+  setMapNodes: (nodes: MapNode[] | ((prev: MapNode[]) => MapNode[])) => void;
   setPalaceLevel: (lv: number) => void;
   setEquipment: (eq: Record<EquipmentSlot, EquipmentItem | null> | ((prev: Record<EquipmentSlot, EquipmentItem | null>) => Record<EquipmentSlot, EquipmentItem | null>)) => void;
   setPlayerName: (name: string) => void;
@@ -47,8 +49,10 @@ const defaultArmy: Record<UnitId, number> = {
   knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
   goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
   assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
-  banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
+  banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
+  balista: 0, elven_balista: 0, archer_tower: 0, mage_tower: 0
 };
+const defaultSiegeUnits: (UnitId | null)[] = [null, null, null, null];
 
 const GameContext = createContext<GameState | null>(null);
 
@@ -58,6 +62,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [palaceLevel, setPalaceLevel] = useState(1);
   const [buildings, setBuildings] = useState<(Building | null)[]>(Array(16).fill(null));
   const [army, setArmy] = useState<Record<UnitId, number>>(defaultArmy);
+  const [siegeUnits, setSiegeUnits] = useState<(UnitId | null)[]>(defaultSiegeUnits);
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null, chest: null, boots: null, ring: null
@@ -90,6 +95,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setPalaceLevel(1);
     setBuildings(Array(16).fill(null));
     setArmy(defaultArmy);
+    setSiegeUnits(defaultSiegeUnits);
     setMapNodes(INITIAL_MAP_NODES);
     setEquipment({ weapon: null, chest: null, boots: null, ring: null });
     setCurrentCampaignLevel("1-1");
@@ -102,6 +108,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         palaceLevel: 1,
         buildings: Array(16).fill(null),
         army: defaultArmy,
+        siegeUnits: defaultSiegeUnits,
         armyPower: calculateArmyPower(defaultArmy),
         mapNodes: INITIAL_MAP_NODES,
         equipment: { weapon: null, chest: null, boots: null, ring: null },
@@ -151,6 +158,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 palaceLevel: 1,
                 buildings: Array(16).fill(null),
                 army: defaultArmy,
+                siegeUnits: defaultSiegeUnits,
                 armyPower: calculateArmyPower(defaultArmy),
                 mapNodes: INITIAL_MAP_NODES,
                 equipment: { weapon: null, chest: null, boots: null, ring: null },
@@ -163,6 +171,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setPalaceLevel(1);
               setBuildings(Array(16).fill(null));
               setArmy(defaultArmy);
+              setSiegeUnits(defaultSiegeUnits);
               setMapNodes(INITIAL_MAP_NODES);
               setEquipment({ weapon: null, chest: null, boots: null, ring: null });
               setCurrentCampaignLevel("1-1");
@@ -172,6 +181,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setPalaceLevel(data.palaceLevel || 1);
               setBuildings(data.buildings || Array(16).fill(null));
               setArmy({ ...defaultArmy, ...(data.army || {}) });
+              setSiegeUnits(data.siegeUnits || defaultSiegeUnits);
               setCurrentCampaignLevel(data.currentCampaignLevel || "1-1");
               
               // Map migration/refresh
@@ -245,6 +255,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               palaceLevel: 1,
               buildings: Array(16).fill(null),
               army: defaultArmy,
+              siegeUnits: defaultSiegeUnits,
               armyPower: calculateArmyPower(defaultArmy),
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
@@ -277,6 +288,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           palaceLevel,
           buildings,
           army,
+          siegeUnits,
           armyPower,
           mapNodes,
           equipment,
@@ -345,6 +357,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       palaceLevel, setPalaceLevel,
       buildings, setBuildings,
       army, setArmy,
+      siegeUnits, setSiegeUnits,
       mapNodes, setMapNodes,
       mapRefreshTimer,
       equipment, setEquipment,

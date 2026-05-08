@@ -48,7 +48,7 @@ interface AttackEffect {
 }
 
 export default function ArenaView({ onClose }: ArenaViewProps) {
-  const { user, army, palaceLevel, playerName, equipment, setResources, resources } = useGame();
+  const { user, army, setArmy, palaceLevel, playerName, equipment, setResources, resources, siegeUnits } = useGame();
   
   const [view, setView] = useState<'lobby' | 'battle' | 'results'>('lobby');
   const [lobbyPlayers, setLobbyPlayers] = useState<any[]>([]);
@@ -136,7 +136,9 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       army,
       hpMod,
       atkMod,
-      defMod
+      defMod,
+      siegeUnits,
+      resources
     };
 
     lobbyChannelRef.current?.send({
@@ -163,7 +165,9 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       army,
       hpMod,
       atkMod,
-      defMod
+      defMod,
+      siegeUnits,
+      resources
     };
     
     // We are player 1
@@ -173,11 +177,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const startMatch = (id: string, p0: ArenaPlayer, role: 0 | 1, p1?: ArenaPlayer) => {
     if (!supabase) return;
     setMyIndex(role);
+    
+    // Defender (P1) goes first if they have siege units, or just by default as requested
     const matchData: ArenaMatchState = {
       id,
       players: (role === 0 ? [p0, null] : [p0, p1]) as [ArenaPlayer, ArenaPlayer],
       status: 'waiting',
-      turn: Math.random() > 0.5 ? 0 : 1,
+      turn: 1, // Defender is player 1 in the invitation flow
       timer: TURN_TIME,
       activeUnitId: null,
       winner: null
@@ -332,12 +338,9 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     Object.entries(p0.army).forEach(([id, _count]) => {
       const count = Number(_count);
       const info = UNITS_INFO[id as UnitId];
-      if (!info) {
-        console.warn('DEBUG: Unknown unit id found in army:', id);
-        return;
-      }
+      if (!info) return;
       
-      if (count > 0) {
+      if (count > 0 && info.speed > 0) { // Don't include siege units in normal army list
         initialUnits.push({
           id: `p0-${id}`,
           unitId: id as UnitId,
@@ -353,18 +356,35 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       }
     });
 
+    // P0 Siege Units (If any)
+    if (p0.siegeUnits) {
+       p0.siegeUnits.forEach((sId, idx) => {
+         if (sId) {
+            const info = UNITS_INFO[sId];
+            initialUnits.push({
+              id: `p0-siege-${idx}`,
+              unitId: sId,
+              count: 1,
+              startCount: 1,
+              hp: Math.floor(info.hp * p0.hpMod),
+              playerIndex: 0,
+              x: 0,
+              y: idx * 2, // Distributed
+              hasActed: false
+            });
+         }
+       });
+    }
+
     // P1 - Right
     if (p1) {
       let y1 = 0;
       Object.entries(p1.army).forEach(([id, _count]) => {
         const count = Number(_count);
         const info = UNITS_INFO[id as UnitId];
-        if (!info) {
-          console.warn('DEBUG: Unknown unit id found in p1 army:', id);
-          return;
-        }
+        if (!info) return;
 
-        if (count > 0) {
+        if (count > 0 && info.speed > 0) {
           initialUnits.push({
             id: `p1-${id}`,
             unitId: id as UnitId,
@@ -379,6 +399,26 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           y1 += (info.size || 1);
         }
       });
+
+      // P1 Siege Units (Defender usually has these)
+      if (p1.siegeUnits) {
+        p1.siegeUnits.forEach((sId, idx) => {
+          if (sId) {
+             const info = UNITS_INFO[sId];
+             initialUnits.push({
+               id: `p1-siege-${idx}`,
+               unitId: sId,
+               count: 1,
+               startCount: 1,
+               hp: Math.floor(info.hp * p1.hpMod),
+               playerIndex: 1,
+               x: GRID_WIDTH - (info.size || 1),
+               y: idx * 2,
+               hasActed: false
+             });
+          }
+        });
+      }
     }
 
     return initialUnits;
@@ -407,6 +447,26 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
     return () => clearInterval(interval);
   }, [view, turn, myIndex, gameOver, match?.status, units, activeUnitId]);
+
+  // Anti-cheat: sync army losses in real-time
+  useEffect(() => {
+    if (gameOver !== null || units.length === 0 || view !== 'battle') return;
+    
+    setArmy(prev => {
+      const myPlayerUnitsInBattle = units.filter(u => u.playerIndex === myIndex);
+      let changed = false;
+      const next = { ...prev };
+      
+      myPlayerUnitsInBattle.forEach(u => {
+        if (next[u.unitId] !== u.count) {
+          next[u.unitId] = u.count;
+          changed = true;
+        }
+      });
+      
+      return changed ? next : prev;
+    });
+  }, [units, myIndex, gameOver, view, setArmy]);
 
   const skipTurn = () => {
     let updatedUnits = units;
@@ -655,8 +715,32 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const claimReward = () => {
-    if (gameOver === 'win') {
-      setResources(addResources(resources, { crystals: 50 } as any));
+    if (gameOver === 'win' && match) {
+      const opponent = match.players[myIndex === 0 ? 1 : 0];
+      if (opponent && opponent.resources) {
+        const loot: any = {
+           gold: Math.floor(opponent.resources.gold * 0.5),
+           wood: Math.floor(opponent.resources.wood * 0.5),
+           stone: Math.floor(opponent.resources.stone * 0.5),
+           food: Math.floor(opponent.resources.food * 0.5),
+           crystals: Math.floor(opponent.resources.crystals * 0.5),
+        };
+        setResources(prev => addResources(prev, loot));
+        addLog(`Вы захватили 50% ресурсов врага!`);
+      } else {
+        // Fallback
+        setResources(prev => addResources(prev, { crystals: 50 } as any));
+      }
+    } else if (gameOver === 'loss' && match) {
+      // Lose 50% of your resources
+      setResources(prev => ({
+        gold: Math.floor(prev.gold * 0.5),
+        wood: Math.floor(prev.wood * 0.5),
+        stone: Math.floor(prev.stone * 0.5),
+        food: Math.floor(prev.food * 0.5),
+        crystals: Math.floor(prev.crystals * 0.5),
+      }));
+      addLog("Вы потеряли 50% ресурсов при поражении!");
     }
     onClose();
   };
@@ -968,14 +1052,19 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       </h2>
       <p className="text-stone-400 text-sm mb-6">
         {gameOver === 'win' 
-          ? 'Вы доказали свое превосходство и заслужили награду в 50 кристаллов.' 
-          : 'Ваши войска пали, но дух не сломлен. Возвращайтесь сильнее.'}
+          ? 'Вы доказали свое превосходство и разграбили замок противника!' 
+          : 'Ваши войска пали под стенами вражьего замка. Возвращайтесь сильнее.'}
       </p>
       
-      {gameOver === 'win' && (
-        <div className="bg-indigo-950/30 border border-indigo-500 p-3 rounded mb-6 flex flex-col items-center">
-           <span className="text-xs text-indigo-300 font-bold uppercase tracking-widest">ВАША НАГРАДА</span>
-           <span className="text-2xl font-black text-indigo-400 animate-pulse">50 💎 Кристаллов</span>
+      {gameOver === 'win' && match && (
+        <div className="bg-indigo-950/30 border border-indigo-500 p-3 rounded mb-6 flex flex-col items-center w-full">
+           <span className="text-xs text-indigo-300 font-bold uppercase tracking-widest mb-2">ЗАХВАЧЕНО РЕСУРСОВ (50%)</span>
+           <div className="grid grid-cols-2 gap-4 text-xs font-bold text-stone-200">
+             <span>Золото: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.gold || 0) * 0.5)}</span>
+             <span>Дерево: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.wood || 0) * 0.5)}</span>
+             <span>Камень: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.stone || 0) * 0.5)}</span>
+             <span>Еда: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.food || 0) * 0.5)}</span>
+           </div>
         </div>
       )}
 

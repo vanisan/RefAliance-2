@@ -597,31 +597,38 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     }
   };
 
-  const handleFinish = () => {
-    if (gameOver === 'victory') {
-      // Save remaining army
-      const newArmy = { ...army };
+  // Anti-cheat: sync army losses to global state in real-time
+  useEffect(() => {
+    if (gameOver !== null || units.length === 0) return;
+    
+    setArmy(prev => {
+      const playerUnitsInBattle = units.filter(u => !u.isEnemy);
+      let changed = false;
+      const next = { ...prev };
       
-      // Reset army counts to 0 for those in combat, then add survivors
-      // We only take types we deployed
-      Object.keys(newArmy).forEach(id => {
-        const u = id as UnitId;
-        const total = units.find(x => x.unitId === u && !x.isEnemy)?.count || 0;
-        // In a real game we'd add back survivors to reserves that didn't go. Here we override.
-      });
-      // Actually MVP: update army exactly as left on field
-      const nextArmy: Record<UnitId, number> = { 
-        knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
-        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
-        banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
-      };
-      units.forEach(u => {
-        if (!u.isEnemy && u.count > 0) {
-          nextArmy[u.unitId] = (nextArmy[u.unitId] || 0) + u.count;
+      playerUnitsInBattle.forEach(u => {
+        if (next[u.unitId] !== u.count) {
+          next[u.unitId] = u.count;
+          changed = true;
         }
       });
-      setArmy(nextArmy);
+      
+      return changed ? next : prev;
+    });
+  }, [units, setArmy, gameOver]);
+
+  const handleFinish = () => {
+    if (gameOver === 'victory') {
+      // Final sync - although real-time sync should have covered it
+      setArmy(prev => {
+        const next = { ...prev };
+        units.forEach(u => {
+          if (!u.isEnemy) {
+            next[u.unitId] = u.count;
+          }
+        });
+        return next;
+      });
       
       // Reward
       setResources(addResources(resources, node.reward));
@@ -637,13 +644,16 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       // Mark node cleared
       setMapNodes(mapNodes.map(m => m.id === node.id ? { ...m, cleared: true } : m));
     } else if (gameOver === 'defeat') {
-      // Lose all deployed troops
-      setArmy({ 
-        knight: 0, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
-        goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-        assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
-        banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
-      }); // Hardcore loss
+      // Final sync for defeat - preserve reserves but record combat losses
+      setArmy(prev => {
+        const next = { ...prev };
+        units.forEach(u => {
+          if (!u.isEnemy) {
+            next[u.unitId] = u.count;
+          }
+        });
+        return next;
+      });
     }
     onEnd();
   };

@@ -19,7 +19,8 @@ export default function ArmyView() {
   const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
     knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, assassin: 1, goblin: 0, orc: 0,
     skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0, driada: 1, paladin: 1,
-    banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0
+    banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
+    balista: 1, elven_balista: 1, archer_tower: 1, mage_tower: 1
   });
 
   const handleHire = (unitId: UnitId) => {
