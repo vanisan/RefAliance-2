@@ -119,6 +119,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const invitePlayer = (player: any) => {
     if (!user) return;
     const totalUnits = Object.values(army).reduce((acc, count) => acc + count, 0);
+    console.log('DEBUG: invitePlayer, army:', army, 'totalUnits:', totalUnits);
     if (totalUnits === 0) {
       alert("У вас нет армии! Сначала наймите войска.");
       return;
@@ -205,6 +206,9 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         setRound(payload.round);
         setTimer(payload.timer);
         setActiveUnitId(payload.activeUnitId);
+        if (payload.status) {
+          setMatch(prev => prev ? { ...prev, status: payload.status } : null);
+        }
       })
       .on('broadcast', { event: 'move' }, ({ payload }) => {
         handleRemoteMove(payload.unitId, payload.x, payload.y);
@@ -248,7 +252,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         turn: m.turn,
         round: 1,
         timer: TURN_TIME,
-        activeUnitId: nextActiveId
+        activeUnitId: nextActiveId,
+        status: 'playing'
       }
     });
 
@@ -276,11 +281,17 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     
     // P0 - Left
     let y0 = 0;
-    console.log('p0 army:', p0.army);
+    console.log('DEBUG: ENTER initializeUnits p0 id:', p0.id, 'p1 id:', p1?.id, 'p0 army:', p0.army, 'p1 army:', p1?.army);
     Object.entries(p0.army).forEach(([id, count]) => {
       const info = UNITS_INFO[id as UnitId];
-      console.log('Checking unit:', id, 'count:', count, 'info:', info);
+      if (!info) {
+        console.warn('DEBUG: Unknown unit id found in army:', id);
+        return;
+      }
+      
+      console.log('DEBUG: p0 checking unit id:', id, 'count:', count, 'info:', info);
       if (count > 0 && y0 + (info.size || 1) <= GRID_HEIGHT) {
+        console.log('DEBUG: p0 adding unit:', id);
         initialUnits.push({
           id: `p0-${id}`,
           unitId: id as UnitId,
@@ -301,7 +312,14 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       let y1 = 0;
       Object.entries(p1.army).forEach(([id, count]) => {
         const info = UNITS_INFO[id as UnitId];
+        if (!info) {
+          console.warn('DEBUG: Unknown unit id found in p1 army:', id);
+          return;
+        }
+
+        console.log('DEBUG: p1 checking unit id:', id, 'count:', count, 'info:', info);
         if (count > 0 && y1 + (info.size || 1) <= GRID_HEIGHT) {
+          console.log('DEBUG: p1 adding unit:', id);
           initialUnits.push({
             id: `p1-${id}`,
             unitId: id as UnitId,
@@ -318,6 +336,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       });
     }
 
+    console.log('DEBUG: EXIT initializeUnits, units:', initialUnits);
     return initialUnits;
   };
 
