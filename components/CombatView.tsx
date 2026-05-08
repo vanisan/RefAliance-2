@@ -66,6 +66,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const [effects, setEffects] = useState<AttackEffect[]>([]);
   const [selectedUnitInfo, setSelectedUnitInfo] = useState<CombatUnit | null>(null);
   const [infoMode, setInfoMode] = useState(false);
+  const [isHealMode, setIsHealMode] = useState(false);
 
   // Initialize teams
   const [units, setUnits] = useState<CombatUnit[]>(() => {
@@ -327,6 +328,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   };
 
   const determineNextActiveUnit = (currentUnits: CombatUnit[]) => {
+    setIsHealMode(false);
     if (gameOver || !currentUnits.length) return;
     
     const aliveUnits = currentUnits.filter(u => u.count > 0);
@@ -438,6 +440,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
     addLog(`Дриада воскрешает ${healAmount} ${UNITS_INFO[targetPos.unitId].name}!`);
     setUnits(updatedUnits);
+    setIsHealMode(false);
     
     // Add visual effect
     const tx = targetPos.x;
@@ -452,6 +455,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   };
 
   const handleCellClick = (x: number, y: number) => {
+    if (isHealMode) setIsHealMode(false);
     const targetPos = getUnitAt(x, y);
 
     if (infoMode) {
@@ -566,8 +570,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       
       const isPickableTarget = turn === 'player' && activeUnit && uUnderTile?.isEnemy && dist <= (UNITS_INFO[activeUnit.unitId]?.range || 1);
       
-      const isPickableHealTarget = turn === 'player' && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && !uUnderTile.isEnemy && uUnderTile.count < uUnderTile.startCount;
-      const isUnhealableTarget = turn === 'player' && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && !uUnderTile.isEnemy && uUnderTile.count >= uUnderTile.startCount;
+      const isPickableHealTarget = turn === 'player' && activeUnit && activeUnit.unitId === 'driada' && isHealMode && uUnderTile && !uUnderTile.isEnemy && uUnderTile.count < uUnderTile.startCount;
+      const isUnhealableTarget = turn === 'player' && activeUnit && activeUnit.unitId === 'driada' && isHealMode && uUnderTile && !uUnderTile.isEnemy && uUnderTile.count >= uUnderTile.startCount;
 
       const isPaladinAuraZone = activeUnit && activeUnit.unitId === 'paladin' && getManhattanDist(activeUnit.x, activeUnit.y, activeSize, x, y, 1) <= 1;
 
@@ -653,21 +657,6 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           <span className="text-[10px] text-stone-500 font-mono uppercase">Раунд {round}</span>
         </div>
       </div>
-
-      {/* Driada Tip */}
-      <AnimatePresence>
-        {turn === 'player' && units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-20 left-1/2 -translate-x-1/2 bg-blue-950/90 border border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] text-blue-200 px-4 py-2 rounded flex flex-col items-center justify-center text-xs font-bold text-center z-[100]"
-          >
-            СКИЛЛ ДРИАДЫ: Кликните на союзника (синий цвет), чтобы воскресить павших.
-            <span className="text-red-400/80 text-[9px] mt-0.5">Красные отряды полны или не воскрешаются</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Battlefield Grid */}
       <div className="bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
@@ -824,25 +813,49 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         )}
       </AnimatePresence>
 
-      <div className="mt-4 w-full flex flex-col items-center gap-2">
-        {/* Info Mode Toggle */}
-        <button 
-          onClick={() => {
-            setInfoMode(!infoMode);
-            setSelectedUnitInfo(null);
-          }}
-          className={cn(
-            "px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest border transition-all shadow-lg active:scale-95",
-            infoMode 
-              ? "bg-red-500/20 border-red-500 text-red-500 shadow-red-500/20" 
-              : "bg-green-500/20 border-green-500 text-green-500 shadow-green-500/20"
+      <div className="mt-4 w-full max-w-[500px] flex flex-col gap-2">
+        {/* Battle Controls */}
+        <div className="flex flex-wrap gap-2">
+          <button 
+            onClick={() => {
+              setInfoMode(!infoMode);
+              setSelectedUnitInfo(null);
+            }}
+            className={cn(
+              "flex-1 px-2 py-2 rounded font-black text-[10px] uppercase tracking-widest border transition-all shadow active:scale-95 min-w-[120px]",
+              infoMode 
+                ? "bg-red-500/20 border-red-500 text-red-500 shadow-red-500/20" 
+                : "bg-green-500/20 border-green-500 text-green-500 shadow-green-500/20"
+            )}
+          >
+            {infoMode ? "Отмена Инфо" : "Инфо (Осмотр)"}
+          </button>
+          
+          {turn === 'player' && (
+            <>
+              <button 
+                onClick={() => {
+                  if (activeUnitId) {
+                    const updatedUnits = units.map(u => u.id === activeUnitId ? { ...u, hasActed: true } : u);
+                    determineNextActiveUnit(updatedUnits);
+                  }
+                }}
+                className="flex-1 px-2 py-2 bg-stone-800 border border-stone-700 text-stone-300 rounded font-black text-[10px] uppercase hover:bg-stone-700 min-w-[80px]"
+              >
+                Пас
+              </button>
+              
+              {units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
+                <div onClick={() => setIsHealMode(true)} className={cn("flex-1 min-w-[60px] flex items-center justify-center bg-blue-900/30 border border-blue-500 rounded p-1 cursor-pointer transition-all hover:bg-blue-800/50", isHealMode && "bg-blue-600/50 border-blue-400")} title="Активировать исцеление">
+                  <img src="/units/driadaheal.png" className={cn("w-6 h-6", !isHealMode && "animate-pulse")} alt="Heal Skill" />
+                </div>
+              )}
+            </>
           )}
-        >
-          {infoMode ? "❌ ЗАКРЫТЬ ИНФО" : "🟢 ИНФО (ОСМОТР)"}
-        </button>
+        </div>
 
         {/* Combat Log */}
-        <div className="w-[95%] max-w-[500px] h-24 wow-panel p-2 overflow-y-auto text-[10px] font-mono flex flex-col-reverse text-stone-400">
+        <div className="w-full h-24 wow-panel p-2 overflow-y-auto text-[10px] font-mono flex flex-col-reverse text-stone-400">
           {log.map((m, i) => (
             <div key={i} className={i === 0 ? "text-stone-200 font-bold" : ""}>
               &gt; {m}

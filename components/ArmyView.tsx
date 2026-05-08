@@ -9,10 +9,10 @@ export default function ArmyView() {
   
   // Find highest barracks level to determine allowed units or hiring speed
   const barracksLevel = buildings.reduce((max, b) => (b?.id === 'barracks' ? Math.max(max, b.level) : max), 0);
-  const farmLevel = buildings.reduce((max, b) => (b?.id === 'farm' ? Math.max(max, b.level) : max), 0);
+  const totalFarmLevels = buildings.filter(b => b?.id === 'farm').reduce((acc, b) => acc + (b?.level || 0), 0);
   
-  const maxTroops = 50 + farmLevel * 10;
-  const currentTroops = Object.values(army).reduce((acc, count) => acc + count, 0);
+  const maxTroops = 50 + totalFarmLevels * 10;
+  const currentTroops = Object.values(army).reduce((acc, count) => acc + Number(count), 0);
 
   const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
     knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, assassin: 1, goblin: 0, orc: 0,
@@ -38,7 +38,7 @@ export default function ArmyView() {
     setResources(deductResources(resources, totalCost));
     setArmy({
       ...army,
-      [unitId]: (army[unitId] || 0) + count
+      [unitId]: Number(army[unitId] || 0) + Number(count)
     });
   };
 
@@ -138,8 +138,9 @@ export default function ArmyView() {
                 
                 <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-lg border border-stone-800 shrink-0">
                   <button onClick={() => updateCount(unitId, false)} className="w-6 h-6 bg-stone-800 rounded text-stone-300 font-bold hover:bg-stone-700 transition-colors">-</button>
-                  <span className="font-mono font-bold w-5 text-center text-xs text-stone-200">{formatNumber(count)}</span>
+                  <span className="font-mono font-bold w-10 text-center text-xs text-stone-200">{formatNumber(count)}</span>
                   <button onClick={() => updateCount(unitId, true)} className="w-6 h-6 bg-stone-800 rounded text-stone-300 font-bold hover:bg-stone-700 transition-colors">+</button>
+                  <button onClick={() => setHireCounts(prev => ({...prev, [unitId]: (prev[unitId] || 1) * 5}))} className="w-6 h-6 bg-stone-800 rounded text-amber-500 font-bold hover:bg-stone-700 transition-colors text-[9px]">x5</button>
                 </div>
               </div>
 
@@ -152,7 +153,7 @@ export default function ArmyView() {
                   disabled={!canAfford || count < 1 || !hasSpace}
                   className={`px-5 py-2 wow-button text-[10px] uppercase font-black tracking-widest ${!hasSpace && canAfford ? 'opacity-50 !bg-red-900/50' : ''}`}
                 >
-                  {hasSpace ? 'Нанять' : 'Нет мест'}
+                  {hasSpace ? 'Нанять' : `Мест нет (${currentTroops}/${maxTroops})`}
                 </button>
               </div>
             </div>

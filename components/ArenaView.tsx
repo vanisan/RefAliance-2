@@ -186,17 +186,20 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     channel
       .on('broadcast', { event: 'player_joined' }, ({ payload }) => {
         if (role === 0) {
-          setMatch(prev => {
-            if (!prev) return null;
-            const updated: ArenaMatchState = { 
-              ...prev, 
-              players: [prev.players[0], payload.player] as [ArenaPlayer, ArenaPlayer], 
-              status: 'playing' 
-            };
-            // Broadcast full init state if we are the host
-            syncFullState(updated);
-            return updated;
-          });
+          // Instead of doing state side-effects inside setMatch, we calculate it here
+          // But we need the current match state (p0). 
+          // `p0` is in the closure of startMatch.
+          const updated: ArenaMatchState = {
+            id,
+            players: [p0, payload.player],
+            status: 'playing',
+            turn: matchData.turn,
+            timer: TURN_TIME,
+            activeUnitId: null,
+            winner: null
+          };
+          setMatch(updated);
+          syncFullState(updated);
           addLog(`Игрок ${payload.player.name} вошел в бой!`);
         }
       })
@@ -383,8 +386,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   }, [view, turn, myIndex, gameOver]);
 
   const skipTurn = () => {
-    if (!activeUnitId) return;
-    const updatedUnits = units.map(u => u.id === activeUnitId ? { ...u, hasActed: true } : u);
+    let updatedUnits = units;
+    if (activeUnitId) {
+      updatedUnits = units.map(u => u.id === activeUnitId ? { ...u, hasActed: true } : u);
+    }
     finishAction(updatedUnits);
   };
 
@@ -822,7 +827,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
                 onClick={() => setIsHealMode(true)}
                 className={cn("wow-button flex-1 p-2 flex items-center justify-center", isHealMode && "bg-blue-600")}
               >
-                <img src="/units/driada_heal.png" className="w-4 h-4" />
+                <img src="/units/driadaheal.png" className="w-4 h-4" />
               </button>
             )}
           </div>

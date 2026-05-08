@@ -7,7 +7,7 @@ export default function Header() {
   
   const totalFarmLevels = buildings.reduce((sum, b) => (b?.id === 'farm' ? sum + b.level : sum), 0);
   const maxTroops = 50 + totalFarmLevels * 10;
-  const currentTroops = Object.values(army).reduce((acc, count) => acc + count, 0);
+  const currentTroops = Object.values(army).reduce((acc, count) => acc + Number(count), 0);
 
   return (
     <div className="fixed top-2 left-2 right-2 z-50">
