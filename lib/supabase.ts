@@ -1,18 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://kyetmbqrwsmdejnlcpaf.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5ZXRtYnFyd3NtZGVqbmxjcGFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNDgzODcsImV4cCI6MjA5MzcyNDM4N30.rAqir4LwU19SyOtZCmTG2EwZg8GVQij_qgBDz1yW_xQ';
 
 const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(JSON.stringify({
-      message: "Supabase configuration is missing.",
-      details: "Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your project secrets (Gear icon -> Secrets).",
-      hint: "Make sure you have copied the correct URL and Anon Key from your Supabase dashboard.",
-      code: "MISSING_CONFIG"
-    }));
-  }
-  
   try {
     return await fetch(url, options);
   } catch (err: any) {
@@ -21,9 +12,7 @@ const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
   }
 };
 
-// Only initialize if keys are present to avoid crashing on startup
-export const supabase = (supabaseUrl && supabaseKey) 
-  ? createClient(supabaseUrl, supabaseKey, {
-      global: { fetch: customFetch }
-    })
-  : null;
+// Always initialize now that we have fallbacks
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: { fetch: customFetch }
+});

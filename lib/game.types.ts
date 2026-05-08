@@ -189,7 +189,7 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   paladin: {
     id: 'paladin', name: 'Паладин', hp: 200, attack: 20, defense: 50, minDamage: 15, maxDamage: 25, speed: 2, range: 1,
     cost: { gold: 800, food: 400, stone: 0, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/paladin.png',
-    combatType: 'melee', special: 'aura_def_20', description: 'Святой воин. Союзники в радиусе 1 кл. получают +20 защиты.'
+    combatType: 'melee', special: 'aura_def_20', description: 'Святой воин. Союзники в радиусе 1 кл. получают +20% защиты.'
   },
   driada: {
     id: 'driada', name: 'Дриада', hp: 130, attack: 15, defense: 10, minDamage: 10, maxDamage: 20, speed: 3, range: 4,

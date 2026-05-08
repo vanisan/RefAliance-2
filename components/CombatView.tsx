@@ -129,11 +129,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     const effAttack = attacker.isEnemy ? attInfo.attack : Math.floor(attInfo.attack * atkMod);
     let effDefense = defender.isEnemy ? defInfo.defense : Math.floor(defInfo.defense * defMod);
     
-    // Paladin Aura (+20 Defense in 1 cell radius)
+    // Paladin Aura (+20% Defense for allies in 1 cell radius)
     const defSize = defInfo.size || 1;
     const hasPaladinAura = currentUnits.some(u => {
       if (u.isEnemy !== defender.isEnemy || u.unitId !== 'paladin' || u.count <= 0) return false;
-      // Distance calculation considering size
+      // Paladins don't buff themselves with the aura for simplicity, or we can allow it
+      // if (u.id === defender.id) return false; 
+      
       const uSize = UNITS_INFO[u.unitId]?.size || 1;
       const dx = Math.max(0, Math.max(u.x - (defender.x + defSize - 1), defender.x - (u.x + uSize - 1)));
       const dy = Math.max(0, Math.max(u.y - (defender.y + defSize - 1), defender.y - (u.y + uSize - 1)));
@@ -141,7 +143,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     });
     
     if (hasPaladinAura) {
-      effDefense += 20;
+      effDefense = Math.floor(effDefense * 1.2);
     }
 
     const effMinDmg = attacker.isEnemy ? attInfo.minDamage : Math.floor(attInfo.minDamage * atkMod);
