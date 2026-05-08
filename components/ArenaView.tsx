@@ -49,6 +49,7 @@ interface AttackEffect {
 
 export default function ArenaView({ onClose }: ArenaViewProps) {
   const { user, army, palaceLevel, playerName, equipment, setResources, resources } = useGame();
+  console.log('ArenaView army:', army);
   const [view, setView] = useState<'lobby' | 'battle' | 'results'>('lobby');
   const [lobbyPlayers, setLobbyPlayers] = useState<any[]>([]);
   const [match, setMatch] = useState<ArenaMatchState | null>(null);
@@ -117,6 +118,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const invitePlayer = (player: any) => {
     if (!user) return;
+    const totalUnits = Object.values(army).reduce((acc, count) => acc + count, 0);
+    if (totalUnits === 0) {
+      alert("У вас нет армии! Сначала наймите войска.");
+      return;
+    }
+
     const matchId = `match_${user.id}_${Date.now()}`;
     const myPlayer: ArenaPlayer = {
       id: user.id,
@@ -226,8 +233,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     if (myIndex !== 0) return; // Only host syncs initial/round state
     
     let u = currentUnits || units;
-    if (u.length === 0) {
-      u = initializeUnits(m.players[0], m.players[1]!);
+    if (u.length === 0 && m.players[0] && m.players[1]) {
+      u = initializeUnits(m.players[0], m.players[1]);
       setUnits(u);
     }
 
@@ -264,13 +271,15 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     return readyUnits[0].id;
   };
 
-  const initializeUnits = (p0: ArenaPlayer, p1: ArenaPlayer): CombatUnit[] => {
+  const initializeUnits = (p0: ArenaPlayer, p1: ArenaPlayer | null): CombatUnit[] => {
     const initialUnits: CombatUnit[] = [];
     
     // P0 - Left
     let y0 = 0;
+    console.log('p0 army:', p0.army);
     Object.entries(p0.army).forEach(([id, count]) => {
       const info = UNITS_INFO[id as UnitId];
+      console.log('Checking unit:', id, 'count:', count, 'info:', info);
       if (count > 0 && y0 + (info.size || 1) <= GRID_HEIGHT) {
         initialUnits.push({
           id: `p0-${id}`,
@@ -288,24 +297,26 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     });
 
     // P1 - Right
-    let y1 = 0;
-    Object.entries(p1.army).forEach(([id, count]) => {
-      const info = UNITS_INFO[id as UnitId];
-      if (count > 0 && y1 + (info.size || 1) <= GRID_HEIGHT) {
-        initialUnits.push({
-          id: `p1-${id}`,
-          unitId: id as UnitId,
-          count,
-          startCount: count,
-          hp: Math.floor(info.hp * p1.hpMod),
-          playerIndex: 1,
-          x: GRID_WIDTH - (info.size || 1),
-          y: y1,
-          hasActed: false
-        });
-        y1 += (info.size || 1);
-      }
-    });
+    if (p1) {
+      let y1 = 0;
+      Object.entries(p1.army).forEach(([id, count]) => {
+        const info = UNITS_INFO[id as UnitId];
+        if (count > 0 && y1 + (info.size || 1) <= GRID_HEIGHT) {
+          initialUnits.push({
+            id: `p1-${id}`,
+            unitId: id as UnitId,
+            count,
+            startCount: count,
+            hp: Math.floor(info.hp * p1.hpMod),
+            playerIndex: 1,
+            x: GRID_WIDTH - (info.size || 1),
+            y: y1,
+            hasActed: false
+          });
+          y1 += (info.size || 1);
+        }
+      });
+    }
 
     return initialUnits;
   };
