@@ -236,7 +236,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   // --- BATTLE SYNC HELPERS ---
   const syncFullState = (m: ArenaMatchState, currentUnits?: CombatUnit[]) => {
-    if (myIndex !== 0) return; // Only host syncs initial/round state
+    if (!user || !m.players[0] || m.players[0].id !== user.id) return; // Only host syncs initial/round state
     
     let u = currentUnits || units;
     if (u.length === 0 && m.players[0] && m.players[1]) {
@@ -344,15 +344,16 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     
     const interval = setInterval(() => {
       setTimer(t => {
-        if (t <= 1) {
-          // Force turn switch if timer expires
-          if (turn === myIndex) {
-            skipTurn();
-          } else if (myIndex === 0) {
-            // Host skips guest's turn if it times out
-            skipTurn();
-          }
+        if (t <= 1 && turn === myIndex) {
+          // Force turn switch if timer expires for active player
+          skipTurn();
           return TURN_TIME;
+        } else if (t <= -2 && myIndex === 0) {
+          // Host skips guest's turn if they disconnected and failed to skip
+          skipTurn();
+          return TURN_TIME;
+        } else if (t <= -5) {
+           return 0; // Prevent runaway negative numbers for Guests
         }
         return t - 1;
       });
@@ -415,6 +416,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const [isHealMode, setIsHealMode] = useState(false);
+
+  useEffect(() => {
+    if (turn !== myIndex) {
+      setIsHealMode(false);
+    }
+  }, [turn, myIndex]);
 
   // --- ACTIONS ---
   const handleCellClick = (x: number, y: number) => {
@@ -748,7 +755,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
            <div className="wow-panel p-2 flex items-center gap-4">
               <div className="flex flex-col items-center">
                  <Timer className="w-4 h-4 text-amber-500 mb-0.5" />
-                 <span className={cn("text-xl font-black font-mono", timer <= 3 ? "text-red-500 animate-pulse" : "text-amber-500")}>{timer}s</span>
+                 <span className={cn("text-xl font-black font-mono", timer <= 3 ? "text-red-500 animate-pulse" : "text-amber-500")}>{Math.max(0, timer)}s</span>
               </div>
               <div className="h-10 w-px bg-stone-800"></div>
               <div className="flex flex-col items-center">

@@ -7,7 +7,11 @@ import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
 function handleSupabaseError(error: any) {
-  console.error('Supabase Error: ', JSON.stringify(error, null, 2));
+  if (error instanceof Error) {
+    console.error('Supabase Error:', error.message);
+  } else {
+    console.error('Supabase Error:', JSON.stringify(error, null, 2));
+  }
 }
 
 // ... GameState interfaces ...
@@ -115,6 +119,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserResult(session?.user || null);
+    }).catch(err => {
+      handleSupabaseError(err);
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
