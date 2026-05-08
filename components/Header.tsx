@@ -5,8 +5,10 @@ import { formatNumber } from '../lib/game.utils';
 export default function Header() {
   const { playerName, resources, army, buildings } = useGame();
   
-  const totalFarmLevels = buildings.reduce((sum, b) => (b?.id === 'farm' ? sum + b.level : sum), 0);
-  const maxTroops = 50 + totalFarmLevels * 10;
+  const farms = buildings.filter(b => b?.id === 'farm');
+  const farmsCount = farms.length;
+  const totalFarmLevels = farms.reduce((sum, b) => sum + (b?.level || 0), 0);
+  const maxTroops = 50 + (farmsCount * 10) + (totalFarmLevels * 20);
   const currentTroops = Object.values(army).reduce((acc, count) => acc + Number(count), 0);
 
   return (

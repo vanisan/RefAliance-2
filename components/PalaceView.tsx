@@ -168,7 +168,7 @@ export default function PalaceView() {
                   )}
                   {buildings[selectedCell]?.id === 'farm' && (
                     <div className="mt-1">
-                      <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">+ {buildings[selectedCell]!.level * 10} к Лимиту войск</p>
+                      <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">+ {10 + buildings[selectedCell]!.level * 20} к Лимиту войск</p>
                     </div>
                   )}
                 </div>
@@ -223,7 +223,7 @@ export default function PalaceView() {
                         </div>
                       )}
                       {info.id === 'farm' && (
-                        <div className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest">+10 к Лимиту войск</div>
+                        <div className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest">+30 к Лимиту войск</div>
                       )}
                       <div className="mt-1 flex items-center justify-between w-full">
                         <span className="text-[9px] uppercase font-bold tracking-widest text-stone-500">Стоимость</span>

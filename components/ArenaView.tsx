@@ -104,7 +104,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
               id: user.id,
               name: playerName || user.email?.split('@')[0],
               palaceLevel,
-              armyPower: Object.values(army).reduce((a, b) => a + b, 0)
+              armyPower: Object.values(army).reduce((a, b) => a + (Number(b) || 0), 0)
             }
           });
         }
@@ -183,6 +183,29 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     const channel = supabase.channel(`arena:match:${id}`);
     
     channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const presenceCount = Object.keys(state).length;
+        // If we are playing and someone left
+        if (view === 'battle' && !gameOver && presenceCount < 2 && match?.status === 'playing') {
+          // Someone left
+          addLog("Противник покинул поле боя! Техническая победа.");
+          setGameOver('win');
+          channel.send({ type: 'broadcast', event: 'surrender', payload: { from: user?.id } });
+        }
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        if (view === 'battle' && !gameOver && match?.status === 'playing') {
+          addLog("Противник покинул бой.");
+          setGameOver('win');
+        }
+      })
+      .on('broadcast', { event: 'surrender' }, () => {
+        if (!gameOver) {
+          addLog("Бой завершен. Противник сдался.");
+          setGameOver('loss');
+        }
+      })
       .on('broadcast', { event: 'player_joined' }, ({ payload }) => {
         if (role === 0) {
           // Instead of doing state side-effects inside setMatch, we calculate it here
@@ -232,6 +255,15 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       });
 
     channelRef.current = channel;
+
+    // Handle surrender on page close
+    const handleUnload = () => {
+      channel.send({ type: 'broadcast', event: 'surrender', payload: { from: user?.id } });
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+    };
   };
 
   // --- BATTLE SYNC HELPERS ---
@@ -263,15 +295,23 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     setActiveUnitId(nextActiveId);
   };
 
-  const getNextActiveUnitId = (currentUnits: CombatUnit[]): string | null => {
+  const getNextActiveUnitId = (currentUnits: CombatUnit[], lastPlayerIndex?: number): string | null => {
     const readyUnits = currentUnits.filter(u => u.count > 0 && !u.hasActed);
     if (readyUnits.length === 0) return null;
     
+    const targetPlayerIndex = lastPlayerIndex === 0 ? 1 : 0;
+
     readyUnits.sort((a,b) => {
       const infoA = UNITS_INFO[a.unitId];
       const infoB = UNITS_INFO[b.unitId];
+      
+      // 1. Primary sort: Speed
       if (infoA.speed !== infoB.speed) return infoB.speed - infoA.speed;
-      if (a.playerIndex !== b.playerIndex) return a.playerIndex - b.playerIndex;
+      
+      // 2. Tie breaker: Alternating Player Index
+      if (a.playerIndex === targetPlayerIndex && b.playerIndex !== targetPlayerIndex) return -1;
+      if (b.playerIndex === targetPlayerIndex && a.playerIndex !== targetPlayerIndex) return 1;
+      
       return 0;
     });
 
@@ -371,7 +411,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const finishAction = (updatedUnits: CombatUnit[]) => {
-    const nextId = getNextActiveUnitId(updatedUnits);
+    const nextId = getNextActiveUnitId(updatedUnits, turn);
     let nextTurn = turn;
     let nextRound = round;
     let finalUnits = updatedUnits;
@@ -683,53 +723,73 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     const gridCells = [];
     for (let y = 0; y < GRID_HEIGHT; y++) {
       for (let x = 0; x < GRID_WIDTH; x++) {
-        const u = getUnitAt(x, y);
-        const activeUnit = units.find(act => act.id === activeUnitId);
+        const uUnderTile = getUnitAt(x, y);
+        const activeUnit = activeUnitId ? units.find(act => act.id === activeUnitId) : null;
         const info = activeUnit ? UNITS_INFO[activeUnit.unitId] : null;
         const size = info?.size || 1;
         
-        const dist = activeUnit ? (Math.max(0, Math.max(x - (activeUnit.x + size - 1), activeUnit.x - (x + 1 - 1))) + Math.max(0, Math.max(y - (activeUnit.y + size - 1), activeUnit.y - (y + 1 - 1)))) : 99;
+        const dx = Math.max(0, Math.max(x - (activeUnit?.x || 0 + size - 1), (activeUnit?.x || 0) - (x + 1 - 1)));
+        const dy = Math.max(0, Math.max(y - (activeUnit?.y || 0 + size - 1), (activeUnit?.y || 0) - (y + 1 - 1)));
         
-        const isAllowedMove = turn === myIndex && activeUnit && !u && dist <= (info?.speed || 0) && isAreaFree(x, y, size, activeUnit.id, units);
-        const isTarget = turn === myIndex && activeUnit && u && u.playerIndex !== myIndex && dist <= (info?.range || 0);
+        const activeSize = activeUnit ? (UNITS_INFO[activeUnit.unitId].size || 1) : 1;
+        const dist = activeUnit ? (Math.max(0, Math.max(x - (activeUnit.x + activeSize - 1), activeUnit.x - (x + 1 - 1))) + Math.max(0, Math.max(y - (activeUnit.y + activeSize - 1), activeUnit.y - (y + 1 - 1)))) : 99;
+        
+        const isAllowedMove = turn === myIndex && activeUnit && !uUnderTile && dist <= (info?.speed || 0) && isAreaFree(x, y, activeSize, activeUnit.id, units);
+        const isTarget = turn === myIndex && activeUnit && uUnderTile && uUnderTile.playerIndex !== myIndex && dist <= (info?.range || 1);
 
-        const isHealTarget = turn === myIndex && activeUnit && activeUnit.unitId === 'driada' && u && u.playerIndex === myIndex && u.count < u.startCount;
-        const isUnhealable = turn === myIndex && activeUnit && activeUnit.unitId === 'driada' && u && u.playerIndex === myIndex && u.count >= u.startCount;
+        const isHealTarget = turn === myIndex && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && uUnderTile.playerIndex === myIndex && uUnderTile.count < uUnderTile.startCount;
+        const isUnhealable = turn === myIndex && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && uUnderTile.playerIndex === myIndex && uUnderTile.count >= uUnderTile.startCount;
         
         const isPaladinAura = activeUnit && activeUnit.unitId === 'paladin' && dist <= 1;
+
+        const isOrigin = uUnderTile && uUnderTile.x === x && uUnderTile.y === y;
 
         gridCells.push(
           <div 
             key={`${x}-${y}`}
-            onClick={() => handleCellClick(x, y)}
+            onClick={() => isHealTarget ? localHeal(activeUnit!.id, uUnderTile.id) : handleCellClick(x, y)}
             className={cn(
-              "relative w-full aspect-square border border-stone-800/30 transition-all",
+              "relative w-full aspect-square border border-stone-700/30 flex items-center justify-center transition-colors overflow-visible",
               isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/20",
-              isTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/20",
-              isHealTarget && "bg-blue-500/20 cursor-pointer hover:bg-blue-500/40",
-              isUnhealable && "bg-red-500/10",
-              isPaladinAura && "bg-yellow-500/10"
+              isTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/20 z-10",
+              isHealTarget && "bg-blue-500/20 cursor-pointer hover:bg-blue-500/40 z-10",
+              isUnhealable && "bg-red-500/5 z-0",
+              isPaladinAura && "bg-yellow-500/20"
             )}
           >
-            {u && u.x === x && u.y === y && (
+            {isAllowedMove && <div className="w-1.5 h-1.5 rounded-full bg-green-500/30"></div>}
+            {uUnderTile && isOrigin && (
               <motion.div 
-                layoutId={u.id}
+                layoutId={uUnderTile.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isHealTarget ? localHeal(activeUnit!.id, uUnderTile.id) : handleCellClick(x, y);
+                }}
+                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                 className={cn(
-                  "p-0.5 rounded-sm border-2 overflow-hidden bg-stone-900 shadow-xl",
-                  u.playerIndex === 0 ? "border-blue-500/50" : "border-red-500/50",
-                  u.id === activeUnitId && "border-white shadow-[0_0_15px_white]",
-                  isUnhealable && "border-red-600 shadow-[0_0_10px_#dc2626]"
+                  "relative z-10 rounded bg-stone-900 border overflow-visible cursor-pointer",
+                  uUnderTile.playerIndex === 0 
+                    ? "border-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.4)]" 
+                    : "border-red-500 shadow-[0_0_5px_rgba(239,68,68,0.4)]",
+                  uUnderTile.id === activeUnitId && "border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] z-20",
+                  isUnhealable && "border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.7)]"
                 )}
                 style={{ 
-                  width: `${(UNITS_INFO[u.unitId].size || 1) * 100 - 10}%`,
-                  height: `${(UNITS_INFO[u.unitId].size || 1) * 100 - 10}%`,
+                  width: `${(UNITS_INFO[uUnderTile.unitId].size || 1) * 100 - 10}%`,
+                  height: `${(UNITS_INFO[uUnderTile.unitId].size || 1) * 100 - 10}%`,
                   position: 'absolute', top: '5%', left: '5%',
-                  zIndex: u.id === activeUnitId ? 50 : 30
+                  zIndex: (UNITS_INFO[uUnderTile.unitId].size || 1) > 1 ? 40 : 30
                 }}
               >
-                <img src={UNITS_INFO[u.unitId].image} className={cn("w-full h-full object-cover", u.playerIndex === 1 && "scale-x-[-1]")} />
-                <div className="absolute bottom-0 right-0 bg-stone-950 px-1 text-[8px] font-mono border-t border-l border-stone-700 text-stone-200">
-                  {u.count}
+                <img src={UNITS_INFO[uUnderTile.unitId].image} alt={UNITS_INFO[uUnderTile.unitId].name} className={cn("w-full h-full object-cover rounded-[1px]", uUnderTile.playerIndex === 1 && "scale-x-[-1]")} />
+                <div 
+                  className="text-[8px] bg-stone-900 px-1 rounded-sm absolute -bottom-1 -right-1 font-black font-mono border z-50 shadow-md"
+                  style={{ 
+                    borderColor: uUnderTile.playerIndex === 0 ? '#3b82f6' : '#ef4444',
+                    color: uUnderTile.playerIndex === 0 ? '#93c5fd' : '#fca5a5'
+                  }}
+                >
+                  {uUnderTile.count}
                 </div>
               </motion.div>
             )}
@@ -741,43 +801,52 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     return (
       <div className="flex flex-col items-center w-full max-w-lg gap-4 relative">
         {/* Battle Header */}
-        <div className="w-full flex justify-between items-center mb-2 px-2">
+        <div className="w-full flex justify-between items-center px-4 py-2 bg-stone-900/40 border border-stone-800 rounded shadow-lg backdrop-blur-sm">
            <div className="flex flex-col">
-             <span className={cn("text-xs font-black uppercase tracking-widest", myIndex === 0 ? "text-blue-400" : "text-stone-500")}>
-               {match?.players[0].name} {myIndex === 0 && "(Вы)"}
-             </span>
-             <span className="text-[10px] text-stone-600 font-mono">VS</span>
-             <span className={cn("text-xs font-black uppercase tracking-widest", myIndex === 1 ? "text-red-400" : "text-stone-500")}>
-               {match?.players[1]?.name || '...'} {myIndex === 1 && "(Вы)"}
-             </span>
+             <div className="flex items-center gap-1.5">
+               <div className={cn("w-2 h-2 rounded-full", turn === 0 ? "bg-blue-400 animate-pulse" : "bg-stone-700")}></div>
+               <span className={cn("text-[10px] font-black uppercase tracking-widest", myIndex === 0 ? "text-blue-400" : "text-stone-500")}>
+                 {match?.players[0].name} {myIndex === 0 && "(Вы)"}
+               </span>
+             </div>
+             <div className="flex items-center gap-1.5">
+               <div className={cn("w-2 h-2 rounded-full", turn === 1 ? "bg-red-400 animate-pulse" : "bg-stone-700")}></div>
+               <span className={cn("text-[10px] font-black uppercase tracking-widest", myIndex === 1 ? "text-red-400" : "text-stone-500")}>
+                 {match?.players[1]?.name || '...'} {myIndex === 1 && "(Вы)"}
+               </span>
+             </div>
            </div>
            
-           <div className="wow-panel p-2 flex items-center gap-4">
+           <div className="flex items-center gap-6">
               <div className="flex flex-col items-center">
-                 <Timer className="w-4 h-4 text-amber-500 mb-0.5" />
-                 <span className={cn("text-xl font-black font-mono", timer <= 3 ? "text-red-500 animate-pulse" : "text-amber-500")}>{Math.max(0, timer)}s</span>
+                 <Timer className="w-3 h-3 text-amber-500 mb-0.5" />
+                 <span className={cn("text-lg font-black font-mono", timer <= 3 ? "text-red-500 animate-pulse" : "text-amber-500")}>{Math.max(0, timer)}s</span>
               </div>
-              <div className="h-10 w-px bg-stone-800"></div>
+              <div className="h-8 w-px bg-stone-800"></div>
               <div className="flex flex-col items-center">
-                 <span className="text-[8px] uppercase text-stone-500">Ход</span>
-                 <span className="text-[10px] font-black text-amber-400 uppercase tracking-tighter">
-                   {turn === myIndex ? 'ВАШ ОЧЕРЕДЬ' : 'ВРАГ ХОДИТ'}
+                 <span className="text-[7px] uppercase text-stone-500 font-bold mb-0.5">Раунд {round}</span>
+                 <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter">
+                   {turn === myIndex ? 'ВАШ ХОД' : 'ХОД ВРАГА'}
                  </span>
               </div>
            </div>
         </div>
 
         {/* Battlefield */}
-        <div className="relative w-full aspect-square bg-stone-900/50 border-4 border-stone-800 rounded shadow-2xl overflow-hidden active-battle-grid">
+        <div className="relative w-[95%] aspect-square bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] border-4 border-stone-800 rounded shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-visible active-battle-grid">
+           <img src="/fight.png" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay pointer-events-none" />
+           <div className="absolute inset-0 bg-stone-950/20 backdrop-blur-[1px] rounded-sm pointer-events-none"></div>
+
            {match?.status === 'waiting' && (
-             <div className="absolute inset-0 bg-stone-950/80 z-50 flex flex-col items-center justify-center">
-               <Trophy className="w-12 h-12 text-amber-500 mb-4 animate-bounce" />
-               <h2 className="text-xl font-black uppercase tracking-widest text-amber-400">Ожидание Противника</h2>
-               <p className="text-xs text-stone-400 mt-2">Арена ждет героев...</p>
+             <div className="absolute inset-0 bg-stone-950/80 z-[60] flex flex-col items-center justify-center rounded">
+               <Trophy className="w-10 h-10 text-amber-500 mb-4 animate-bounce" />
+               <h2 className="text-lg font-black uppercase tracking-widest text-amber-400">Ожидание Противника</h2>
+               <p className="text-[10px] text-stone-400 mt-1 uppercase tracking-tighter">Арена ждет героев...</p>
              </div>
            )}
+           
            <div 
-             className="grid w-full h-full"
+             className="relative z-10 w-full h-full grid"
              style={{ gridTemplateColumns: `repeat(${GRID_WIDTH}, 1fr)`, gridTemplateRows: `repeat(${GRID_HEIGHT}, 1fr)` }}
            >
              {gridCells}
@@ -785,20 +854,72 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
            {/* FX layer */}
            {projectiles.map(p => (
-              <motion.div key={p.id} initial={{ left: `${p.startX*12.5 + 6.25}%`, top: `${p.startY*12.5 + 6.25}%` }} animate={{ left: `${p.endX*12.5 + 6.25}%`, top: `${p.endY*12.5 + 6.25}%` }} className="absolute w-2 h-2 bg-amber-400 rounded-full z-[100] blur-[1px]" />
+              <motion.div 
+                key={p.id} 
+                initial={{ left: `${(p.startX + 0.5) * (100/GRID_WIDTH)}%`, top: `${(p.startY + 0.5) * (100/GRID_HEIGHT)}%`, scale: 0.5, opacity: 0 }} 
+                animate={{ left: `${(p.endX + 0.5) * (100/GRID_WIDTH)}%`, top: `${(p.endY + 0.5) * (100/GRID_HEIGHT)}%`, scale: 1, opacity: 1 }} 
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="absolute w-4 h-4 z-[100] flex items-center justify-center pointer-events-none" 
+                style={{ transform: 'translate(-50%, -50%)' }}
+              >
+                {p.type === 'arrow' && <div className="w-4 h-0.5 bg-stone-300 shadow-[0_0_5px_white]"></div>}
+                {p.type === 'fireball' && <div className="w-5 h-5 bg-orange-600 rounded-full shadow-[0_0_20px_#f97316] relative overflow-visible">
+                  <div className="absolute inset-0 bg-yellow-400 rounded-full animate-pulse blur-sm"></div>
+                </div>}
+                {p.type === 'lightning' && <div className="w-1 h-12 bg-blue-100 shadow-[0_0_20px_#7dd3fc] rotate-45 animate-pulse border-white border"></div>}
+              </motion.div>
            ))}
+
+           {/* Hit Effects */}
            {effects.map(e => (
-              <motion.div key={e.id} initial={{ opacity: 1, scale: 0.5 }} animate={{ opacity: 0, scale: 2 }} className="absolute z-[110] pointer-events-none" style={{ left: `${e.x*12.5 + 6.25}%`, top: `${e.y*12.5 + 6.25}%`, transform: 'translate(-50%, -50%)' }}>
-                 {e.type === 'heal' ? <Heart className="text-green-500 w-12 h-12" /> : <Shield className="text-red-500 w-12 h-12" />}
+              <motion.div 
+                key={e.id} 
+                initial={{ opacity: 0, scale: 0.5 }} 
+                animate={{ opacity: 1, scale: [1, 1.5, 1], rotate: [0, 45, 0] }} 
+                exit={{ opacity: 0 }}
+                className="absolute z-[110] pointer-events-none" 
+                style={{ 
+                  left: `${(e.x + (e.size-1)/2 + 0.5) * (100/GRID_WIDTH)}%`, 
+                  top: `${(e.y + (e.size-1)/2 + 0.5) * (100/GRID_HEIGHT)}%`, 
+                  width: '60px', height: '60px',
+                  transform: 'translate(-50%, -50%)' 
+                }}
+              >
+                {e.type === 'slash' && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-12 h-1 bg-white/80 blur-[1px] rotate-45 shadow-[0_0_10px_white]"></div>
+                  </div>
+                )}
+                {e.type === 'hit' && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white rounded-full animate-ping"></div>
+                  </div>
+                )}
+                {e.type === 'heal' && (
+                  <div className="w-full h-full flex items-center justify-center relative">
+                    <div className="w-16 h-16 border-4 border-green-500 rounded-full animate-ping shadow-[0_0_15px_#22c55e]"></div>
+                    <Heart className="text-green-500 w-8 h-8 absolute animate-bounce" />
+                  </div>
+                )}
+                {e.type === 'fire' && (
+                  <div className="w-full h-full flex items-center justify-center relative">
+                    <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: [1, 2, 0], opacity: [1, 0.8, 0] }} className="absolute inset-0 bg-orange-500 rounded-full blur-xl" />
+                  </div>
+                )}
+                {e.type === 'lightning_hit' && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1 h-20 bg-blue-200 blur-[2px] rotate-45 shadow-[0_0_15px_#0ea5e9]"></div>
+                  </div>
+                )}
               </motion.div>
            ))}
         </div>
 
         {/* Console */}
-        <div className="w-full bg-stone-950/80 border border-stone-800 rounded p-2 h-24 overflow-hidden mb-2">
+        <div className="w-full bg-stone-950/80 border border-stone-800 rounded p-3 h-28 overflow-hidden mb-2 shadow-inner">
            {log.map((m, i) => (
-             <p key={i} className={cn("text-[10px] font-mono leading-none mb-1", i === 0 ? "text-amber-400 font-bold" : "text-stone-500")}>
-               [{round}] {m}
+             <p key={i} className={cn("text-[10px] font-mono leading-none mb-1.5 flex items-start gap-2", i === 0 ? "text-amber-400 font-bold" : "text-stone-500")}>
+               <span className="opacity-30">[{log.length - i}]</span> {m}
              </p>
            ))}
         </div>

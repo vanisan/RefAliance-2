@@ -9,9 +9,11 @@ export default function ArmyView() {
   
   // Find highest barracks level to determine allowed units or hiring speed
   const barracksLevel = buildings.reduce((max, b) => (b?.id === 'barracks' ? Math.max(max, b.level) : max), 0);
-  const totalFarmLevels = buildings.filter(b => b?.id === 'farm').reduce((acc, b) => acc + (b?.level || 0), 0);
+  const farms = buildings.filter(b => b?.id === 'farm');
+  const farmsCount = farms.length;
+  const totalFarmLevels = farms.reduce((acc, b) => acc + (b?.level || 0), 0);
   
-  const maxTroops = 50 + totalFarmLevels * 10;
+  const maxTroops = 50 + (farmsCount * 10) + (totalFarmLevels * 20);
   const currentTroops = Object.values(army).reduce((acc, count) => acc + Number(count), 0);
 
   const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
