@@ -5,11 +5,13 @@ import { getUpgradeCost, hasEnoughResources, deductResources, addResources, form
 import { Coins, Trees, Mountain, Wheat, ArrowUpCircle, Trash2, Hammer, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ForgeView from './ForgeView';
+import AltarComponent from './AltarComponent';
 
 export default function PalaceView() {
   const { resources, setResources, buildings, setBuildings, palaceLevel } = useGame();
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [showForge, setShowForge] = useState(false);
+  const [showAltar, setShowAltar] = useState(false);
 
   const handleCellClick = (index: number) => {
     setSelectedCell(index === selectedCell ? null : index);
@@ -207,6 +209,14 @@ export default function PalaceView() {
                     <span>⚒️ Открыть Кузню</span>
                   </button>
                 )}
+                {buildings[selectedCell]?.id === 'altar' && (
+                  <button 
+                    onClick={() => setShowAltar(true)}
+                    className="w-full text-left py-2 px-3 rounded font-bold border-l-2 border-amber-600 transition-colors mt-1 text-xs wow-panel-metal text-stone-100 hover:bg-stone-700"
+                  >
+                    <span>✨ Открыть Алтарь</span>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto pr-1 pb-4">
@@ -250,6 +260,9 @@ export default function PalaceView() {
 
       <AnimatePresence>
         {showForge && <ForgeView onClose={() => setShowForge(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showAltar && <AltarComponent onClose={() => setShowAltar(false)} />}
       </AnimatePresence>
     </div>
   );

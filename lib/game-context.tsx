@@ -26,6 +26,7 @@ interface GameState {
   equipment: Record<EquipmentSlot, EquipmentItem | null>;
   currentCampaignLevel: string;
   siegeUnits: (UnitId | null)[];
+  lastPrayerTime: number | null;
   user: User | null;
   authLoading: boolean;
   getLeaderboard: () => Promise<any[]>;
@@ -33,7 +34,7 @@ interface GameState {
   
   // Actions
   setResources: (res: Resources | ((prev: Resources) => Resources)) => void;
-  setBuildings: (b: (Building | null)[] | ((prev: (Building | null)[]) => (Building | null)[])) => void;
+  setBuildings: (b: (Building | null)[] | ((prev: (Building | null)[]) => (Building | null)[]) | ((prev: (Building | null)[]) => (Building | null)[])) => void;
   setArmy: (army: Record<UnitId, number> | ((prev: Record<UnitId, number>) => Record<UnitId, number>)) => void;
   setSiegeUnits: (units: (UnitId | null)[] | ((prev: (UnitId | null)[]) => (UnitId | null)[])) => void;
   setMapNodes: (nodes: MapNode[] | ((prev: MapNode[]) => MapNode[])) => void;
@@ -41,6 +42,7 @@ interface GameState {
   setEquipment: (eq: Record<EquipmentSlot, EquipmentItem | null> | ((prev: Record<EquipmentSlot, EquipmentItem | null>) => Record<EquipmentSlot, EquipmentItem | null>)) => void;
   setPlayerName: (name: string) => void;
   setCurrentCampaignLevel: (level: string) => void;
+  setLastPrayerTime: (time: number | null) => void;
 }
 
 const CURRENT_GAME_VERSION = 2;
@@ -63,6 +65,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [buildings, setBuildings] = useState<(Building | null)[]>(Array(16).fill(null));
   const [army, setArmy] = useState<Record<UnitId, number>>(defaultArmy);
   const [siegeUnits, setSiegeUnits] = useState<(UnitId | null)[]>(defaultSiegeUnits);
+  const [lastPrayerTime, setLastPrayerTime] = useState<number | null>(null);
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null, chest: null, boots: null, ring: null
@@ -366,6 +369,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       mapRefreshTimer,
       equipment, setEquipment,
       currentCampaignLevel, setCurrentCampaignLevel,
+      lastPrayerTime, setLastPrayerTime,
       user, authLoading,
       getLeaderboard,
       resetProgress,
