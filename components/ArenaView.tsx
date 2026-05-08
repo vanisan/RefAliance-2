@@ -347,7 +347,32 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     const interval = setInterval(() => {
       setTimer(t => {
         if (t <= 1) {
-          if (turn === myIndex) skipTurn();
+          // Force turn switch if timer expires
+          if (turn === myIndex) {
+            skipTurn();
+          } else {
+            // If it's the other player's turn, we might need a sync or 
+            // just let the host handle the timer and broadcast the turn.
+            // For now, allow a forced turn switch initiated by host.
+            if (myIndex === 0) {
+                // Host forces switch
+                 const nextTurn = turn === 0 ? 1 : 0;
+                 setTurn(nextTurn);
+                 setTimer(TURN_TIME);
+                 channelRef.current?.send({
+                   type: 'broadcast',
+                   event: 'sync_state',
+                   payload: {
+                     units,
+                     turn: nextTurn,
+                     round,
+                     timer: TURN_TIME,
+                     activeUnitId,
+                     status: 'playing'
+                   }
+                 });
+            }
+          }
           return TURN_TIME;
         }
         return t - 1;
