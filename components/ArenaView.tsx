@@ -49,7 +49,7 @@ interface AttackEffect {
 
 export default function ArenaView({ onClose }: ArenaViewProps) {
   const { user, army, palaceLevel, playerName, equipment, setResources, resources } = useGame();
-  console.log('ArenaView army:', army);
+  
   const [view, setView] = useState<'lobby' | 'battle' | 'results'>('lobby');
   const [lobbyPlayers, setLobbyPlayers] = useState<any[]>([]);
   const [match, setMatch] = useState<ArenaMatchState | null>(null);
@@ -118,8 +118,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const invitePlayer = (player: any) => {
     if (!user) return;
-    const totalUnits = Object.values(army).reduce((acc, count) => acc + count, 0);
-    console.log('DEBUG: invitePlayer, army:', army, 'totalUnits:', totalUnits);
+    const totalUnits = Object.values(army).reduce((acc, count) => acc + (Number(count) || 0), 0);
     if (totalUnits === 0) {
       alert("У вас нет армии! Сначала наймите войска.");
       return;
@@ -284,17 +283,15 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     
     // P0 - Left
     let y0 = 0;
-    console.log('DEBUG: ENTER initializeUnits p0 id:', p0.id, 'p1 id:', p1?.id, 'p0 army:', p0.army, 'p1 army:', p1?.army);
-    Object.entries(p0.army).forEach(([id, count]) => {
+    Object.entries(p0.army).forEach(([id, _count]) => {
+      const count = Number(_count);
       const info = UNITS_INFO[id as UnitId];
       if (!info) {
         console.warn('DEBUG: Unknown unit id found in army:', id);
         return;
       }
       
-      console.log('DEBUG: p0 checking unit id:', id, 'count:', count, 'info:', info);
       if (count > 0) {
-        console.log('DEBUG: p0 adding unit:', id);
         initialUnits.push({
           id: `p0-${id}`,
           unitId: id as UnitId,
@@ -313,16 +310,15 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     // P1 - Right
     if (p1) {
       let y1 = 0;
-      Object.entries(p1.army).forEach(([id, count]) => {
+      Object.entries(p1.army).forEach(([id, _count]) => {
+        const count = Number(_count);
         const info = UNITS_INFO[id as UnitId];
         if (!info) {
           console.warn('DEBUG: Unknown unit id found in p1 army:', id);
           return;
         }
 
-        console.log('DEBUG: p1 checking unit id:', id, 'count:', count, 'info:', info);
         if (count > 0) {
-          console.log('DEBUG: p1 adding unit:', id);
           initialUnits.push({
             id: `p1-${id}`,
             unitId: id as UnitId,
@@ -339,7 +335,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       });
     }
 
-    console.log('DEBUG: EXIT initializeUnits, units:', initialUnits);
     return initialUnits;
   };
 
@@ -353,28 +348,9 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           // Force turn switch if timer expires
           if (turn === myIndex) {
             skipTurn();
-          } else {
-            // If it's the other player's turn, we might need a sync or 
-            // just let the host handle the timer and broadcast the turn.
-            // For now, allow a forced turn switch initiated by host.
-            if (myIndex === 0) {
-                // Host forces switch
-                 const nextTurn = turn === 0 ? 1 : 0;
-                 setTurn(nextTurn);
-                 setTimer(TURN_TIME);
-                 channelRef.current?.send({
-                   type: 'broadcast',
-                   event: 'sync_state',
-                   payload: {
-                     units,
-                     turn: nextTurn,
-                     round,
-                     timer: TURN_TIME,
-                     activeUnitId,
-                     status: 'playing'
-                   }
-                 });
-            }
+          } else if (myIndex === 0) {
+            // Host skips guest's turn if it times out
+            skipTurn();
           }
           return TURN_TIME;
         }
@@ -383,7 +359,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [view, turn, myIndex, gameOver]);
+  }, [view, turn, myIndex, gameOver, match?.status, units, activeUnitId]);
 
   const skipTurn = () => {
     let updatedUnits = units;
