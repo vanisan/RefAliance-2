@@ -108,7 +108,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         palaceLevel: 1,
         buildings: Array(16).fill(null),
         army: defaultArmy,
-        siegeUnits: defaultSiegeUnits,
         armyPower: calculateArmyPower(defaultArmy),
         mapNodes: INITIAL_MAP_NODES,
         equipment: { weapon: null, chest: null, boots: null, ring: null },
@@ -116,6 +115,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         lastUpdate: new Date().toISOString()
       });
       if (error) throw error;
+      localStorage.setItem(`siegeUnits_${user.id}`, JSON.stringify(defaultSiegeUnits));
     } catch (e) {
       handleSupabaseError(e);
     }
@@ -158,7 +158,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 palaceLevel: 1,
                 buildings: Array(16).fill(null),
                 army: defaultArmy,
-                siegeUnits: defaultSiegeUnits,
                 armyPower: calculateArmyPower(defaultArmy),
                 mapNodes: INITIAL_MAP_NODES,
                 equipment: { weapon: null, chest: null, boots: null, ring: null },
@@ -167,6 +166,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 lastUpdate: new Date().toISOString()
               });
               
+              localStorage.setItem(`siegeUnits_${u.id}`, JSON.stringify(defaultSiegeUnits));
               setResources(defaultResources);
               setPalaceLevel(1);
               setBuildings(Array(16).fill(null));
@@ -181,7 +181,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setPalaceLevel(data.palaceLevel || 1);
               setBuildings(data.buildings || Array(16).fill(null));
               setArmy({ ...defaultArmy, ...(data.army || {}) });
-              setSiegeUnits(data.siegeUnits || defaultSiegeUnits);
+              
+              const localSiege = localStorage.getItem(`siegeUnits_${u.id}`);
+              setSiegeUnits(localSiege ? JSON.parse(localSiege) : defaultSiegeUnits);
+              
               setCurrentCampaignLevel(data.currentCampaignLevel || "1-1");
               
               // Map migration/refresh
@@ -255,7 +258,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               palaceLevel: 1,
               buildings: Array(16).fill(null),
               army: defaultArmy,
-              siegeUnits: defaultSiegeUnits,
               armyPower: calculateArmyPower(defaultArmy),
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
@@ -263,6 +265,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               version: CURRENT_GAME_VERSION,
               createdAt: new Date().toISOString()
             });
+            localStorage.setItem(`siegeUnits_${u.id}`, JSON.stringify(defaultSiegeUnits));
             setPlayerName(initialName);
           }
           initialLoadDone.current = true;
@@ -288,13 +291,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           palaceLevel,
           buildings,
           army,
-          siegeUnits,
           armyPower,
           mapNodes,
           equipment,
           currentCampaignLevel,
           lastUpdate: new Date().toISOString()
         }).eq('id', user.id);
+
+        localStorage.setItem(`siegeUnits_${user.id}`, JSON.stringify(siegeUnits));
         if (error) throw error;
       } catch (e) {
         handleSupabaseError(e);
