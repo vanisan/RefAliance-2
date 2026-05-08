@@ -30,11 +30,31 @@ export default function MapView({ onStartCombat }: MapViewProps) {
 
   const handleNextLevel = () => {
     const [chap, lev] = currentCampaignLevel.split('-').map(Number);
-    let nextLev = lev + 1;
-    if (nextLev > 7) return; // Cap at 1-7
-    setCurrentCampaignLevel(`${chap}-${nextLev}`);
+    
+    // Check if chap-(lev+1) exists
+    const nextInChap = `${chap}-${lev + 1}`;
+    const nextChapFirst = `${chap + 1}-1`;
+    
+    if (mapNodes.some(n => n.campaignLevel === nextInChap)) {
+      setCurrentCampaignLevel(nextInChap);
+    } else if (mapNodes.some(n => n.campaignLevel === nextChapFirst)) {
+      setCurrentCampaignLevel(nextChapFirst);
+    }
+    
     setSelectedNode(null);
   };
+
+  const getNextLevelName = () => {
+    const [chap, lev] = currentCampaignLevel.split('-').map(Number);
+    const nextInChap = `${chap}-${lev + 1}`;
+    const nextChapFirst = `${chap + 1}-1`;
+    
+    if (mapNodes.some(n => n.campaignLevel === nextInChap)) return nextInChap;
+    if (mapNodes.some(n => n.campaignLevel === nextChapFirst)) return nextChapFirst;
+    return null;
+  };
+  
+  const nextLevelName = getNextLevelName();
 
   return (
     <div className="w-full h-full min-h-[calc(100vh-8rem)] relative bg-[url('/map.png')] bg-cover bg-center overflow-hidden flex flex-col items-center">
@@ -50,12 +70,12 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         </div>
         <div className="flex gap-4 mt-1">
           <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Прогресс: {levelProgress}%</p>
-          {allCleared && currentCampaignLevel !== '1-7' && (
+          {allCleared && nextLevelName && (
               <button 
                onClick={handleNextLevel}
                className="text-[9px] font-black text-green-400 relative uppercase tracking-widest animate-pulse flex items-center gap-1 bg-stone-900/80 px-2 py-0.5 rounded border border-green-500 shadow-[0_0_10px_#22c55e,inset_0_0_5px_#22c55e] transition-all hover:scale-105 active:scale-95"
              >
-                Вперед к {currentCampaignLevel === '1-7' ? 'Финалу' : `1-${parseInt(currentCampaignLevel.split('-')[1]) + 1}`}! ➔
+                Вперед к {nextLevelName}! ➔
               </button>
           )}
         </div>

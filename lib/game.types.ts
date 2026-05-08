@@ -179,7 +179,7 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   orc: { id: 'orc', name: 'Орк', hp: 70, attack: 25, defense: 25, minDamage: 10, maxDamage: 18, speed: 2, range: 1, isEnemy: true, image: '/mobs/orc.png', combatType: 'melee', description: 'Могучий варвар. Ближний бой.' },
   vampire: { id: 'vampire', name: 'Вампир', hp: 150, attack: 55, defense: 30, minDamage: 25, maxDamage: 45, speed: 4, range: 1, isEnemy: true, image: '/mobs/vampire.png', combatType: 'melee', description: 'Ночной охотник. Ближний бой.' },
   demon: { id: 'demon', name: 'Демон', hp: 250, attack: 180, defense: 35, minDamage: 80, maxDamage: 120, speed: 3, range: 1, isEnemy: true, image: '/mobs/demon.png', combatType: 'melee', description: 'Создание бездны. Ближний бой.' },
-  giant: { id: 'giant', name: 'Великан', hp: 400, attack: 150, defense: 40, minDamage: 60, maxDamage: 100, speed: 2, range: 8, isEnemy: true, image: '/mobs/velikan.png', combatType: 'ranged', description: 'Горный исполин. Дальний бой.' },
+  giant: { id: 'giant', name: 'Великан', hp: 400, attack: 150, defense: 40, minDamage: 60, maxDamage: 100, speed: 2, range: 8, size: 2, isEnemy: true, image: '/mobs/velikan.png', combatType: 'ranged', description: 'Горный исполин. Дальний бой.' },
   
   assassin: { 
     id: 'assassin', name: 'Убийца', hp: 120, attack: 30, defense: 15, minDamage: 15, maxDamage: 30, speed: 5, range: 1, 
@@ -214,6 +214,7 @@ export interface MapNode {
   y: number; // 0-100 percentage
   enemies: { unitId: UnitId, count: number }[];
   reward: Partial<Resources>;
+  itemReward?: string; // ID of equipment item
   cleared: boolean;
   name: string;
   type?: 'combat' | 'city' | 'boss';
@@ -261,5 +262,25 @@ export const INITIAL_MAP_NODES: MapNode[] = [
   { id: '1-7-3', name: 'Гнев бездны', type: 'combat', x: 20, y: 80, enemies: [{ unitId: 'hydra', count: 10 }, { unitId: 'demon', count: 20 }, { unitId: 'vampire', count: 60 }], reward: { gold: 30000, crystals: 80 }, cleared: false, campaignLevel: '1-7' },
   { id: '1-7-4', name: 'Пепельный легион', type: 'combat', x: 80, y: 20, enemies: [{ unitId: 'hydra', count: 12 }, { unitId: 'souleater', count: 30 }, { unitId: 'skelet', count: 200 }], reward: { gold: 35000, crystals: 90 }, cleared: false, campaignLevel: '1-7' },
   { id: '1-7-5', name: 'Последний рубеж', type: 'combat', x: 50, y: 10, enemies: [{ unitId: 'hydra', count: 15 }, { unitId: 'demon', count: 30 }, { unitId: 'orc', count: 100 }], reward: { gold: 40000, crystals: 100 }, cleared: false, campaignLevel: '1-7' },
-  { id: '1-7-boss', name: 'Ужас Света', type: 'boss', x: 50, y: 55, enemies: [{ unitId: 'titan', count: 3 }, { unitId: 'hydra', count: 5 }, { unitId: 'souleater', count: 20 }], reward: { gold: 100000, crystals: 500 }, cleared: false, campaignLevel: '1-7' }
+  
+  // Level 1-8
+  { id: '1-8-preboss', name: 'Стража тьмы', type: 'boss', x: 40, y: 70, enemies: [{ unitId: 'vampire', count: 100 }, { unitId: 'hydra', count: 33 }, { unitId: 'vampire', count: 100 }], reward: { gold: 50000, crystals: 200 }, cleared: false, campaignLevel: '1-8' },
+  { id: '1-8-finalboss', name: 'Повелитель тьмы', type: 'boss', x: 60, y: 30, enemies: [{ unitId: 'skelet', count: 666 }, { unitId: 'hydra', count: 66 }, { unitId: 'giant', count: 66 }, { unitId: 'hydra', count: 66 }, { unitId: 'skelet', count: 666 }], reward: { gold: 250000, crystals: 1000 }, itemReward: 'weapon-legend', cleared: false, campaignLevel: '1-8' },
+
+  // World 2
+  { id: '2-1-1', name: 'Врата Второго Мира', type: 'combat', x: 50, y: 50, enemies: [{ unitId: 'demon', count: 50 }, { unitId: 'hydra', count: 20 }], reward: { gold: 50000, crystals: 200 }, cleared: false, campaignLevel: '2-1' }
 ];
+
+export const LEGENDARY_WEAPON: EquipmentItem = {
+  id: 'weapon-legend',
+  type: 'weapon',
+  tier: 8,
+  name: 'Оружие легенды',
+  image: '/sets/weapon-8.png',
+  cost: 0,
+  stats: {
+    attackBonus: 100, // 100% bonus
+    defenseBonus: 20,
+    hpBonus: 20
+  }
+};

@@ -54,7 +54,7 @@ const getManhattanDist = (u1x: number, u1y: number, u1s: number, u2x: number, u2
 };
 
 export default function CombatView({ node, onEnd }: CombatViewProps) {
-  const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment } = useGame();
+  const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment, setEquipment } = useGame();
   
   // Equipment stats modifiers
   const atkMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.attackBonus || 0), 0) / 100;
@@ -533,6 +533,14 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       // Reward
       setResources(addResources(resources, node.reward));
       
+      // Handle item reward
+      if (node.itemReward === 'weapon-legend') {
+        import('../lib/game.types').then(({ LEGENDARY_WEAPON }) => {
+          setEquipment(prev => ({ ...prev, weapon: LEGENDARY_WEAPON }));
+        });
+        alert("ПОЗДРАВЛЯЕМ! Вы прошли кампанию первого мира! Вы получили Легендарное Оружие!");
+      }
+
       // Mark node cleared
       setMapNodes(mapNodes.map(m => m.id === node.id ? { ...m, cleared: true } : m));
     } else if (gameOver === 'defeat') {
