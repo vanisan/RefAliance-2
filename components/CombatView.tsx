@@ -63,6 +63,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const reportedLossesRef = useRef<Record<string, number>>({});
 
   const [hasHeroActed, setHasHeroActed] = useState(false);
+  const hasHeroActedRef = useRef(false);
+  const roundRef = useRef(1);
   const [isHeroTurn, setIsHeroTurn] = useState(false);
   const [heroAttackAnimation, setHeroAttackAnimation] = useState(false);
 
@@ -484,15 +486,18 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     let readyUnits = aliveUnits.filter(u => !u.hasActed);
     
     // Add hero to potential acting entities if available and hasn't acted
-    const canHeroAct = activeHeroId && !hasHeroActed && round > 0;
+    const canHeroAct = activeHeroId && !hasHeroActedRef.current && roundRef.current > 0;
     
     if (readyUnits.length === 0 && !canHeroAct) {
       // New Round
-      setRound(r => r + 1);
-      addLog(`Раунд ${round + 1}`);
+      const nextRound = roundRef.current + 1;
+      setRound(nextRound);
+      roundRef.current = nextRound;
+      addLog(`Раунд ${nextRound}`);
       const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false, hasRetaliated: false, movedThisTurn: false, extraTurnUsed: false }));
       setUnits(refreshedUnits);
       setHasHeroActed(false);
+      hasHeroActedRef.current = false;
       setIsHeroTurn(false);
       
       // Safety timeout to avoid recursive loops
@@ -789,6 +794,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
             const updatedUnits = units.map(u => u.id === defender.id ? { ...u, count: newCount, hp: newTopHP } : u);
             setUnits(updatedUnits);
             setHasHeroActed(true);
+            hasHeroActedRef.current = true;
             setIsHeroTurn(false);
             setActiveUnitId(null);
             
@@ -958,12 +964,14 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
       {/* Battlefield Grid - Responsive sizing */}
       <div className="bg-stone-900 bg-[url('/fight.png')] bg-cover bg-center w-full aspect-square max-w-[420px] relative rounded border-2 border-stone-800 shadow-2xl overflow-visible shrink-0 mx-auto">
-        <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-[0.5px] rounded-sm pointer-events-none"></div>
+        <div className="absolute inset-0 bg-stone-950/20 backdrop-blur-[0.5px] rounded-sm pointer-events-none"></div>
         <div 
           className="relative z-10 w-full h-full grid"
           style={{ 
             gridTemplateColumns: `repeat(${GRID_WIDTH}, 1fr)`,
-            gridTemplateRows: `repeat(${GRID_HEIGHT}, 1fr)`
+            gridTemplateRows: `repeat(${GRID_HEIGHT}, 1fr)`,
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
+            backgroundSize: `calc(100% / ${GRID_WIDTH}) calc(100% / ${GRID_HEIGHT})`
           }}
         >
           {gridCells}
@@ -1246,6 +1254,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               onClick={() => {
                 if (activeUnitId === 'hero-token') {
                   setHasHeroActed(true);
+                  hasHeroActedRef.current = true;
                   setIsHeroTurn(false);
                   setActiveUnitId(null);
                   setTimeout(() => determineNextActiveUnit(units), 100);

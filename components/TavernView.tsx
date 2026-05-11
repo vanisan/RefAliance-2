@@ -64,8 +64,8 @@ export default function TavernView({ onClose }: TavernViewProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-stone-700">
-           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-stone-700">
+           <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {(Object.values(HEROES_INFO) as HeroInfo[]).map(hero => {
                 const isOwned = ownedHeroIds.includes(hero.id);
                 const isActive = activeHeroId === hero.id;
@@ -73,7 +73,7 @@ export default function TavernView({ onClose }: TavernViewProps) {
                 return (
                   <div key={hero.id} className={cn(
                     "wow-panel-metal p-0.5 relative flex flex-col group transition-all h-full",
-                    isActive ? "border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]" : "border-stone-800"
+                    isActive ? "border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.2)]" : "border-stone-800"
                   )}>
                     <div className="relative aspect-square w-full bg-stone-900 overflow-hidden rounded-t-[2px]">
                        <Image 
@@ -83,32 +83,32 @@ export default function TavernView({ onClose }: TavernViewProps) {
                         className="object-cover group-hover:scale-105 transition-transform" 
                         referrerPolicy="no-referrer"
                        />
-                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent"></div>
+                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/60 via-transparent to-transparent"></div>
                        
                        {isActive && (
-                         <div className="absolute top-1 left-1 bg-amber-600 text-stone-950 text-[6px] font-black px-1 py-0.5 rounded shadow-lg uppercase tracking-tighter z-10">
+                         <div className="absolute top-0.5 left-0.5 bg-amber-600 text-stone-950 text-[5px] font-black px-1 py-0.5 rounded shadow-lg uppercase tracking-tighter z-10">
                             Активен
                          </div>
                        )}
 
-                       <div className="absolute bottom-1 left-1.5 right-1.5">
-                         <h3 className="font-black text-amber-400 uppercase tracking-tighter text-[10px] leading-none mb-0.5">{hero.name}</h3>
-                         <p className="text-[7px] text-stone-400 font-bold uppercase tracking-tighter opacity-80 leading-none truncate">{hero.title}</p>
+                       <div className="absolute bottom-0.5 left-1 right-1">
+                         <h3 className="font-black text-amber-400 uppercase tracking-tighter text-[8px] leading-none mb-0.5">{hero.name}</h3>
+                         <p className="text-[6px] text-stone-400 font-bold uppercase tracking-tighter opacity-80 leading-none truncate">{hero.title}</p>
                        </div>
                     </div>
 
-                    <div className="p-1.5 space-y-1.5 bg-stone-900/50 flex-1 flex flex-col justify-between">
-                       <p className="text-[7px] text-stone-500 leading-tight line-clamp-2 h-[18px]">{hero.description}</p>
+                    <div className="p-1 space-y-1 bg-stone-900/50 flex-1 flex flex-col justify-between">
+                       <p className="text-[6px] text-stone-500 leading-tight line-clamp-2 h-[14px]">{hero.description}</p>
                        
-                       <div className="flex items-center justify-between text-[7px] font-black uppercase">
+                       <div className="flex items-center justify-between text-[6px] font-black uppercase">
                           <div className="flex items-center gap-0.5 text-red-500">
-                             <Sword className="w-2 h-2" />
+                             <Sword className="w-1.5 h-1.5" />
                              <span>{hero.damage}</span>
                           </div>
                           {!isOwned && (
                             <div className="flex items-center gap-0.5 text-indigo-400">
                                <span>{formatNumber(hero.cost)}</span>
-                               <Sparkles className="w-2 h-2" />
+                               <Sparkles className="w-1.5 h-1.5" />
                             </div>
                           )}
                        </div>
@@ -118,20 +118,20 @@ export default function TavernView({ onClose }: TavernViewProps) {
                           onClick={() => handleSelect(hero.id)}
                           disabled={isActive}
                           className={cn(
-                            "w-full py-1 rounded font-black text-[7px] uppercase tracking-tighter transition-all",
+                            "w-full py-0.5 rounded font-black text-[6px] uppercase tracking-tighter transition-all",
                             isActive 
                               ? "bg-stone-800 text-stone-500 cursor-default border border-stone-700" 
                               : "bg-stone-700 text-amber-500 hover:bg-stone-600 border border-amber-600/30"
                           )}
                          >
-                           {isActive ? "Выбран" : "Выбрать"}
+                           {isActive ? "ОК" : "ВЫБОР"}
                          </button>
                        ) : (
                          <button 
                           onClick={() => handleHire(hero)}
-                          className="w-full py-1 bg-amber-600 hover:bg-amber-500 text-stone-950 rounded font-black text-[7px] uppercase tracking-widest transition-all shadow-[0_2px_0_#92400e] active:translate-y-0.5 active:shadow-none"
+                          className="w-full py-0.5 bg-amber-600 hover:bg-amber-500 text-stone-950 rounded font-black text-[6px] uppercase tracking-widest transition-all shadow-[0_1px_0_#92400e] active:translate-y-0.5 active:shadow-none"
                          >
-                           Нанять
+                           НАНЯТЬ
                          </button>
                        )}
                     </div>
