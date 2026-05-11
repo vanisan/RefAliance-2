@@ -107,7 +107,7 @@ export interface UnitInfo {
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action' | 'double_turn' | 'crit_25_x2' | 'splash_linear_40';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action' | 'double_turn' | 'crit_25_x2' | 'splash_linear_40' | 'frenzy';
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -168,7 +168,7 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   berserk: { 
     id: 'berserk', name: 'Берсерк', hp: 40, attack: 15, defense: 5, minDamage: 8, maxDamage: 15, speed: 2, range: 1, 
     cost: { gold: 200, food: 50, stone: 50, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/berserk.png',
-    combatType: 'melee', description: 'Яростный боец. Ближний бой. Атака: обычная.'
+    combatType: 'melee', special: 'frenzy', description: 'Яростный боец. Ближний бой. Умение "Ярость": позволяет совершить еще один ход (раз за бой).'
   },
   mage: { 
     id: 'mage', name: 'Маг', hp: 20, attack: 18, defense: 6, minDamage: 10, maxDamage: 18, speed: 2, range: 5, 
@@ -220,8 +220,8 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   },
   banshee: {
     id: 'banshee', name: 'Банши', hp: 200, attack: 60, defense: 20, minDamage: 50, maxDamage: 70, speed: 3, range: 1,
-    isEnemy: true, image: '/units/banshee.png', combatType: 'melee', special: 'double_action',
-    description: 'Призрак с ужасающим воплем. Может совершить два действия за ход. Ближний бой.'
+    isEnemy: true, image: '/units/banshee.png', combatType: 'melee', special: 'double_turn',
+    description: 'Призрак с ужасающим воплем. Может совершить два хода за раунд. Ближний бой.'
   },
   arachnid: {
     id: 'arachnid', name: 'Арахнид', hp: 260, attack: 80, defense: 15, minDamage: 70, maxDamage: 90, speed: 5, range: 1,
@@ -346,7 +346,31 @@ export const INITIAL_MAP_NODES: MapNode[] = [
   // Level 2-2
   { id: '2-2-1', name: 'Гнездо Арахнидов', type: 'combat', x: 15, y: 20, enemies: [{ unitId: 'frostdragon', count: 15 }, { unitId: 'arachnid', count: 150 }, { unitId: 'arachnid', count: 150 }, { unitId: 'arachnid', count: 150 }, { unitId: 'arachnid', count: 150 }], reward: { gold: 75000, crystals: 5 }, cleared: false, campaignLevel: '2-2' },
   { id: '2-2-2', name: 'Паучий шепот', type: 'combat', x: 50, y: 55, enemies: [{ unitId: 'frostdragon', count: 20 }, { unitId: 'banshee', count: 100 }, { unitId: 'banshee', count: 100 }, { unitId: 'arachnid', count: 333 }, { unitId: 'arachnid', count: 333 }], reward: { gold: 85000, crystals: 5 }, cleared: false, campaignLevel: '2-2' },
-  { id: '2-2-3', name: 'Сердце паутины', type: 'boss', x: 80, y: 20, enemies: [{ unitId: 'banshee', count: 80 }, { unitId: 'banshee', count: 80 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }], reward: { gold: 120000, crystals: 10 }, cleared: false, campaignLevel: '2-2' }
+  { id: '2-2-3', name: 'Сердце паутины', type: 'boss', x: 80, y: 20, enemies: [{ unitId: 'banshee', count: 80 }, { unitId: 'banshee', count: 80 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }, { unitId: 'arachnid', count: 100 }], reward: { gold: 120000, crystals: 10 }, cleared: false, campaignLevel: '2-2' },
+  
+  // Level 2-3
+  { id: '2-3-1', name: 'Коалиция', type: 'combat', x: 25, y: 30, enemies: [
+    { unitId: 'giant', count: 30 },
+    { unitId: 'arachnid', count: 125 },
+    { unitId: 'arachnid', count: 125 },
+    { unitId: 'arachnid', count: 125 },
+    { unitId: 'arachnid', count: 125 }
+  ], reward: { gold: 150000, crystals: 10 }, cleared: false, campaignLevel: '2-3' },
+  { id: '2-3-2', name: 'Гвардия тьмы', type: 'combat', x: 75, y: 40, enemies: [
+    { unitId: 'vampire', count: 300 },
+    { unitId: 'vampire', count: 300 },
+    { unitId: 'banshee', count: 200 },
+    { unitId: 'banshee', count: 200 },
+    { unitId: 'arachnid', count: 100 },
+    { unitId: 'arachnid', count: 100 }
+  ], reward: { gold: 200000, crystals: 15 }, cleared: false, campaignLevel: '2-3' },
+  { id: '2-3-3', name: 'Арахнофобия', type: 'boss', x: 50, y: 80, enemies: [
+    { unitId: 'arachnid', count: 1000 },
+    { unitId: 'souleater', count: 66 },
+    { unitId: 'souleater', count: 66 },
+    { unitId: 'souleater', count: 66 },
+    { unitId: 'souleater', count: 66 }
+  ], reward: { gold: 300000, crystals: 25 }, cleared: false, campaignLevel: '2-3' }
 ];
 
 export const LEGENDARY_WEAPON: EquipmentItem = {

@@ -24,8 +24,10 @@ type CombatUnit = {
   x: number;
   y: number;
   hasActed: boolean;
+  hasRetaliated: boolean;
   movedThisTurn?: boolean;
   extraTurnUsed?: boolean;
+  frenzyUsed?: boolean;
 };
 
 const GRID_WIDTH = 8;
@@ -94,7 +96,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           isEnemy: false, 
           x: 0, 
           y: pY, 
-          hasActed: false 
+          hasActed: false,
+          hasRetaliated: false
         });
         pY += size;
       }
@@ -114,7 +117,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           isEnemy: true, 
           x: GRID_WIDTH - size, 
           y: eY, 
-          hasActed: false 
+          hasActed: false,
+          hasRetaliated: false
         });
         eY += size;
       }
@@ -345,15 +349,14 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       return; 
     }
 
-    // Counter Attack Logic (Hydra etc)
-    if (defenderInfo.special === 'counter_attack_50' && attackerInfo.range === 1 && newCount > 0) {
+    // Counter Attack Logic
+    if (defender.count > 0 && attackerInfo.range === 1 && (!defender.hasRetaliated || defenderInfo.special === 'counter_attack_50')) {
       setTimeout(() => {
         triggerEffect(defender.unitId, attacker.unitId, attacker.x, attacker.y, attackerInfo.size || 1);
         const res = applyDamage(currentDefender, attacker, currentUnits, true);
         const finalUnits = currentUnits.map(u => {
           if (u.id === attacker.id) return markUnitActed({ ...u, count: res.newCount, hp: res.newTopHP });
-          if (u.id === defender.id) return currentDefender;
-          // Note: Splash and counter from main defender can't easily coexist in this block without more complexity
+          if (u.id === defender.id) return { ...currentDefender, hasRetaliated: true };
           return u;
         });
         setUnits(finalUnits);
@@ -371,41 +374,62 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     const targets = currentUnits.filter(u => !u.isEnemy && u.count > 0);
     if (targets.length === 0) return;
     
-    let closest = targets[0];
-    let minDist = 999;
-    
-    targets.forEach(t => {
-      const targetSize = UNITS_INFO[t.unitId].size || 1;
-      const myInfo = UNITS_INFO[myUnit.unitId];
-      const mySize = myInfo.size || 1;
+    const info = UNITS_INFO[myUnit.unitId];
+    const mySize = info.size || 1;
+    const ranges = info.range;
+    const speed = info.speed;
 
-      const d = getManhattanDist(myUnit.x, myUnit.y, mySize, t.x, t.y, targetSize);
-      if (d < minDist) { minDist = d; closest = t; }
+    // Improved AI: Weighted target selection
+    const scoredTargets = targets.map(t => {
+      const tInfo = UNITS_INFO[t.unitId];
+      const tSize = tInfo.size || 1;
+      const dist = getManhattanDist(myUnit.x, myUnit.y, mySize, t.x, t.y, tSize);
+      
+      // HP Factor: Prefer targets that can be killed
+      const { totalDmg, effUnitHp } = calculateDamage(myUnit, t, false, currentUnits);
+      const tTotalHP = (t.count - 1) * effUnitHp + t.hp;
+      const killPercent = Math.min(1, totalDmg / tTotalHP);
+      
+      // Attack Factor: Target high-threat units (mages, dragons)
+      const threatScore = (tInfo.attack * t.count) / 100;
+      
+      // Distance Factor: Prefer closer targets
+      const proximityScore = 15 / (dist + 1);
+
+      // Final Score with some randomness
+      let score = (killPercent * 60) + (threatScore * 25) + (proximityScore * 15);
+      score *= (0.8 + Math.random() * 0.4);
+
+      return { t, dist, score };
     });
 
-    const info = UNITS_INFO[myUnit.unitId];
-    const ranges = info.range;
-    const mySize = info.size || 1;
-    
-    if (minDist <= ranges + (mySize > 1 ? 0.5 : 0)) {
-      processAttack(currentUnits, myUnit, closest);
+    scoredTargets.sort((a, b) => b.score - a.score);
+    const primaryTarget = scoredTargets[0].t;
+    const primaryDist = scoredTargets[0].dist;
+
+    // Ranged AI Strategy: Kiting / Maintaining distance
+    if (ranges > 1 && primaryDist <= ranges) {
+      // Find a spot that's still in range of target but farther from OTHER player units
+      // or just stay put if it's safe.
+      // For simplicity: if already in range, stay and attack.
+      processAttack(currentUnits, myUnit, primaryTarget);
+    } else if (primaryDist <= ranges + (mySize > 1 ? 0.5 : 0)) {
+      processAttack(currentUnits, myUnit, primaryTarget);
     } else {
-      const speed = info.speed;
-      const size = info.size || 1;
-      
+      // Melee or out-of-range ranged: Move towards best target
       let newX = myUnit.x;
       let newY = myUnit.y;
       
       let steps = speed;
       while (steps > 0) {
-        const dx = Math.sign(closest.x - newX);
-        const dy = Math.sign(closest.y - newY);
+        const dx = Math.sign(primaryTarget.x - newX);
+        const dy = Math.sign(primaryTarget.y - newY);
         
         let moved = false;
-        if (dx !== 0 && isAreaFree(newX + dx, newY, size, myUnit.id, currentUnits)) {
+        if (dx !== 0 && isAreaFree(newX + dx, newY, mySize, myUnit.id, currentUnits)) {
           newX += dx;
           moved = true;
-        } else if (dy !== 0 && isAreaFree(newX, newY + dy, size, myUnit.id, currentUnits)) {
+        } else if (dy !== 0 && isAreaFree(newX, newY + dy, mySize, myUnit.id, currentUnits)) {
           newY += dy;
           moved = true;
         }
@@ -413,14 +437,19 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         if (!moved) break;
         steps--;
         
-        const targetSize = UNITS_INFO[closest.unitId].size || 1;
-        const currentDist = getManhattanDist(newX, newY, size, closest.x, closest.y, targetSize);
-        if (currentDist <= ranges) break;
+        const tSize = UNITS_INFO[primaryTarget.unitId].size || 1;
+        const currentDist = getManhattanDist(newX, newY, mySize, primaryTarget.x, primaryTarget.y, tSize);
+        if (currentDist <= (ranges > 1 ? ranges : 1)) break;
       }
       
       const movedUnits = currentUnits.map(u => u.id === myUnit.id ? markUnitActed({ ...u, x: newX, y: newY }) : u);
+      const isNowInRange = getManhattanDist(newX, newY, mySize, primaryTarget.x, primaryTarget.y, UNITS_INFO[primaryTarget.unitId].size || 1) <= ranges;
+      
       setUnits(movedUnits);
       addLog(`${info.name} (враг) перемещается.`);
+      
+      // If ranged enemy moved into range, they can't attack in the same turn in this logic (hasActed set to true)
+      // unless we specifically handle double actions. But for AI basic, moving ends turn.
       setTimeout(() => checkWinCondition(movedUnits), 300);
     }
   };
@@ -453,8 +482,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     if (readyUnits.length === 0) {
       // New Round
       setRound(r => r + 1);
-      addLog("Новый раунд.");
-      const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false, movedThisTurn: false, extraTurnUsed: false }));
+      addLog(`Раунд ${round + 1}`);
+      const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false, hasRetaliated: false, movedThisTurn: false, extraTurnUsed: false }));
       setUnits(refreshedUnits);
       
       // Safety timeout to avoid recursive loops
@@ -480,9 +509,31 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       setTurn(nextTurn);
       
       if (nextTurn === 'enemy') {
-        setTimeout(() => handleAI(aliveUnits, next), 1000);
+        const aliveInTurn = aliveUnits;
+        setTimeout(() => handleAI(aliveInTurn, next), 1000);
       }
     }
+  };
+
+  const handleFrenzy = () => {
+    if (turn !== 'player' || gameOver || infoMode) return;
+    const activeUnit = units.find(u => u.id === activeUnitId);
+    if (!activeUnit || activeUnit.unitId !== 'berserk' || activeUnit.frenzyUsed) return;
+
+    const updatedUnits = units.map(u => {
+      if (u.id === activeUnit.id) {
+        return { ...u, hasActed: false, movedThisTurn: false, extraTurnUsed: true, frenzyUsed: true };
+      }
+      return u;
+    });
+
+    addLog(`${UNITS_INFO[activeUnit.unitId].name} впадает в ярость! Дополнительный ход.`);
+    setUnits(updatedUnits);
+    
+    // Visual effect
+    const effectId = getRandomId('frenzy');
+    setEffects(prev => [...prev, { id: effectId, type: 'fire', x: activeUnit.x, y: activeUnit.y, size: 1 }]);
+    setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effectId)), 500);
   };
 
   const checkWinCondition = (currentUnits: CombatUnit[]) => {
@@ -1058,6 +1109,12 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               {units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
                 <div onClick={() => setIsHealMode(true)} className={cn("flex-1 min-w-[60px] flex items-center justify-center bg-blue-900/30 border border-blue-500 rounded p-1 cursor-pointer transition-all hover:bg-blue-800/50", isHealMode && "bg-blue-600/50 border-blue-400")} title="Активировать исцеление">
                   <img src="/units/driadaheal.png" className={cn("w-6 h-6", !isHealMode && "animate-pulse")} alt="Heal Skill" />
+                </div>
+              )}
+
+              {units.find(u => u.id === activeUnitId)?.unitId === 'berserk' && !units.find(u => u.id === activeUnitId)?.frenzyUsed && (
+                <div onClick={handleFrenzy} className="flex-1 min-w-[60px] flex items-center justify-center bg-red-900/30 border border-red-500 rounded p-1 cursor-pointer transition-all hover:bg-red-800/50 shadow-[0_0_10px_rgba(239,68,68,0.3)] animate-pulse" title="Ярость (доп. ход)">
+                   < Sword className="w-6 h-6 text-red-500" />
                 </div>
               )}
             </>
