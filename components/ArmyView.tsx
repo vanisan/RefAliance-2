@@ -21,7 +21,7 @@ export default function ArmyView() {
     skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0, driada: 1, paladin: 1,
     banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
     balista: 1, elven_balista: 1, archer_tower: 1, mage_tower: 1,
-    veliar: 0, kronos: 0, archimond: 0
+    veliar: 0, kronos: 0, archimond: 0, despot: 1
   });
 
   const handleHire = (unitId: UnitId) => {
@@ -73,6 +73,7 @@ export default function ArmyView() {
   if (barracksLevel >= 4) recruitableUnits.push('driada', 'paladin');
   if (barracksLevel >= 5) recruitableUnits.push('dragon', 'titan');
   if (barracksLevel >= 8) recruitableUnits.push('archidruid');
+  if (barracksLevel >= 12) recruitableUnits.push('despot');
 
   return (
     <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto bg-stone-900/30">

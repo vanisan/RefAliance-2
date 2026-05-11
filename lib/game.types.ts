@@ -2,6 +2,7 @@ export type ResourceType = 'gold' | 'stone' | 'wood' | 'food' | 'crystals';
 export interface Resources extends Record<ResourceType, number> {
   bossKeys?: number;
   lastBossKeyTime?: number;
+  referrals?: number;
 }
 
 export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge';
@@ -66,7 +67,7 @@ export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
   },
 };
 
-export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower' | 'veliar' | 'kronos' | 'archimond';
+export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower' | 'veliar' | 'kronos' | 'archimond' | 'despot';
 
 export interface ArenaPlayer {
   id: string;
@@ -267,6 +268,11 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   archimond: {
     id: 'archimond', name: 'Архимонд (Владыка демонов)', hp: 10000, attack: 700, defense: 60, minDamage: 700, maxDamage: 700, speed: 4, range: 2, size: 2,
     isEnemy: true, image: '/bosses/archimond.png', combatType: 'ranged', special: 'double_turn', description: 'Владыка демонов. Дальний бой (2 кл.). Делает 2 хода за один раунд.'
+  },
+  despot: {
+    id: 'despot', name: 'Деспот', hp: 1000, attack: 200, defense: 65, minDamage: 180, maxDamage: 220, speed: 2, range: 1,
+    cost: { gold: 25000, stone: 5000, food: 2000, wood: 0, crystals: 50 }, isEnemy: false, image: '/units/despot.png',
+    combatType: 'melee', special: 'double_turn', description: 'Могучий деспот. Ближний бой. Делает 2 хода за один раунд.'
   },
 };
 

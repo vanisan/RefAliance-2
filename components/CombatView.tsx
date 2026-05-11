@@ -832,7 +832,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       </div>
 
       {/* Battlefield Grid */}
-      <div className="bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95%] max-w-[500px] aspect-square relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
+      <div className="bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95vw] h-[95vw] max-w-[500px] max-h-[500px] sm:w-[500px] sm:h-[500px] relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
         <img src="/fight.png" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay pointer-events-none" />
         <div className="absolute inset-0 bg-stone-950/20 backdrop-blur-[1px] rounded-sm pointer-events-none"></div>
         <div 

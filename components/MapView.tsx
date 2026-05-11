@@ -2,10 +2,11 @@ import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO } from '../lib/game.types';
 import { formatNumber, cn } from '../lib/game.utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield, Trophy } from 'lucide-react';
+import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield, Trophy, Globe } from 'lucide-react';
 import { useState } from 'react';
 import ShopView from './ShopView';
 import ArenaView from './ArenaView';
+import WorldMapView from './WorldMapView';
 
 interface MapViewProps {
   onStartCombat: (node: MapNode) => void;
@@ -18,10 +19,14 @@ export default function MapView({ onStartCombat }: MapViewProps) {
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
   const [showShop, setShowShop] = useState(false);
   const [showArena, setShowArena] = useState(false);
+  const [showWorldMap, setShowWorldMap] = useState(false);
+  const [showBossesModal, setShowBossesModal] = useState(false);
   const [prepNode, setPrepNode] = useState<MapNode | null>(null);
 
-  const currentLevelNodes = mapNodes.filter(n => n.campaignLevel === currentCampaignLevel || n.campaignLevel === 'all');
+  const currentLevelNodes = mapNodes.filter(n => (n.campaignLevel === currentCampaignLevel || n.campaignLevel === 'all') && n.type !== 'daily_boss');
   const enemyNodes = currentLevelNodes.filter(n => n.type === 'combat' || n.type === 'boss');
+  
+  const dailyBosses = mapNodes.filter(n => n.type === 'daily_boss');
   const allCleared = enemyNodes.length > 0 && enemyNodes.every(n => n.cleared);
 
   const totalArmyCount = Object.values(army).reduce((sum, count) => sum + count, 0);
@@ -63,7 +68,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
       <div className="absolute inset-0 bg-stone-950/30 backdrop-blur-[2px] z-0"></div>
       
       {/* Map Header */}
-      <div className="w-full wow-panel p-2 mt-2 mb-1 max-w-[400px] relative z-10 overflow-hidden flex flex-col items-center justify-center">
+      <div className="w-full wow-panel p-2 mt-2 mb-1 max-w-[400px] relative z-20 overflow-hidden flex flex-col items-center justify-center">
         <h2 className="text-sm font-black text-amber-500 relative flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
           <MapPin className="w-4 h-4"/> Кампания: Уровень {currentCampaignLevel}
         </h2>
@@ -83,11 +88,43 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         </div>
       </div>
 
+      {/* Bosses Icon */}
+      <motion.button
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setShowBossesModal(true)}
+        className="absolute top-20 left-4 z-20 wow-panel-metal p-2 flex flex-col items-center shadow-2xl transition-transform border-red-600 group active:scale-95"
+      >
+        <div className="relative">
+          <Skull className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
+          <div className="absolute -top-1 -right-1 bg-amber-500 p-0.5 rounded-full border border-stone-900 z-20">
+            <Swords className="w-2 h-2 text-stone-950" />
+          </div>
+        </div>
+        <span className="text-[8px] font-black text-red-500 uppercase mt-0.5 tracking-tighter">Боссы</span>
+      </motion.button>
+
+      {/* World Map Button */}
+      <button 
+        onClick={() => setShowWorldMap(true)}
+        className="absolute top-20 right-4 z-20 wow-panel-metal p-2 flex flex-col items-center shadow-2xl transition-transform active:scale-90 hover:scale-105 border-amber-600 group"
+      >
+         <div className="relative">
+            <Globe className="w-6 h-6 text-amber-500 group-hover:animate-spin-slow" />
+            <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-ping"></div>
+         </div>
+         <span className="text-[8px] font-black text-amber-500 uppercase mt-0.5 tracking-tighter">Мир</span>
+      </button>
+
       {/* Map Nodes Layer */}
       <div className="absolute inset-0 z-10 pt-24 pb-20 pointer-events-none">
         <div className="relative w-full h-full max-w-[500px] mx-auto pointer-events-auto">
           {currentLevelNodes.map(node => {
             const isCity = node.type === 'city';
+            const isBoss = node.type === 'boss' || node.type === 'daily_boss';
+            
             return (
             <motion.button
               key={node.id}
@@ -107,18 +144,21 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                 <div className={`w-8 h-8 rounded text-amber-300 flex items-center justify-center border-2 border-amber-600 shadow-xl ${selectedNode?.id === node.id ? 'bg-amber-900 shadow-[0_0_20px_#f59e0b]' : 'bg-stone-800'}`}>
                    <Store className="w-4 h-4" />
                 </div>
-              ) : node.type === 'daily_boss' ? (
-                <div className={`w-10 h-10 rounded border-2 shadow-2xl flex items-center justify-center relative overflow-hidden ${selectedNode?.id === node.id ? 'border-purple-400 bg-purple-900/80 shadow-[0_0_25px_rgba(168,85,247,0.8)]' : 'border-purple-800 bg-stone-950'}`}>
-                   <div className="absolute inset-0 bg-purple-900/20 animate-pulse"></div>
-                   <Skull className="w-6 h-6 text-purple-400 relative z-10" />
+              ) : isBoss ? (
+                <div className={`w-10 h-10 rounded-full border-2 shadow-2xl flex items-center justify-center relative overflow-hidden ${selectedNode?.id === node.id ? 'border-amber-400 bg-amber-900/80 shadow-[0_0_25px_rgba(245,158,11,0.8)]' : 'border-red-900 bg-stone-950 shadow-[0_0_15px_rgba(153,27,27,0.5)]'}`}>
+                   <div className="absolute inset-0 bg-red-900/20 animate-pulse"></div>
+                   <Skull className="w-6 h-6 text-red-500 relative z-10" />
+                   <div className="absolute -bottom-1 -right-1 bg-amber-500 p-0.5 rounded-full border border-stone-900 z-20">
+                      <Swords className="w-2 h-2 text-stone-950" />
+                   </div>
                 </div>
               ) : (
-                <div className={`w-8 h-8 rounded-[4px] flex items-center justify-center border-2 shadow-xl ${selectedNode?.id === node.id ? 'border-red-400 bg-red-900/80 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'border-red-800 bg-stone-900'}`}>
-                   <Skull className="w-4 h-4 text-red-500 animate-pulse" />
+                <div className={`w-7 h-7 rounded-[4px] flex items-center justify-center border-2 shadow-xl ${selectedNode?.id === node.id ? 'border-red-400 bg-red-900/80 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'border-stone-800 bg-stone-900'}`}>
+                   <Skull className="w-3 h-3 text-red-700 opacity-60" />
                 </div>
               )}
               <div className="mt-1 text-[7px] font-black bg-stone-950/90 px-1.5 py-0.5 rounded text-amber-500 max-w-[80px] text-center leading-tight border border-stone-700/50 uppercase tracking-tighter shadow-xl">
-                {node.name}
+                {isBoss ? 'БОССЫ' : node.name}
               </div>
             </motion.button>
             );
@@ -130,8 +170,70 @@ export default function MapView({ onStartCombat }: MapViewProps) {
       <AnimatePresence>
         {showShop && <ShopView onClose={() => setShowShop(false)} />}
         {showArena && <ArenaView onClose={() => setShowArena(false)} />}
+        {showWorldMap && <WorldMapView onClose={() => setShowWorldMap(false)} />}
         
-        {selectedNode && !showShop && !showArena && (
+        {showBossesModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-[340px] wow-panel p-5 relative"
+            >
+              <div className="flex justify-between items-center mb-4 pb-2 border-b border-stone-700/50">
+                <div className="flex items-center gap-2">
+                  <Skull className="w-5 h-5 text-red-500" />
+                  <h3 className="font-black text-lg text-red-500 uppercase tracking-widest text-shadow-glow">Выберите Босса</h3>
+                </div>
+                <button onClick={() => setShowBossesModal(false)} className="text-stone-400 hover:text-stone-200">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between bg-stone-900/50 px-3 py-2 rounded border border-stone-800 mb-4">
+                <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Ключи боссов:</span>
+                <span className={cn("text-xs font-black", resources.bossKeys ? "text-green-400" : "text-red-500")}>
+                  {resources.bossKeys || 0} / 2
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {dailyBosses.map(boss => (
+                  <button
+                    key={boss.id}
+                    onClick={() => {
+                        setShowBossesModal(false);
+                        setSelectedNode(boss);
+                    }}
+                    className="w-full wow-panel-metal p-3 flex flex-col gap-2 hover:bg-stone-700 transition-all group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-sm text-stone-200 group-hover:text-amber-400 transition-colors">{boss.name}</span>
+                      <div className="flex items-center gap-1">
+                         <span className="text-[10px] text-indigo-400 font-black">+{boss.reward.crystals} 💎</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-[9px] text-stone-500 font-bold uppercase tracking-tight">
+                       <span className="flex items-center gap-1">HP: <span className="text-stone-300">{UNITS_INFO[boss.enemies[0].unitId].hp}</span></span>
+                       <span className="flex items-center gap-1">ATK: <span className="text-stone-300">{UNITS_INFO[boss.enemies[0].unitId].attack}</span></span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              <p className="text-[8px] text-stone-500 mt-4 italic text-center">
+                * Ключи восстанавливаются раз в 24 часа. Максимум 2.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+        
+        {selectedNode && !showShop && !showArena && !showWorldMap && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -159,14 +261,6 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                   }}
                   className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
                    <div className="flex items-center gap-2"><Store className="w-4 h-4 text-amber-400"/> Магазин</div>
-                 </button>
-                 <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
-                   <div className="flex items-center gap-2"><Hammer className="w-4 h-4 text-stone-400"/> Кузня</div>
-                   <span className="text-[9px] text-stone-500">(В разработке)</span>
-                 </button>
-                 <button className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest">
-                   <div className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-blue-400"/> Библиотека</div>
-                   <span className="text-[9px] text-stone-500">(В разработке)</span>
                  </button>
                  <button 
                   onClick={() => {
@@ -249,6 +343,13 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         {prepNode && (
           <BattlePrepModal 
             onStart={(selectedArmy) => {
+              if (prepNode.type === 'daily_boss') {
+                 setResources(prev => ({
+                    ...prev,
+                    bossKeys: Math.max(0, (prev.bossKeys || 1) - 1),
+                    lastBossKeyTime: prev.bossKeys === 2 ? Date.now() : prev.lastBossKeyTime
+                 }));
+              }
               onStartCombat({ ...prepNode, selectedArmy } as any);
               setPrepNode(null);
             }}

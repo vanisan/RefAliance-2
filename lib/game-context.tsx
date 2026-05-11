@@ -27,6 +27,7 @@ interface GameState {
   currentCampaignLevel: string;
   siegeUnits: (UnitId | null)[];
   lastPrayerTime: number | null;
+  referrals: number;
   user: User | null;
   authLoading: boolean;
   getLeaderboard: () => Promise<any[]>;
@@ -38,14 +39,15 @@ interface GameState {
   setArmy: (army: Record<UnitId, number> | ((prev: Record<UnitId, number>) => Record<UnitId, number>)) => void;
   setSiegeUnits: (units: (UnitId | null)[] | ((prev: (UnitId | null)[]) => (UnitId | null)[])) => void;
   setMapNodes: (nodes: MapNode[] | ((prev: MapNode[]) => MapNode[])) => void;
-  setPalaceLevel: (lv: number) => void;
+  setPalaceLevel: (lv: number | ((prev: number) => number)) => void;
   setEquipment: (eq: Record<EquipmentSlot, EquipmentItem | null> | ((prev: Record<EquipmentSlot, EquipmentItem | null>) => Record<EquipmentSlot, EquipmentItem | null>)) => void;
   setPlayerName: (name: string) => void;
   setCurrentCampaignLevel: (level: string) => void;
   setLastPrayerTime: (time: number | null) => void;
+  setReferrals: (n: number | ((prev: number) => number)) => void;
 }
 
-const CURRENT_GAME_VERSION = 2;
+const CURRENT_GAME_VERSION = 3;
 const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 100, crystals: 0, bossKeys: 2, lastBossKeyTime: Date.now() };
 const defaultArmy: Record<UnitId, number> = { 
   knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
@@ -53,9 +55,10 @@ const defaultArmy: Record<UnitId, number> = {
   assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
   banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
   balista: 0, elven_balista: 0, archer_tower: 0, mage_tower: 0,
-  veliar: 0, kronos: 0, archimond: 0
+  veliar: 0, kronos: 0, archimond: 0, despot: 0
 };
 const defaultSiegeUnits: (UnitId | null)[] = [null, null, null, null];
+const DEFAULT_GRID_SIZE = 16;
 
 const GameContext = createContext<GameState | null>(null);
 
@@ -63,10 +66,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   const [resources, setResources] = useState<Resources>(defaultResources);
   const [palaceLevel, setPalaceLevel] = useState(1);
-  const [buildings, setBuildings] = useState<(Building | null)[]>(Array(16).fill(null));
+  const [buildings, setBuildings] = useState<(Building | null)[]>(Array(DEFAULT_GRID_SIZE).fill(null));
   const [army, setArmy] = useState<Record<UnitId, number>>(defaultArmy);
   const [siegeUnits, setSiegeUnits] = useState<(UnitId | null)[]>(defaultSiegeUnits);
   const [lastPrayerTime, setLastPrayerTime] = useState<number | null>(null);
+  const [referrals, setReferrals] = useState(0);
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null, chest: null, boots: null, ring: null
@@ -97,25 +101,27 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     if (!user || !supabase) return;
     setResources(defaultResources);
     setPalaceLevel(1);
-    setBuildings(Array(16).fill(null));
+    setBuildings(Array(DEFAULT_GRID_SIZE).fill(null));
     setArmy(defaultArmy);
     setSiegeUnits(defaultSiegeUnits);
     setMapNodes(INITIAL_MAP_NODES);
     setEquipment({ weapon: null, chest: null, boots: null, ring: null });
     setCurrentCampaignLevel("1-1");
+    setReferrals(0);
     
     try {
       const { error } = await supabase.from('users').upsert({
         id: user.id,
         playerName,
-        resources: defaultResources,
+        resources: { ...defaultResources, referrals: 0 },
         palaceLevel: 1,
-        buildings: Array(16).fill(null),
+        buildings: Array(DEFAULT_GRID_SIZE).fill(null),
         army: defaultArmy,
         armyPower: calculateArmyPower(defaultArmy),
         mapNodes: INITIAL_MAP_NODES,
         equipment: { weapon: null, chest: null, boots: null, ring: null },
         currentCampaignLevel: "1-1",
+        siegeUnits: defaultSiegeUnits,
         lastUpdate: new Date().toISOString()
       });
       if (error) throw error;
@@ -158,14 +164,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               await supabase.from('users').upsert({
                 id: u.id,
                 playerName: newName,
-                resources: defaultResources,
+                resources: { ...defaultResources, referrals: 0 },
                 palaceLevel: 1,
-                buildings: Array(16).fill(null),
+                buildings: Array(DEFAULT_GRID_SIZE).fill(null),
                 army: defaultArmy,
                 armyPower: calculateArmyPower(defaultArmy),
                 mapNodes: INITIAL_MAP_NODES,
                 equipment: { weapon: null, chest: null, boots: null, ring: null },
                 currentCampaignLevel: "1-1",
+                siegeUnits: defaultSiegeUnits,
                 version: CURRENT_GAME_VERSION,
                 lastUpdate: new Date().toISOString()
               });
@@ -173,21 +180,36 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               localStorage.setItem(`siegeUnits_${u.id}`, JSON.stringify(defaultSiegeUnits));
               setResources(defaultResources);
               setPalaceLevel(1);
-              setBuildings(Array(16).fill(null));
+              setBuildings(Array(DEFAULT_GRID_SIZE).fill(null));
               setArmy(defaultArmy);
               setSiegeUnits(defaultSiegeUnits);
               setMapNodes(INITIAL_MAP_NODES);
               setEquipment({ weapon: null, chest: null, boots: null, ring: null });
               setCurrentCampaignLevel("1-1");
               setPlayerName(newName);
+              setReferrals(0);
             } else {
               setResources({ ...defaultResources, ...(data.resources || {}) });
               setPalaceLevel(data.palaceLevel || 1);
-              setBuildings(data.buildings || Array(16).fill(null));
-              setArmy({ ...defaultArmy, ...(data.army || {}) });
               
-              const localSiege = localStorage.getItem(`siegeUnits_${u.id}`);
-              setSiegeUnits(localSiege ? JSON.parse(localSiege) : defaultSiegeUnits);
+              let loadedBuildings = data.buildings || Array(DEFAULT_GRID_SIZE).fill(null);
+              // Migrate buildings if old size or larger
+              if (loadedBuildings.length !== DEFAULT_GRID_SIZE) {
+                if (loadedBuildings.length < DEFAULT_GRID_SIZE) {
+                  const diff = DEFAULT_GRID_SIZE - loadedBuildings.length;
+                  loadedBuildings = [...loadedBuildings, ...Array(diff).fill(null)];
+                } else {
+                  loadedBuildings = loadedBuildings.slice(0, DEFAULT_GRID_SIZE);
+                }
+              }
+              setBuildings(loadedBuildings);
+              setArmy({ ...defaultArmy, ...(data.army || {}) });
+              setReferrals(data.resources?.referrals || data.referrals || 0);
+              
+              const dbSiege = data.siegeUnits;
+              const localSiegeStr = localStorage.getItem(`siegeUnits_${u.id}`);
+              const localSiege = localSiegeStr ? JSON.parse(localSiegeStr) : null;
+              setSiegeUnits(dbSiege || localSiege || defaultSiegeUnits);
               
               setCurrentCampaignLevel(data.currentCampaignLevel || "1-1");
               
@@ -258,14 +280,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await supabase.from('users').upsert({
               id: u.id,
               playerName: initialName,
-              resources: defaultResources,
+              resources: { ...defaultResources, referrals: 0 },
               palaceLevel: 1,
-              buildings: Array(16).fill(null),
+              buildings: Array(DEFAULT_GRID_SIZE).fill(null),
               army: defaultArmy,
               armyPower: calculateArmyPower(defaultArmy),
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
               currentCampaignLevel: "1-1",
+              siegeUnits: defaultSiegeUnits,
               version: CURRENT_GAME_VERSION,
               createdAt: new Date().toISOString()
             });
@@ -291,7 +314,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const armyPower = calculateArmyPower(army);
         const { error } = await supabase.from('users').update({
           playerName,
-          resources,
+          resources: { ...resources, referrals },
           palaceLevel,
           buildings,
           army,
@@ -299,6 +322,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           mapNodes,
           equipment,
           currentCampaignLevel,
+          siegeUnits,
           lastUpdate: new Date().toISOString()
         }).eq('id', user.id);
 
@@ -310,7 +334,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }, 2000); // Debounce save 2s
 
     return () => clearTimeout(timer);
-  }, [user, playerName, resources, palaceLevel, buildings, army, mapNodes, equipment, currentCampaignLevel]);
+  }, [user, playerName, resources, palaceLevel, buildings, army, mapNodes, equipment, currentCampaignLevel, referrals]);
   
   // Game Loop - Production
   const lastTickRef = useRef<number>(Date.now());
@@ -384,6 +408,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       equipment, setEquipment,
       currentCampaignLevel, setCurrentCampaignLevel,
       lastPrayerTime, setLastPrayerTime,
+      referrals, setReferrals,
       user, authLoading,
       getLeaderboard,
       resetProgress,
