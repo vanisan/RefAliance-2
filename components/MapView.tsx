@@ -11,12 +11,14 @@ interface MapViewProps {
   onStartCombat: (node: MapNode) => void;
 }
 
+import BattlePrepModal from './BattlePrepModal';
+
 export default function MapView({ onStartCombat }: MapViewProps) {
-  const { mapNodes, mapRefreshTimer, army, currentCampaignLevel, setCurrentCampaignLevel } = useGame();
+  const { mapNodes, mapRefreshTimer, army, resources, setResources, currentCampaignLevel, setCurrentCampaignLevel } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
   const [showShop, setShowShop] = useState(false);
-
   const [showArena, setShowArena] = useState(false);
+  const [prepNode, setPrepNode] = useState<MapNode | null>(null);
 
   const currentLevelNodes = mapNodes.filter(n => n.campaignLevel === currentCampaignLevel || n.campaignLevel === 'all');
   const enemyNodes = currentLevelNodes.filter(n => n.type === 'combat' || n.type === 'boss');
@@ -104,6 +106,11 @@ export default function MapView({ onStartCombat }: MapViewProps) {
               ) : isCity ? (
                 <div className={`w-8 h-8 rounded text-amber-300 flex items-center justify-center border-2 border-amber-600 shadow-xl ${selectedNode?.id === node.id ? 'bg-amber-900 shadow-[0_0_20px_#f59e0b]' : 'bg-stone-800'}`}>
                    <Store className="w-4 h-4" />
+                </div>
+              ) : node.type === 'daily_boss' ? (
+                <div className={`w-10 h-10 rounded border-2 shadow-2xl flex items-center justify-center relative overflow-hidden ${selectedNode?.id === node.id ? 'border-purple-400 bg-purple-900/80 shadow-[0_0_25px_rgba(168,85,247,0.8)]' : 'border-purple-800 bg-stone-950'}`}>
+                   <div className="absolute inset-0 bg-purple-900/20 animate-pulse"></div>
+                   <Skull className="w-6 h-6 text-purple-400 relative z-10" />
                 </div>
               ) : (
                 <div className={`w-8 h-8 rounded-[4px] flex items-center justify-center border-2 shadow-xl ${selectedNode?.id === node.id ? 'border-red-400 bg-red-900/80 shadow-[0_0_15px_rgba(239,68,68,0.8)]' : 'border-red-800 bg-stone-900'}`}>
@@ -208,14 +215,25 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                 {totalArmyCount === 0 && (
                   <p className="text-[9px] text-red-500 font-bold uppercase animate-pulse">У вас нет войск для боя!</p>
                 )}
+                {selectedNode.type === 'daily_boss' && (
+                  <div className="text-[10px] text-stone-300 mb-2 uppercase font-bold">
+                    Доступно ключей: <span className={cn(resources.bossKeys ? "text-green-400" : "text-red-500 font-black")}>{resources.bossKeys || 0} / 2</span>
+                  </div>
+                )}
                 <button 
                   onClick={() => {
                     if (totalArmyCount > 0) {
-                      onStartCombat(selectedNode);
+                      if (selectedNode.type === 'daily_boss') {
+                        if (!resources.bossKeys || resources.bossKeys < 1) {
+                          alert('У вас нет ключей для атаки на ежедневного босса! (выдается 1 раз в сутки)');
+                          return;
+                        }
+                      }
+                      setPrepNode(selectedNode);
                       setSelectedNode(null);
                     }
                   }}
-                  disabled={totalArmyCount === 0}
+                  disabled={totalArmyCount === 0 || (selectedNode.type === 'daily_boss' && (!resources.bossKeys || resources.bossKeys < 1))}
                   className={cn(
                     "w-full py-3 wow-button font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2",
                     totalArmyCount === 0 && "opacity-50 grayscale cursor-not-allowed border-stone-700"
@@ -226,6 +244,18 @@ export default function MapView({ onStartCombat }: MapViewProps) {
               </div>
             )}
           </motion.div>
+        )}
+        
+        {prepNode && (
+          <BattlePrepModal 
+            onStart={(selectedArmy) => {
+              onStartCombat({ ...prepNode, selectedArmy } as any);
+              setPrepNode(null);
+            }}
+            onCancel={() => setPrepNode(null)}
+            title={`Битва: ${prepNode.name}`}
+            enemies={prepNode.enemies}
+          />
         )}
       </AnimatePresence>
     </div>

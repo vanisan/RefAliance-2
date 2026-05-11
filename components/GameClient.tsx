@@ -17,10 +17,16 @@ export default function GameClient() {
   const [activeTab, setActiveTab] = useState<TabType>('palace');
   const [combatNode, setCombatNode] = useState<MapNode | null>(null);
   
-  const { buildings, authLoading, user, playerName } = useGame();
+  const { buildings, authLoading, user, playerName, setResources } = useGame();
   const hasBarracks = buildings.some(b => b?.id === 'barracks');
 
   const handleStartCombat = (node: MapNode) => {
+    if (node.type === 'daily_boss') {
+      setResources(prev => ({
+        ...prev,
+        bossKeys: Math.max(0, (prev.bossKeys || 0) - 1)
+      }));
+    }
     setCombatNode(node);
   };
 

@@ -747,6 +747,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     } else if (gameOver === 'loss' && match) {
       // Lose 50% of your resources
       setResources(prev => ({
+        ...prev,
         gold: Math.floor(prev.gold * 0.5),
         wood: Math.floor(prev.wood * 0.5),
         stone: Math.floor(prev.stone * 0.5),

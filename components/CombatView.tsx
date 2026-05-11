@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO, UnitId } from '../lib/game.types';
 import { addResources, cn } from '../lib/game.utils';
@@ -25,6 +25,7 @@ type CombatUnit = {
   y: number;
   hasActed: boolean;
   movedThisTurn?: boolean;
+  extraTurnUsed?: boolean;
 };
 
 const GRID_WIDTH = 8;
@@ -57,6 +58,8 @@ const getManhattanDist = (u1x: number, u1y: number, u1s: number, u2x: number, u2
 export default function CombatView({ node, onEnd }: CombatViewProps) {
   const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment, setEquipment } = useGame();
   
+  const reportedLossesRef = useRef<Record<string, number>>({});
+
   // Equipment stats modifiers
   const atkMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.attackBonus || 0), 0) / 100;
   const defMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.defenseBonus || 0), 0) / 100;
@@ -74,7 +77,11 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const [units, setUnits] = useState<CombatUnit[]>(() => {
     const initialUnits: CombatUnit[] = [];
     let pY = 0;
-    (Object.entries(army) as [UnitId, number][]).forEach(([id, count]) => {
+    
+    // Use selectedArmy if available, otherwise fallback to full army
+    const armyToUse = (node as any).selectedArmy || army;
+    
+    (Object.entries(armyToUse) as [UnitId, number][]).forEach(([id, count]) => {
       const info = UNITS_INFO[id as UnitId];
       const size = info.size || 1;
       if (count > 0 && pY + size <= GRID_HEIGHT) {
@@ -123,6 +130,14 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 5));
 
   // Forward declarations for ESLint issues
+  const markUnitActed = (u: CombatUnit): CombatUnit => {
+    const info = UNITS_INFO[u.unitId];
+    if (info.special === 'double_turn' && !u.extraTurnUsed) {
+      return { ...u, movedThisTurn: false, extraTurnUsed: true, hasActed: false };
+    }
+    return { ...u, hasActed: true, movedThisTurn: false };
+  };
+
   // Helper to calculate damage
   const calculateDamage = (attacker: CombatUnit, defender: CombatUnit, isCounter = false, currentUnits: CombatUnit[] = units) => {
     const attInfo = UNITS_INFO[attacker.unitId];
@@ -154,6 +169,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     
     const rawDmg = getRandomDamage(effMinDmg, effMaxDmg);
     let totalDmg = rawDmg * attacker.count;
+    
+    if (attInfo.special === 'crit_25_x2' && Math.random() < 0.25) {
+      totalDmg *= 2;
+    }
     
     if (isCounter && attInfo.special === 'counter_attack_50') {
       totalDmg = Math.floor(totalDmg * 0.5);
@@ -238,13 +257,32 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     let { newCount, newTopHP } = applyDamage(attacker, defender, currentUnits);
     let currentDefender = { ...defender, count: newCount, hp: newTopHP };
 
-    // Splash Damage Logic (Archidruid - special: 'splash_50')
+    // Splash Damage Logic (Archidruid - special: 'splash_50' & Kronos - 'splash_linear_40')
     let splashTargets: { id: string, damage: number }[] = [];
-    if (attackerInfo.special === 'splash_50') {
+    if (attackerInfo.special === 'splash_50' || attackerInfo.special === 'splash_linear_40') {
       const { totalDmg } = calculateDamage(attacker, defender, false, currentUnits);
-      const splashDmgBase = Math.floor(totalDmg * 0.5);
+      const isLinear = attackerInfo.special === 'splash_linear_40';
+      const splashDmgBase = Math.floor(totalDmg * (isLinear ? 0.4 : 0.5));
       
       if (splashDmgBase > 0) {
+        
+        let targetX = -1;
+        let targetY = -1;
+        let dirX = 0;
+        let dirY = 0;
+        if (isLinear) {
+            // Find cell behind target: direction from attacker to defender
+            const defMidx = defender.x + (defenderInfo.size || 1) / 2;
+            const defMidy = defender.y + (defenderInfo.size || 1) / 2;
+            const attMidx = attacker.x + (attackerInfo.size || 1) / 2;
+            const attMidy = attacker.y + (attackerInfo.size || 1) / 2;
+            dirX = Math.sign(defMidx - attMidx);
+            dirY = Math.sign(defMidy - attMidy);
+            // approximate target "behind"
+            targetX = defender.x + (defenderInfo.size || 1) * dirX;
+            targetY = defender.y + (defenderInfo.size || 1) * dirY;
+        }
+
         currentUnits.forEach(u => {
           if (u.id !== defender.id && u.isEnemy === defender.isEnemy && u.count > 0) {
             const uSize = UNITS_INFO[u.unitId].size || 1;
@@ -252,7 +290,15 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
             const dx = Math.max(0, Math.max(u.x - (defender.x + defSize - 1), defender.x - (u.x + uSize - 1)));
             const dy = Math.max(0, Math.max(u.y - (defender.y + defSize - 1), defender.y - (u.y + uSize - 1)));
             
-            if (dx <= 1 && dy <= 1) {
+            if (isLinear && targetX !== -1) {
+              // check if it falls onto targetX/Y 
+              const inLinearPath = u.x <= Math.max(targetX, defender.x + dirX) && u.x + uSize - 1 >= Math.min(targetX, defender.x + dirX) &&
+                                   u.y <= Math.max(targetY, defender.y + dirY) && u.y + uSize - 1 >= Math.min(targetY, defender.y + dirY);
+              // Simplified: hit adjacent unit behind target.
+              if (inLinearPath && (dx <= 1 && dy <= 1)) {
+                 splashTargets.push({ id: u.id, damage: splashDmgBase });
+              }
+            } else if (!isLinear && dx <= 1 && dy <= 1) {
               splashTargets.push({ id: u.id, damage: splashDmgBase });
             }
           }
@@ -262,7 +308,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
     const finalizeAttack = (finalDefender: CombatUnit, splashHits: { id: string, damage: number }[] = []) => {
       const updatedUnits = currentUnits.map(u => {
-        if (u.id === attacker.id) return { ...u, hasActed: true, movedThisTurn: false };
+        if (u.id === attacker.id) return markUnitActed(u);
         if (u.id === defender.id) return finalDefender;
         
         const splash = splashHits.find(s => s.id === u.id);
@@ -305,7 +351,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         triggerEffect(defender.unitId, attacker.unitId, attacker.x, attacker.y, attackerInfo.size || 1);
         const res = applyDamage(currentDefender, attacker, currentUnits, true);
         const finalUnits = currentUnits.map(u => {
-          if (u.id === attacker.id) return { ...u, count: res.newCount, hp: res.newTopHP, hasActed: true, movedThisTurn: false };
+          if (u.id === attacker.id) return markUnitActed({ ...u, count: res.newCount, hp: res.newTopHP });
           if (u.id === defender.id) return currentDefender;
           // Note: Splash and counter from main defender can't easily coexist in this block without more complexity
           return u;
@@ -372,7 +418,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         if (currentDist <= ranges) break;
       }
       
-      const movedUnits = currentUnits.map(u => u.id === myUnit.id ? { ...u, x: newX, y: newY, hasActed: true, movedThisTurn: false } : u);
+      const movedUnits = currentUnits.map(u => u.id === myUnit.id ? markUnitActed({ ...u, x: newX, y: newY }) : u);
       setUnits(movedUnits);
       addLog(`${info.name} (враг) перемещается.`);
       setTimeout(() => checkWinCondition(movedUnits), 300);
@@ -408,7 +454,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       // New Round
       setRound(r => r + 1);
       addLog("Новый раунд.");
-      const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false, movedThisTurn: false }));
+      const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false, movedThisTurn: false, extraTurnUsed: false }));
       setUnits(refreshedUnits);
       
       // Safety timeout to avoid recursive loops
@@ -485,7 +531,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     const healAmount = Math.min(lost, Math.floor(Math.random() * 3) + 1);
 
     const updatedUnits = units.map(u => {
-      if (u.id === activeUnit.id) return { ...u, hasActed: true };
+      if (u.id === activeUnit.id) return markUnitActed(u);
       if (u.id === targetPos.id) return { ...u, count: u.count + healAmount };
       return u;
     });
@@ -595,7 +641,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           addLog(`${activeInfo.name} переместилась и готова к удару!`);
           // We don't call determineNextActiveUnit, so she stays selected
         } else {
-          const updatedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x, y, hasActed: true, movedThisTurn: false } : u);
+          const updatedUnits = units.map(u => u.id === activeUnit.id ? markUnitActed({ ...u, x, y }) : u);
           setUnits(updatedUnits);
           addLog(`${activeInfo.name} переместился.`);
           determineNextActiveUnit(updatedUnits);
@@ -616,8 +662,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       const next = { ...prev };
       
       playerUnitsInBattle.forEach(u => {
-        if (next[u.unitId] !== u.count) {
-          next[u.unitId] = u.count;
+        const totalLosses = u.startCount - u.count;
+        const previouslyReported = reportedLossesRef.current[u.id] || 0;
+        const newLosses = Math.max(0, totalLosses - previouslyReported);
+        
+        if (newLosses > 0) {
+          next[u.unitId] = Math.max(0, (next[u.unitId] || 0) - newLosses);
+          reportedLossesRef.current[u.id] = totalLosses;
           changed = true;
         }
       });
@@ -627,18 +678,27 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   }, [units, setArmy, gameOver]);
 
   const handleFinish = () => {
-    if (gameOver === 'victory') {
-      // Final sync - although real-time sync should have covered it
-      setArmy(prev => {
-        const next = { ...prev };
-        units.forEach(u => {
-          if (!u.isEnemy) {
-            next[u.unitId] = u.count;
+    // Final sync for current state. Since useEffect might have already synced up to the last move,
+    // this just acts as a final catch-all.
+    setArmy(prev => {
+      const next = { ...prev };
+      let changed = false;
+      units.forEach(u => {
+        if (!u.isEnemy) {
+          const totalLosses = u.startCount - u.count;
+          const previouslyReported = reportedLossesRef.current[u.id] || 0;
+          const newLosses = Math.max(0, totalLosses - previouslyReported);
+          if (newLosses > 0) {
+            next[u.unitId] = Math.max(0, (next[u.unitId] || 0) - newLosses);
+            reportedLossesRef.current[u.id] = totalLosses;
+            changed = true;
           }
-        });
-        return next;
+        }
       });
-      
+      return changed ? next : prev;
+    });
+
+    if (gameOver === 'victory') {
       // Reward
       setResources(addResources(resources, node.reward));
       
@@ -650,20 +710,12 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         alert("ПОЗДРАВЛЯЕМ! Вы прошли кампанию первого мира! Вы получили Легендарное Оружие!");
       }
 
-      // Mark node cleared
-      setMapNodes(mapNodes.map(m => m.id === node.id ? { ...m, cleared: true } : m));
-    } else if (gameOver === 'defeat') {
-      // Final sync for defeat - preserve reserves but record combat losses
-      setArmy(prev => {
-        const next = { ...prev };
-        units.forEach(u => {
-          if (!u.isEnemy) {
-            next[u.unitId] = u.count;
-          }
-        });
-        return next;
-      });
+      // Mark node cleared unless it is a daily boss
+      if (node.type !== 'daily_boss') {
+        setMapNodes(mapNodes.map(m => m.id === node.id ? { ...m, cleared: true } : m));
+      }
     }
+    
     onEnd();
   };
 
@@ -994,7 +1046,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               <button 
                 onClick={() => {
                   if (activeUnitId) {
-                    const updatedUnits = units.map(u => u.id === activeUnitId ? { ...u, hasActed: true } : u);
+                    const updatedUnits = units.map(u => u.id === activeUnitId ? markUnitActed(u) : u);
                     determineNextActiveUnit(updatedUnits);
                   }
                 }}

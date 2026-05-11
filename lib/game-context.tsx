@@ -46,13 +46,14 @@ interface GameState {
 }
 
 const CURRENT_GAME_VERSION = 2;
-const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 100, crystals: 0 };
+const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 100, crystals: 0, bossKeys: 2, lastBossKeyTime: Date.now() };
 const defaultArmy: Record<UnitId, number> = { 
   knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
   goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
   assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
   banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
-  balista: 0, elven_balista: 0, archer_tower: 0, mage_tower: 0
+  balista: 0, elven_balista: 0, archer_tower: 0, mage_tower: 0,
+  veliar: 0, kronos: 0, archimond: 0
 };
 const defaultSiegeUnits: (UnitId | null)[] = [null, null, null, null];
 
@@ -351,7 +352,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           food: (totalProd.food || 0) * multiplier,
         };
         
-        return addResources(prev, finalProd);
+        let nextState = addResources(prev, finalProd);
+
+        if (nextState.bossKeys !== undefined && nextState.bossKeys < 2 && nextState.lastBossKeyTime) {
+           const timePassed = now - nextState.lastBossKeyTime;
+           if (timePassed >= 86400000) {
+             const keysToAdd = Math.floor(timePassed / 86400000);
+             nextState = {
+               ...nextState,
+               bossKeys: Math.min(2, nextState.bossKeys + keysToAdd),
+               lastBossKeyTime: nextState.lastBossKeyTime + keysToAdd * 86400000
+             };
+           }
+        }
+        return nextState;
       });
     }, 5000); // Resource tick attempt every 5 seconds
     

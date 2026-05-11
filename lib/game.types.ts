@@ -1,5 +1,8 @@
 export type ResourceType = 'gold' | 'stone' | 'wood' | 'food' | 'crystals';
-export type Resources = Record<ResourceType, number>;
+export interface Resources extends Record<ResourceType, number> {
+  bossKeys?: number;
+  lastBossKeyTime?: number;
+}
 
 export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge';
 
@@ -63,7 +66,7 @@ export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
   },
 };
 
-export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower';
+export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower' | 'veliar' | 'kronos' | 'archimond';
 
 export interface ArenaPlayer {
   id: string;
@@ -102,7 +105,7 @@ export interface UnitInfo {
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action' | 'double_turn' | 'crit_25_x2' | 'splash_linear_40';
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -152,32 +155,32 @@ const TIER_COSTS = [50, 150, 400, 1000, 2000, 3500, 5000];
 export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   knight: { 
     id: 'knight', name: 'Рыцарь', hp: 35, attack: 10, defense: 10, minDamage: 5, maxDamage: 10, speed: 2, range: 1, 
-    cost: { gold: 100, food: 50, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/knight.png',
+    cost: { gold: 150, food: 80, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/knight.png',
     combatType: 'melee', description: 'Благородный воин. Ближний бой. Атака: обычная.'
   },
   archer: { 
     id: 'archer', name: 'Лучник', hp: 15, attack: 12, defense: 5, minDamage: 4, maxDamage: 8, speed: 2, range: 5, 
-    cost: { gold: 150, wood: 30, food: 20, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/archer.png',
+    cost: { gold: 200, wood: 50, food: 50, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/archer.png',
     combatType: 'ranged', description: 'Мастер лука. Дальний бой. Атака: обычная.'
   },
   berserk: { 
     id: 'berserk', name: 'Берсерк', hp: 40, attack: 15, defense: 5, minDamage: 8, maxDamage: 15, speed: 2, range: 1, 
-    cost: { gold: 175, food: 80, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/berserk.png',
+    cost: { gold: 200, food: 50, stone: 50, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/berserk.png',
     combatType: 'melee', description: 'Яростный боец. Ближний бой. Атака: обычная.'
   },
   mage: { 
     id: 'mage', name: 'Маг', hp: 20, attack: 18, defense: 6, minDamage: 10, maxDamage: 18, speed: 2, range: 5, 
-    cost: { gold: 250, wood: 50, stone: 10, food: 0, crystals: 0 }, isEnemy: false, image: '/units/mage.png',
+    cost: { gold: 300, wood: 100, stone: 100, food: 0, crystals: 0 }, isEnemy: false, image: '/units/mage.png',
     combatType: 'ranged', description: 'Повелитель огня. Дальний бой. Атака: обычная.'
   },
   dragon: { 
     id: 'dragon', name: 'Дракон', hp: 200, attack: 40, defense: 30, minDamage: 25, maxDamage: 50, speed: 6, range: 1, 
-    cost: { gold: 2000, wood: 200, stone: 200, food: 500, crystals: 0 }, isEnemy: false, image: '/units/dragon.png',
+    cost: { gold: 3000, stone: 500, food: 1000, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/dragon.png',
     combatType: 'melee', description: 'Легендарный зверь. Ближний бой. Атака: обычная.'
   },
   titan: { 
     id: 'titan', name: 'Титан', hp: 300, attack: 50, defense: 40, minDamage: 40, maxDamage: 60, speed: 2, range: 8, size: 2, 
-    cost: { gold: 4000, stone: 1000, wood: 0, food: 500, crystals: 0 }, isEnemy: false, image: '/units/titan.png',
+    cost: { gold: 5000, stone: 1000, wood: 200, food: 750, crystals: 0 }, isEnemy: false, image: '/units/titan.png',
     combatType: 'ranged', description: 'Древний гигант. Дальний бой. Атака: обычная.'
   },
   
@@ -190,17 +193,17 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   
   assassin: { 
     id: 'assassin', name: 'Убийца', hp: 120, attack: 30, defense: 15, minDamage: 15, maxDamage: 30, speed: 5, range: 1, 
-    cost: { gold: 500, stone: 0, wood: 0, food: 100, crystals: 0 }, isEnemy: false, image: '/units/assasin.png',
+    cost: { gold: 700, stone: 0, wood: 0, food: 150, crystals: 0 }, isEnemy: false, image: '/units/assasin.png',
     combatType: 'melee', special: 'double_attack', description: 'Скрытный убийца. Ближний бой. Атака: двойная.'
   },
   paladin: {
     id: 'paladin', name: 'Паладин', hp: 200, attack: 20, defense: 50, minDamage: 15, maxDamage: 25, speed: 2, range: 1,
-    cost: { gold: 800, food: 400, stone: 0, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/paladin.png',
+    cost: { gold: 1000, food: 400, stone: 100, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/paladin.png',
     combatType: 'melee', special: 'aura_def_20', description: 'Святой воин. Союзники в радиусе 1 кл. получают +20% защиты.'
   },
   driada: {
     id: 'driada', name: 'Дриада', hp: 130, attack: 15, defense: 10, minDamage: 10, maxDamage: 20, speed: 3, range: 4,
-    cost: { gold: 700, food: 100, wood: 400, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/driada.png',
+    cost: { gold: 850, food: 150, wood: 500, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/driada.png',
     combatType: 'ranged', special: 'heal_resurrect', description: 'Дитя леса. Раз за ход может воскресить 1-3 убитых в бою существ.'
   },
   hydra: { 
@@ -230,7 +233,7 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
   },
   archidruid: {
     id: 'archidruid', name: 'Архидруид', hp: 500, attack: 80, defense: 50, minDamage: 100, maxDamage: 140, speed: 2, range: 5,
-    cost: { gold: 8000, food: 250, crystals: 10, wood: 0, stone: 0 }, isEnemy: false, image: '/units/archiduid.png',
+    cost: { gold: 10000, food: 500, crystals: 10, wood: 0, stone: 0 }, isEnemy: false, image: '/units/archiduid.png',
     combatType: 'ranged', special: 'splash_50', description: 'Верховный защитник природы. Дальний бой. Атака: сплеш-урон 50% в радиусе 1 кл.'
   },
   balista: {
@@ -253,6 +256,18 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     cost: { gold: 35000, wood: 2000, stone: 2000, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/magetower.png',
     combatType: 'ranged', description: 'Вершина магической защиты. Атака через всё поле.'
   },
+  veliar: {
+    id: 'veliar', name: 'Велиар (Король эльфов)', hp: 2000, attack: 300, defense: 50, minDamage: 300, maxDamage: 300, speed: 2, range: 1, size: 2,
+    isEnemy: true, image: '/bosses/veliar.png', combatType: 'melee', special: 'crit_25_x2', description: 'Король эльфов крови. Ближний бой. 25% шанс нанести x2 урон.'
+  },
+  kronos: {
+    id: 'kronos', name: 'Кронос (Повелитель энтов)', hp: 5000, attack: 400, defense: 60, minDamage: 400, maxDamage: 400, speed: 1, range: 1, size: 2,
+    isEnemy: true, image: '/bosses/kronos.png', combatType: 'melee', special: 'splash_linear_40', description: 'Повелитель энтов. Ближний бой. 40% урона переходит на клетку позади цели.'
+  },
+  archimond: {
+    id: 'archimond', name: 'Архимонд (Владыка демонов)', hp: 10000, attack: 700, defense: 60, minDamage: 700, maxDamage: 700, speed: 4, range: 2, size: 2,
+    isEnemy: true, image: '/bosses/archimond.png', combatType: 'ranged', special: 'double_turn', description: 'Владыка демонов. Дальний бой (2 кл.). Делает 2 хода за один раунд.'
+  },
 };
 
 export interface MapNode {
@@ -264,12 +279,15 @@ export interface MapNode {
   itemReward?: string; // ID of equipment item
   cleared: boolean;
   name: string;
-  type?: 'combat' | 'city' | 'boss';
+  type?: 'combat' | 'city' | 'boss' | 'daily_boss';
   campaignLevel: string; // e.g. "1-1"
 }
 
 export const INITIAL_MAP_NODES: MapNode[] = [
   { id: 'city', name: 'Город (Амстерград)', type: 'city', x: 50, y: 50, enemies: [], reward: {}, cleared: false, campaignLevel: 'all' },
+  { id: 'daily-veliar', name: 'Велиар', type: 'daily_boss', x: 10, y: 50, enemies: [{ unitId: 'veliar', count: 1 }], reward: { crystals: 20 }, cleared: false, campaignLevel: 'all' },
+  { id: 'daily-kronos', name: 'Кронос', type: 'daily_boss', x: 50, y: 90, enemies: [{ unitId: 'kronos', count: 1 }], reward: { crystals: 100 }, cleared: false, campaignLevel: 'all' },
+  { id: 'daily-archimond', name: 'Архимонд', type: 'daily_boss', x: 90, y: 50, enemies: [{ unitId: 'archimond', count: 1 }], reward: { crystals: 200 }, cleared: false, campaignLevel: 'all' },
   
   // Level 1-1
   { id: '1-1-1', name: 'Лесной патруль', type: 'combat', x: 25, y: 35, enemies: [{ unitId: 'goblin', count: 10 }, { unitId: 'orc', count: 10 }], reward: { gold: 100, crystals: 1 }, cleared: false, campaignLevel: '1-1' },
