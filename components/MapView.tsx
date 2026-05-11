@@ -346,8 +346,8 @@ export default function MapView({ onStartCombat }: MapViewProps) {
               if (prepNode.type === 'daily_boss') {
                  setResources(prev => ({
                     ...prev,
-                    bossKeys: Math.max(0, (prev.bossKeys || 1) - 1),
-                    lastBossKeyTime: prev.bossKeys === 2 ? Date.now() : prev.lastBossKeyTime
+                    bossKeys: Math.max(0, (prev.bossKeys || 0) - 1),
+                    lastBossKeyTime: (prev.bossKeys || 0) >= 2 ? Date.now() : prev.lastBossKeyTime
                  }));
               }
               onStartCombat({ ...prepNode, selectedArmy } as any);

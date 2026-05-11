@@ -21,12 +21,6 @@ export default function GameClient() {
   const hasBarracks = buildings.some(b => b?.id === 'barracks');
 
   const handleStartCombat = (node: MapNode) => {
-    if (node.type === 'daily_boss') {
-      setResources(prev => ({
-        ...prev,
-        bossKeys: Math.max(0, (prev.bossKeys || 0) - 1)
-      }));
-    }
     setCombatNode(node);
   };
 

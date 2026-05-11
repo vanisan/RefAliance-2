@@ -40,6 +40,13 @@ export const getUpgradeCost = (buildingId: BuildingId, currentLevel: number): Re
   };
 };
 
+export const playSound = (path: string) => {
+  if (typeof window === 'undefined') return;
+  const audio = new Audio(path);
+  audio.volume = 0.5;
+  audio.play().catch(e => console.log("Audio play failed:", e));
+};
+
 export const hasEnoughResources = (cost: Partial<Resources>, wallet: Resources): boolean => {
   return (
     wallet.gold >= (cost.gold || 0) &&

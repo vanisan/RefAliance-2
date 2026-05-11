@@ -376,12 +376,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
         if (nextState.bossKeys !== undefined && nextState.bossKeys < 2 && nextState.lastBossKeyTime) {
            const timePassed = now - nextState.lastBossKeyTime;
-           if (timePassed >= 86400000) {
-             const keysToAdd = Math.floor(timePassed / 86400000);
+           const RECHARGE_TIME = 86400000; // 24 hours
+           if (timePassed >= RECHARGE_TIME) {
+             const keysToAdd = Math.floor(timePassed / RECHARGE_TIME);
+             const newKeys = Math.min(2, (nextState.bossKeys || 0) + keysToAdd);
              nextState = {
                ...nextState,
-               bossKeys: Math.min(2, nextState.bossKeys + keysToAdd),
-               lastBossKeyTime: nextState.lastBossKeyTime + keysToAdd * 86400000
+               bossKeys: newKeys,
+               lastBossKeyTime: newKeys >= 2 ? now : (nextState.lastBossKeyTime + keysToAdd * RECHARGE_TIME)
              };
            }
         }

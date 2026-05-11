@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGame } from '../lib/game-context';
 import { BuildingId, BUILDINGS_INFO } from '../lib/game.types';
-import { getUpgradeCost, hasEnoughResources, deductResources, addResources, formatNumber, cn, getPalaceUpgradeCost } from '../lib/game.utils';
+import { getUpgradeCost, hasEnoughResources, deductResources, addResources, formatNumber, cn, getPalaceUpgradeCost, playSound } from '../lib/game.utils';
 import { Coins, Trees, Mountain, Wheat, ArrowUpCircle, Trash2, Hammer, X, Lock, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ForgeView from './ForgeView';
@@ -44,6 +44,7 @@ export default function PalaceView() {
     newBuildings[selectedCell] = { id: buildingId, name: info.name, level: 1 };
     setBuildings(newBuildings);
     setSelectedCell(null);
+    playSound('/sfx/soundofbuilding.mp3');
   };
 
   const handleUpgrade = () => {
@@ -68,6 +69,7 @@ export default function PalaceView() {
     newBuildings[selectedCell] = { ...building, level: building.level + 1 };
     setBuildings(newBuildings);
     setSelectedCell(null);
+    playSound('/sfx/lvlupbuilding.mp3');
   };
 
   const PALACE_DESCRIPTIONS: Record<number, string> = {
@@ -88,6 +90,7 @@ export default function PalaceView() {
     setResources(deductResources(resources, cost));
     setPalaceLevel(palaceLevel + 1);
     setShowPalaceUpgrade(false);
+    playSound('/sfx/lvlupbuilding.mp3');
     alert(`Поздравляем! Ваш Дворец теперь ${palaceLevel + 1} уровня! Лимит зданий увеличен до ${(palaceLevel + 1) * 5}.`);
   };
 
