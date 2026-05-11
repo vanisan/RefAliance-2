@@ -3,6 +3,7 @@ export interface Resources extends Record<ResourceType, number> {
   bossKeys?: number;
   lastBossKeyTime?: number;
   referrals?: number;
+  siegeUnits?: (UnitId | null)[];
 }
 
 export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge';

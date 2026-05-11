@@ -113,7 +113,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.from('users').upsert({
         id: user.id,
         playerName,
-        resources: { ...defaultResources, referrals: 0 },
+        resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits },
         palaceLevel: 1,
         buildings: Array(DEFAULT_GRID_SIZE).fill(null),
         army: defaultArmy,
@@ -121,7 +121,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         mapNodes: INITIAL_MAP_NODES,
         equipment: { weapon: null, chest: null, boots: null, ring: null },
         currentCampaignLevel: "1-1",
-        siegeUnits: defaultSiegeUnits,
         lastUpdate: new Date().toISOString()
       });
       if (error) throw error;
@@ -164,7 +163,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               await supabase.from('users').upsert({
                 id: u.id,
                 playerName: newName,
-                resources: { ...defaultResources, referrals: 0 },
+                resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits },
                 palaceLevel: 1,
                 buildings: Array(DEFAULT_GRID_SIZE).fill(null),
                 army: defaultArmy,
@@ -172,7 +171,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 mapNodes: INITIAL_MAP_NODES,
                 equipment: { weapon: null, chest: null, boots: null, ring: null },
                 currentCampaignLevel: "1-1",
-                siegeUnits: defaultSiegeUnits,
                 version: CURRENT_GAME_VERSION,
                 lastUpdate: new Date().toISOString()
               });
@@ -206,7 +204,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setArmy({ ...defaultArmy, ...(data.army || {}) });
               setReferrals(data.resources?.referrals || data.referrals || 0);
               
-              const dbSiege = data.siegeUnits;
+              const dbSiege = data.resources?.siegeUnits || data.siegeUnits;
               const localSiegeStr = localStorage.getItem(`siegeUnits_${u.id}`);
               const localSiege = localSiegeStr ? JSON.parse(localSiegeStr) : null;
               setSiegeUnits(dbSiege || localSiege || defaultSiegeUnits);
@@ -280,7 +278,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await supabase.from('users').upsert({
               id: u.id,
               playerName: initialName,
-              resources: { ...defaultResources, referrals: 0 },
+              resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits },
               palaceLevel: 1,
               buildings: Array(DEFAULT_GRID_SIZE).fill(null),
               army: defaultArmy,
@@ -288,7 +286,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               mapNodes: INITIAL_MAP_NODES,
               equipment: { weapon: null, chest: null, boots: null, ring: null },
               currentCampaignLevel: "1-1",
-              siegeUnits: defaultSiegeUnits,
               version: CURRENT_GAME_VERSION,
               createdAt: new Date().toISOString()
             });
@@ -314,7 +311,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const armyPower = calculateArmyPower(army);
         const { error } = await supabase.from('users').update({
           playerName,
-          resources: { ...resources, referrals },
+          resources: { ...resources, referrals, siegeUnits },
           palaceLevel,
           buildings,
           army,
@@ -322,7 +319,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           mapNodes,
           equipment,
           currentCampaignLevel,
-          siegeUnits,
           lastUpdate: new Date().toISOString()
         }).eq('id', user.id);
 
