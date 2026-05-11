@@ -5,9 +5,11 @@ import { supabase } from '../lib/supabase';
 import { useGame } from '../lib/game-context';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, LogOut, User as UserIcon, Lock, ShieldCheck } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { useEffect } from 'react';
 
 export default function AuthView() {
-  const { user, authLoading, playerName, setPlayerName, resetProgress } = useGame();
+  const { user, authLoading, playerName, setPlayerName, resetProgress, setResources } = useGame();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<'choice' | 'credentials'>('choice');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -17,6 +19,50 @@ export default function AuthView() {
   const [loading, setLoading] = useState(false);
   
   const DUMMY_DOMAIN = "@heroes.game";
+
+  // -- Referral System --
+  const MY_CODE = user?.id?.substring(0, 6).toUpperCase() || '';
+  const [refInput, setRefInput] = useState('');
+  const [referrals, setReferrals] = useState<{code: string, claimTime: number}[]>([]);
+
+  // Load referrals from localStorage since we don't have DB support for it
+  useEffect(() => {
+    if (user) {
+      const saved = localStorage.getItem(`referrals_${user.id}`);
+      if (saved) setReferrals(JSON.parse(saved));
+    }
+  }, [user]);
+
+  const saveReferrals = (newRefs: any) => {
+    setReferrals(newRefs);
+    if (user) localStorage.setItem(`referrals_${user.id}`, JSON.stringify(newRefs));
+  };
+
+  const handleAddReferral = () => {
+    const code = refInput.trim().toUpperCase();
+    if (code.length !== 6) return alert('Код должен состоять из 6 символов');
+    if (code === MY_CODE) return alert('Нельзя добавить свой же код');
+    if (referrals.find(r => r.code === code)) return alert('Этот код уже добавлен');
+    
+    saveReferrals([...referrals, { code, claimTime: 0 }]);
+    setRefInput('');
+  };
+
+  const claimReferral = (code: string) => {
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const ref = referrals.find(r => r.code === code);
+    if (!ref) return;
+
+    if (now - ref.claimTime < DAY_MS) {
+      return alert('Кристаллы за этого реферала уже собраны сегодня!');
+    }
+
+    // Add 10 crystals
+    setResources(prev => ({ ...prev, crystals: (prev.crystals || 0) + 10 }));
+    saveReferrals(referrals.map(r => r.code === code ? { ...r, claimTime: now } : r));
+    alert('Вы получили 10 кристаллов за реферала!');
+  };
 
   const handleCredentialsAuth = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -164,6 +210,59 @@ export default function AuthView() {
           <div className="p-4 wow-panel-metal rounded bg-stone-800/30">
             <p className="text-xs text-stone-300 font-bold mb-2">Ваш прогресс автоматически сохраняется в облаке.</p>
             <p className="text-[10px] text-stone-500 uppercase tracking-widest">Прогресс привязан к логину: <span className="text-amber-500">{login || (user.email?.endsWith(DUMMY_DOMAIN) ? user.user_metadata?.name || 'Player' : user.email)}</span></p>
+          </div>
+
+          <div className="p-4 rounded border border-indigo-500/30 bg-indigo-950/20">
+            <h3 className="text-xs text-indigo-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4" /> Реферальная Система
+            </h3>
+            
+            <div className="mb-4 text-center p-2 bg-stone-900 rounded border border-stone-800">
+              <p className="text-[10px] text-stone-500 uppercase tracking-widest mb-1">Ваш код приглашения</p>
+              <p className="text-xl font-mono text-indigo-400 font-bold tracking-[0.2em]">{MY_CODE}</p>
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              <input 
+                type="text" 
+                maxLength={6}
+                value={refInput}
+                onChange={e => setRefInput(e.target.value)}
+                placeholder="ВВЕСТИ КОД" 
+                className="w-full bg-stone-900 border border-stone-700 rounded p-2 text-xs font-mono uppercase focus:border-indigo-500 outline-none placeholder:text-stone-600"
+              />
+              <button 
+                onClick={handleAddReferral}
+                className="px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-black text-[10px] uppercase transition-colors"
+              >
+                Добавить
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] text-stone-400 font-bold uppercase">Ваши рефералы ({referrals.length})</p>
+              {referrals.length === 0 ? (
+                <p className="text-[10px] text-stone-600 italic">Нет рефералов</p>
+              ) : (
+                referrals.map(r => (
+                  <div key={r.code} className="flex items-center justify-between bg-stone-900/50 p-2 rounded border border-stone-800">
+                    <span className="font-mono text-stone-300 text-xs">#{r.code}</span>
+                    <button 
+                      onClick={() => claimReferral(r.code)}
+                      disabled={Date.now() - r.claimTime < 24 * 60 * 60 * 1000}
+                      className={cn(
+                        "px-2 py-1 rounded text-[9px] font-black uppercase transition-colors",
+                        Date.now() - r.claimTime >= 24 * 60 * 60 * 1000
+                          ? "bg-amber-500 text-stone-900 hover:bg-amber-400 cursor-pointer shadow-[0_0_10px_#f59e0b40]"
+                          : "bg-stone-800 text-stone-600 opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      {Date.now() - r.claimTime >= 24 * 60 * 60 * 1000 ? "Собрать +10" : "Собрано"}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="space-y-2 pt-4">

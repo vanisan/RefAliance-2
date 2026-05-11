@@ -64,6 +64,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const [effects, setEffects] = useState<AttackEffect[]>([]);
+  const [floatingTexts, setFloatingTexts] = useState<{ id: number, text: string, x: number, y: number, color?: string }[]>([]);
   const [selectedUnitInfo, setSelectedUnitInfo] = useState<CombatUnit | null>(null);
 
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -517,8 +518,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         activeUnitId: nextId || getNextActiveUnitId(finalUnits)
       }
     });
-
-    checkWinCondition(finalUnits);
   };
 
   const [isHealMode, setIsHealMode] = useState(false);
@@ -617,6 +616,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     setEffects(prev => [...prev, { id: effId, type: 'heal', x: target.x, y: target.y, size: UNITS_INFO[target.unitId].size || 1 }]);
     setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effId)), 700);
 
+    const fId = Date.now() + Math.random();
+    setFloatingTexts(prev => [...prev, { id: fId, text: `+${healAmount}`, x: target.x, y: target.y, color: 'text-green-500' }]);
+    setTimeout(() => setFloatingTexts(prev => prev.filter(f => f.id !== fId)), 1000);
+
     if (turn === myIndex) finishAction(updated);
   };
 
@@ -650,11 +653,19 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
     triggerEffect(attacker.unitId, defender.unitId, defender.x, defender.y, defenderInfo.size || 1);
 
+    const addFloatingText = (text: string, x: number, y: number, color?: string) => {
+      const id = Date.now() + Math.random();
+      setFloatingTexts(prev => [...prev, { id, text, x, y, color }]);
+      setTimeout(() => setFloatingTexts(prev => prev.filter(f => f.id !== id)), 1000);
+    };
+
     // Damage calculation
     const damageObj = calculatePvPDamage(attacker, defender, units);
     let remainingStackHP = (defender.count - 1) * damageObj.effUnitHp + defender.hp - damageObj.totalDmg;
     let newCount = Math.max(0, Math.ceil(remainingStackHP / damageObj.effUnitHp));
     let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % damageObj.effUnitHp === 0 ? damageObj.effUnitHp : remainingStackHP % damageObj.effUnitHp);
+
+    addFloatingText(`-${damageObj.totalDmg}`, defender.x, defender.y, 'text-rose-500');
 
     const updated = units.map(u => {
       if (u.id === attacker.id) return { ...u, hasActed: true };
@@ -703,16 +714,18 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     return { totalDmg, effUnitHp };
   };
 
-  const checkWinCondition = (currentUnits: CombatUnit[]) => {
-    const p0Alive = currentUnits.filter(u => u.playerIndex === 0 && u.count > 0).length > 0;
-    const p1Alive = currentUnits.filter(u => u.playerIndex === 1 && u.count > 0).length > 0;
+  useEffect(() => {
+    if (gameOver !== null || units.length === 0 || match?.status !== 'playing') return;
+
+    const p0Alive = units.filter(u => u.playerIndex === 0 && u.count > 0).length > 0;
+    const p1Alive = units.filter(u => u.playerIndex === 1 && u.count > 0).length > 0;
 
     if (!p1Alive && p0Alive) {
-      if (myIndex === 0) setGameOver('win'); else setGameOver('loss');
+      setGameOver(myIndex === 0 ? 'win' : 'loss');
     } else if (!p0Alive && p1Alive) {
-      if (myIndex === 1) setGameOver('win'); else setGameOver('loss');
+      setGameOver(myIndex === 1 ? 'win' : 'loss');
     }
-  };
+  }, [units, gameOver, match?.status, myIndex]);
 
   const claimReward = () => {
     if (gameOver === 'win' && match) {
@@ -1010,6 +1023,27 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
                 )}
               </motion.div>
            ))}
+
+          {/* Floating Texts */}
+          <AnimatePresence>
+            {floatingTexts.map(f => (
+              <motion.div
+                key={f.id}
+                initial={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 0, y: -30 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                className={cn("absolute z-[120] font-black text-xl pointer-events-none text-shadow-glow", f.color || "text-rose-500")}
+                style={{
+                  left: `${(f.x + 0.5) * (100/GRID_WIDTH)}%`,
+                  top: `${(f.y + 0.5) * (100/GRID_HEIGHT)}%`,
+                  transform: 'translate(-50%, -100%)'
+                }}
+              >
+                {f.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
         {/* Console */}

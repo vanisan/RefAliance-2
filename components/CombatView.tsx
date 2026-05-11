@@ -65,6 +65,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   // Visual effects state
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const [effects, setEffects] = useState<AttackEffect[]>([]);
+  const [floatingTexts, setFloatingTexts] = useState<{ id: number, text: string, x: number, y: number, color?: string }[]>([]);
   const [selectedUnitInfo, setSelectedUnitInfo] = useState<CombatUnit | null>(null);
   const [infoMode, setInfoMode] = useState(false);
   const [isHealMode, setIsHealMode] = useState(false);
@@ -207,6 +208,12 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
     triggerEffect(attacker.unitId, defender.unitId, defender.x, defender.y, defenderInfo.size || 1);
 
+    const addFloatingText = (text: string, x: number, y: number, color?: string) => {
+      const id = Date.now() + Math.random();
+      setFloatingTexts(prev => [...prev, { id, text, x, y, color }]);
+      setTimeout(() => setFloatingTexts(prev => prev.filter(f => f.id !== id)), 1000);
+    };
+
     const applyDamage = (att: CombatUnit, def: CombatUnit, unitsList: CombatUnit[], isCounter = false) => {
       const { totalDmg, effUnitHp } = calculateDamage(att, def, isCounter);
       
@@ -214,6 +221,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       let newCount = Math.max(0, Math.ceil(remainingStackHP / effUnitHp));
       let killed = def.count - newCount;
       let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % effUnitHp === 0 ? effUnitHp : remainingStackHP % effUnitHp);
+
+      addFloatingText(`-${totalDmg}`, def.x, def.y, 'text-rose-500');
 
       const label = isCounter ? "Ответный удар" : "Атака";
       if (newCount === 0) {
@@ -881,6 +890,27 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               )}
             </motion.div>
           ))}
+
+          {/* Floating Texts */}
+          <AnimatePresence>
+            {floatingTexts.map(f => (
+              <motion.div
+                key={f.id}
+                initial={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 0, y: -30 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                className={cn("absolute z-[120] font-black text-xl pointer-events-none text-shadow-glow", f.color || "text-rose-500")}
+                style={{
+                  left: `${(f.x + 0.5) * (100/GRID_WIDTH)}%`,
+                  top: `${(f.y + 0.5) * (100/GRID_HEIGHT)}%`,
+                  transform: 'translate(-50%, -100%)'
+                }}
+              >
+                {f.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -915,18 +945,23 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                     <span className="text-red-400 font-bold">{selectedUnitInfo.hp} / {selectedUnitInfo.isEnemy ? UNITS_INFO[selectedUnitInfo.unitId].hp : Math.floor(UNITS_INFO[selectedUnitInfo.unitId].hp * hpMod)} HP</span>
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
-                    <span className="uppercase opacity-50">Дистанция хода</span>
-                    <span className="text-blue-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].speed} шага</span>
+                    <span className="uppercase opacity-50">Атака (Дист.)</span>
+                    <span className="text-blue-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].range} кл.</span>
+                  </div>
+                  <div className="text-[9px] text-stone-400 flex flex-col">
+                    <span className="uppercase opacity-50">Ход (Дист.)</span>
+                    <span className="text-green-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].speed} кл.</span>
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
                     <span className="uppercase opacity-50">Урон</span>
                     <span className="text-amber-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].minDamage}-{UNITS_INFO[selectedUnitInfo.unitId].maxDamage}</span>
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
-                    <span className="uppercase opacity-50">Атака</span>
+                    <span className="uppercase opacity-50">Доп. свойства</span>
                     <span className="text-stone-300 font-bold uppercase tracking-widest text-[7px]">
-                      {UNITS_INFO[selectedUnitInfo.unitId].special === 'double_attack' ? 'Двойная' : 
-                       UNITS_INFO[selectedUnitInfo.unitId].special === 'counter_attack_50' ? 'Ответная (50%)' : 'Обычная'}
+                      {UNITS_INFO[selectedUnitInfo.unitId].special === 'double_attack' ? 'Двойная атака' : 
+                       UNITS_INFO[selectedUnitInfo.unitId].special === 'counter_attack_50' ? 'Ответная (50%)' : 
+                       UNITS_INFO[selectedUnitInfo.unitId].special === 'splash_50' ? 'Сплэш (50%)' : 'Нет'}
                     </span>
                   </div>
                 </div>
