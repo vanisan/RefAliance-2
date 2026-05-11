@@ -65,6 +65,12 @@ export default function RankingView() {
             }`}>
               {index + 1}
             </div>
+
+            {leader.activeHeroId && (
+              <div className="w-8 h-8 rounded-full border-2 border-amber-500 overflow-hidden bg-stone-900 shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+                <img src={`/heroes/${leader.activeHeroId}.png`} alt="Hero" className="w-full h-full object-cover" />
+              </div>
+            )}
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -109,29 +115,47 @@ export default function RankingView() {
               </button>
 
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-stone-800 rounded-full mx-auto border-2 border-amber-500 shadow-2xl flex items-center justify-center mb-3">
-                   <Sword className="w-10 h-10 text-amber-500" />
+                <div className="w-20 h-20 bg-stone-800 rounded-full mx-auto border-2 border-amber-500 shadow-2xl flex items-center justify-center mb-3 overflow-hidden">
+                   {selectedUser.activeHeroId ? (
+                     <img src={`/heroes/${selectedUser.activeHeroId}.png`} className="w-full h-full object-cover" alt="Hero" />
+                   ) : (
+                     <Users className="w-10 h-10 text-amber-500" />
+                   )}
                 </div>
                 <h3 className="text-xl font-black text-amber-500 uppercase">{selectedUser.playerName}</h3>
                 <p className="text-xs text-stone-500 uppercase font-bold tracking-widest">Мощь армии: {formatNumber(selectedUser.armyPower || 0)}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
-                {Object.entries(selectedUser.army || {}).map(([id, count]) => {
-                  if ((count as number) <= 0) return null;
-                  const info = UNITS_INFO[id as UnitId];
-                  return (
-                    <div key={id} className="flex items-center gap-3 p-2 bg-stone-800/50 rounded border border-stone-700">
-                      <div className="w-10 h-10 rounded overflow-hidden bg-stone-900 shrink-0 border border-stone-700">
-                        {info?.image && <img src={info.image} alt="" className="w-full h-full object-cover" />}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-amber-600 font-black uppercase leading-none mb-1">{info?.name}</p>
-                        <p className="text-sm font-bold text-stone-200">x{count as number}</p>
-                      </div>
+              <div className="space-y-4 max-h-[350px] overflow-y-auto p-1 pr-2 scrollbar-thin">
+                {selectedUser.activeHeroId && (
+                  <div className="wow-panel-metal p-2 border-amber-900/50 bg-amber-900/10 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded border border-amber-500 overflow-hidden shrink-0">
+                      <img src={`/heroes/${selectedUser.activeHeroId}.png`} alt="Hero" className="w-full h-full object-cover" />
                     </div>
-                  );
-                })}
+                    <div>
+                      <h4 className="text-[10px] font-black text-amber-500 uppercase">Герой Правителя</h4>
+                      <p className="text-[8px] text-stone-400 font-bold uppercase opacity-80">Ведет армию в бой</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(selectedUser.army || {}).map(([id, count]) => {
+                    if ((count as number) <= 0) return null;
+                    const info = UNITS_INFO[id as UnitId];
+                    return (
+                      <div key={id} className="flex items-center gap-2 p-1.5 bg-stone-800/50 rounded border border-stone-700">
+                        <div className="w-8 h-8 rounded overflow-hidden bg-stone-900 shrink-0 border border-stone-700">
+                          {info?.image && <img src={info.image} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[8px] text-amber-600 font-black uppercase leading-none mb-1 truncate">{info?.name}</p>
+                          <p className="text-xs font-bold text-stone-200">x{count as number}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <button 

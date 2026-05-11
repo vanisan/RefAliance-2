@@ -2,6 +2,7 @@
 
 import { useGame } from '../lib/game-context';
 import { useState } from 'react';
+import { cn } from '../lib/game.utils';
 import BottomNav, { TabType } from '../components/BottomNav';
 import Header from '../components/Header';
 import PalaceView from '../components/PalaceView';
@@ -47,11 +48,16 @@ export default function GameClient() {
   }
 
   return (
-    <div className="h-[100dvh] bg-stone-900 text-stone-200 pb-16 pt-24 font-sans flex flex-col relative overflow-hidden">
+    <div className={cn(
+      "h-[100dvh] bg-stone-900 text-stone-200 font-sans flex flex-col relative overflow-hidden",
+      combatNode ? "pt-0 pb-0" : "pt-24 pb-16"
+    )}>
       <div className="absolute inset-0 bg-[url('/city.png')] opacity-60 bg-cover bg-center mix-blend-overlay pointer-events-none z-0"></div>
-      <header className="fixed top-2 left-2 right-2 z-50">
-        <Header />
-      </header>
+      {!combatNode && (
+        <header className="fixed top-2 left-2 right-2 z-50">
+          <Header />
+        </header>
+      )}
       
       <main className="flex-1 overflow-y-auto relative z-10 w-full mx-auto flex flex-col items-center">
         {combatNode ? (

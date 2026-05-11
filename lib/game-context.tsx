@@ -28,6 +28,8 @@ interface GameState {
   siegeUnits: (UnitId | null)[];
   lastPrayerTime: number | null;
   referrals: number;
+  ownedHeroIds: string[];
+  activeHeroId: string | null;
   user: User | null;
   authLoading: boolean;
   getLeaderboard: () => Promise<any[]>;
@@ -45,6 +47,8 @@ interface GameState {
   setCurrentCampaignLevel: (level: string) => void;
   setLastPrayerTime: (time: number | null) => void;
   setReferrals: (n: number | ((prev: number) => number)) => void;
+  setOwnedHeroIds: (ids: string[] | ((prev: string[]) => string[])) => void;
+  setActiveHeroId: (id: string | null) => void;
 }
 
 const CURRENT_GAME_VERSION = 3;
@@ -55,7 +59,8 @@ const defaultArmy: Record<UnitId, number> = {
   assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
   banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
   balista: 0, elven_balista: 0, archer_tower: 0, mage_tower: 0,
-  veliar: 0, kronos: 0, archimond: 0, despot: 0
+  veliar: 0, kronos: 0, archimond: 0, despot: 0,
+  skorpidus: 0, scarbius: 0
 };
 const defaultSiegeUnits: (UnitId | null)[] = [null, null, null, null];
 const DEFAULT_GRID_SIZE = 16;
@@ -71,6 +76,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [siegeUnits, setSiegeUnits] = useState<(UnitId | null)[]>(defaultSiegeUnits);
   const [lastPrayerTime, setLastPrayerTime] = useState<number | null>(null);
   const [referrals, setReferrals] = useState(0);
+  const [ownedHeroIds, setOwnedHeroIds] = useState<string[]>([]);
+  const [activeHeroId, setActiveHeroId] = useState<string | null>(null);
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null, chest: null, boots: null, ring: null
@@ -106,6 +113,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setSiegeUnits(defaultSiegeUnits);
     setMapNodes(INITIAL_MAP_NODES);
     setEquipment({ weapon: null, chest: null, boots: null, ring: null });
+    setOwnedHeroIds([]);
+    setActiveHeroId(null);
     setCurrentCampaignLevel("1-1");
     setReferrals(0);
     
@@ -113,7 +122,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.from('users').upsert({
         id: user.id,
         playerName,
-        resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits },
+        resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null },
         palaceLevel: 1,
         buildings: Array(DEFAULT_GRID_SIZE).fill(null),
         army: defaultArmy,
@@ -163,7 +172,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               await supabase.from('users').upsert({
                 id: u.id,
                 playerName: newName,
-                resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits },
+                resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null },
                 palaceLevel: 1,
                 buildings: Array(DEFAULT_GRID_SIZE).fill(null),
                 army: defaultArmy,
@@ -186,6 +195,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setCurrentCampaignLevel("1-1");
               setPlayerName(newName);
               setReferrals(0);
+              setOwnedHeroIds([]);
+              setActiveHeroId(null);
             } else {
               setResources({ ...defaultResources, ...(data.resources || {}) });
               setPalaceLevel(data.palaceLevel || 1);
@@ -228,6 +239,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
               setEquipment(data.equipment || { weapon: null, chest: null, boots: null, ring: null });
               setPlayerName(data.playerName || displayName);
+              setOwnedHeroIds(data.resources?.ownedHeroIds || data.ownedHeroIds || []);
+              setActiveHeroId(data.resources?.activeHeroId || data.activeHeroId || null);
 
               // Offline resource generation
               if (data.lastUpdate) {
@@ -248,7 +261,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                       };
                       const userBuildings = data.buildings || [];
                       userBuildings.forEach((b: Building | null) => {
-                        if (b && BUILDINGS_INFO[b.id].production) {
+                        if (b && BUILDINGS_INFO[b.id]?.production) {
                           const prod = BUILDINGS_INFO[b.id].production;
                           if (prod?.gold) totalProd.gold = (totalProd.gold || 0) + prod.gold * b.level;
                           if (prod?.wood) totalProd.wood = (totalProd.wood || 0) + prod.wood * b.level;
@@ -278,7 +291,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await supabase.from('users').upsert({
               id: u.id,
               playerName: initialName,
-              resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits },
+              resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null },
               palaceLevel: 1,
               buildings: Array(DEFAULT_GRID_SIZE).fill(null),
               army: defaultArmy,
@@ -311,7 +324,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const armyPower = calculateArmyPower(army);
         const { error } = await supabase.from('users').update({
           playerName,
-          resources: { ...resources, referrals, siegeUnits },
+          resources: { ...resources, referrals, siegeUnits, ownedHeroIds, activeHeroId },
           palaceLevel,
           buildings,
           army,
@@ -356,7 +369,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           gold: baseProd, wood: baseProd, stone: baseProd, food: baseProd
         };
         buildings.forEach(b => {
-          if (b && BUILDINGS_INFO[b.id].production) {
+          if (b && BUILDINGS_INFO[b.id]?.production) {
             const prod = BUILDINGS_INFO[b.id].production;
             if (prod?.gold) totalProd.gold = (totalProd.gold || 0) + prod.gold * b.level;
             if (prod?.wood) totalProd.wood = (totalProd.wood || 0) + prod.wood * b.level;
@@ -407,6 +420,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       currentCampaignLevel, setCurrentCampaignLevel,
       lastPrayerTime, setLastPrayerTime,
       referrals, setReferrals,
+      ownedHeroIds, setOwnedHeroIds,
+      activeHeroId, setActiveHeroId,
       user, authLoading,
       getLeaderboard,
       resetProgress,

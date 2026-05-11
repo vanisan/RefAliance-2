@@ -21,7 +21,8 @@ export default function ArmyView() {
     skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0, driada: 1, paladin: 1,
     banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
     balista: 1, elven_balista: 1, archer_tower: 1, mage_tower: 1,
-    veliar: 0, kronos: 0, archimond: 0, despot: 1
+    veliar: 0, kronos: 0, archimond: 0, despot: 1,
+    skorpidus: 0, scarbius: 0
   });
 
   const handleHire = (unitId: UnitId) => {

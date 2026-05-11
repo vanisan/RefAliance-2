@@ -4,9 +4,11 @@ export interface Resources extends Record<ResourceType, number> {
   lastBossKeyTime?: number;
   referrals?: number;
   siegeUnits?: (UnitId | null)[];
+  ownedHeroIds?: string[];
+  activeHeroId?: string | null;
 }
 
-export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge';
+export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge' | 'tavern';
 
 export interface Building {
   id: BuildingId;
@@ -66,9 +68,33 @@ export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
     baseCost: { gold: 1000, wood: 1000, stone: 1000, food: 0, crystals: 0 }, costMultiplier: 2, 
     description: 'Позволяет покупать осадные орудия для защиты' 
   },
+  tavern: { 
+    id: 'tavern', name: 'Таверна', icon: 'Beer', image: '/buildings/barracks.webp',
+    baseCost: { gold: 50000, wood: 50000, stone: 50000, food: 50000, crystals: 100 }, costMultiplier: 0, 
+    description: 'Позволяет нанимать героев' 
+  },
 };
 
-export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower' | 'veliar' | 'kronos' | 'archimond' | 'despot';
+export type HeroId = 'jaina' | 'arthas' | 'malfurion' | 'thrall';
+
+export interface HeroInfo {
+  id: HeroId;
+  name: string;
+  title: string;
+  image: string;
+  cost: number;
+  damage: number;
+  description: string;
+}
+
+export const HEROES_INFO: Record<HeroId, HeroInfo> = {
+  jaina: { id: 'jaina', name: 'Джайна', title: 'Маг', image: '/heroes/jaina.png', cost: 10000, damage: 500, description: 'Легендарная волшебница. Наносит 500 урона выбранному отряду.' },
+  arthas: { id: 'arthas', name: 'Артас', title: 'Паладин', image: '/heroes/arthas.png', cost: 10000, damage: 500, description: 'Падший принц. Наносит 500 урона выбранному отряду.' },
+  malfurion: { id: 'malfurion', name: 'Малфурион', title: 'Друид', image: '/heroes/malfurion.png', cost: 10000, damage: 500, description: 'Верховный друид. Наносит 500 урона выбранному отряду.' },
+  thrall: { id: 'thrall', name: 'Тралл', title: 'Орк', image: '/heroes/thrall.png', cost: 10000, damage: 500, description: 'Вождь Орды. Наносит 500 урона выбранному отряду.' },
+};
+
+export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower' | 'veliar' | 'kronos' | 'archimond' | 'despot' | 'skorpidus' | 'scarbius';
 
 export interface ArenaPlayer {
   id: string;
@@ -275,6 +301,14 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     cost: { gold: 25000, stone: 5000, food: 2000, wood: 0, crystals: 50 }, isEnemy: false, image: '/units/despot.png',
     combatType: 'melee', special: 'double_turn', description: 'Могучий деспот. Ближний бой. Делает 2 хода за один раунд.'
   },
+  skorpidus: {
+    id: 'skorpidus', name: 'Скорпидус', hp: 350, attack: 100, defense: 25, minDamage: 80, maxDamage: 120, speed: 3, range: 1,
+    isEnemy: true, image: '/mobs/skorpid.png', combatType: 'melee', description: 'Ядовитый скорпион. Ближний бой.'
+  },
+  scarbius: {
+    id: 'scarbius', name: 'Скарбиус', hp: 4000, attack: 300, defense: 80, minDamage: 300, maxDamage: 500, speed: 4, range: 1, size: 2,
+    isEnemy: true, image: '/mobs/Scarbius.png', combatType: 'melee', description: 'Древний бог жуков. Огромный и смертоносный.'
+  },
 };
 
 export interface MapNode {
@@ -370,7 +404,41 @@ export const INITIAL_MAP_NODES: MapNode[] = [
     { unitId: 'souleater', count: 66 },
     { unitId: 'souleater', count: 66 },
     { unitId: 'souleater', count: 66 }
-  ], reward: { gold: 300000, crystals: 25 }, cleared: false, campaignLevel: '2-3' }
+  ], reward: { gold: 300000, crystals: 25 }, cleared: false, campaignLevel: '2-3' },
+
+  // Level 2-4
+  { id: '2-4-1', name: 'Пещеры некромантов', type: 'combat', x: 20, y: 25, enemies: [
+    { unitId: 'souleater', count: 100 },
+    { unitId: 'banshee', count: 100 },
+    { unitId: 'banshee', count: 100 },
+    { unitId: 'skorpidus', count: 50 },
+    { unitId: 'skorpidus', count: 50 }
+  ], reward: { crystals: 50 }, cleared: false, campaignLevel: '2-4' },
+  { id: '2-4-2', name: 'Паучий утёс', type: 'combat', x: 80, y: 35, enemies: [
+    { unitId: 'arachnid', count: 300 },
+    { unitId: 'arachnid', count: 300 },
+    { unitId: 'skorpidus', count: 66 },
+    { unitId: 'skorpidus', count: 66 },
+    { unitId: 'skorpidus', count: 66 }
+  ], reward: { crystals: 60 }, cleared: false, campaignLevel: '2-4' },
+  { id: '2-4-3', name: 'Охрана драконов', type: 'combat', x: 50, y: 60, enemies: [
+    { unitId: 'frostdragon', count: 50 },
+    { unitId: 'skorpidus', count: 100 },
+    { unitId: 'skorpidus', count: 100 },
+    { unitId: 'skorpidus', count: 100 }
+  ], reward: { crystals: 80 }, cleared: false, campaignLevel: '2-4' },
+  { id: '2-4-boss', name: 'Скарбиус', type: 'boss', x: 50, y: 15, enemies: [
+    { unitId: 'scarbius', count: 333 },
+    { unitId: 'skorpidus', count: 333 },
+    { unitId: 'skorpidus', count: 333 },
+    { unitId: 'arachnid', count: 666 },
+    { unitId: 'arachnid', count: 666 }
+  ], reward: { crystals: 333 }, cleared: false, campaignLevel: '2-4' },
+
+  // World 3-1
+  { id: '3-1-1', name: 'Таверна великанов', type: 'combat', x: 50, y: 80, enemies: [
+    { unitId: 'giant', count: 10 }
+  ], reward: { gold: 1, stone: 1, wood: 1, food: 1, crystals: 10 }, cleared: false, campaignLevel: '3-1' }
 ];
 
 export const LEGENDARY_WEAPON: EquipmentItem = {

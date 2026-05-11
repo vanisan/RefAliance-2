@@ -6,6 +6,7 @@ import { Coins, Trees, Mountain, Wheat, ArrowUpCircle, Trash2, Hammer, X, Lock, 
 import { motion, AnimatePresence } from 'motion/react';
 import ForgeView from './ForgeView';
 import AltarComponent from './AltarComponent';
+import TavernView from './TavernView';
 
 export default function PalaceView() {
   const { resources, setResources, buildings, setBuildings, palaceLevel, setPalaceLevel, referrals, setReferrals } = useGame();
@@ -99,6 +100,13 @@ export default function PalaceView() {
     
     // Give back 50% of base cost (simple logic)
     const info = BUILDINGS_INFO[buildings[selectedCell]!.id];
+    if (!info) { // Fallback for removed buildings
+        const newBuildings = [...buildings];
+        newBuildings[selectedCell] = null;
+        setBuildings(newBuildings);
+        setSelectedCell(null);
+        return;
+    }
     const refund = {
       gold: Math.floor(info.baseCost.gold * 0.5),
       wood: Math.floor(info.baseCost.wood * 0.5),
@@ -192,10 +200,10 @@ export default function PalaceView() {
                 ) : building ? (
                   <>
                     <div className="absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    {BUILDINGS_INFO[building.id].image ? (
+                    {BUILDINGS_INFO[building.id]?.image ? (
                       <img src={BUILDINGS_INFO[building.id].image} alt={building.name} className="w-8 h-8 sm:w-10 sm:h-10 object-contain z-10 mb-0.5 opacity-90 drop-shadow-md" />
                     ) : (
-                      <span className="z-10 text-lg sm:text-xl mb-0.5">{BUILDINGS_INFO[building.id].icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id].icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id].icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id].icon === 'Trees' ? '🪵' : '🪨'}</span>
+                      <span className="z-10 text-lg sm:text-xl mb-0.5">{BUILDINGS_INFO[building.id]?.icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id]?.icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id]?.icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id]?.icon === 'Trees' ? '🪵' : '🪨'}</span>
                     )}
                     {isSelected && <div className="text-[8px] text-amber-300 font-bold uppercase z-10">Select</div>}
                     {!isSelected && <div className="absolute bottom-0.5 right-1 text-[8px] text-amber-400/80 font-bold z-10 font-mono">L.{building.level}</div>}
@@ -236,7 +244,7 @@ export default function PalaceView() {
                   <div>
                     <span className="font-bold text-stone-100 text-sm">{buildings[selectedCell]!.name}</span> <span className="text-xs text-amber-600 font-black ml-1">LVL {buildings[selectedCell]!.level} / {palaceLevel * 5}</span>
                   </div>
-                  {BUILDINGS_INFO[buildings[selectedCell]!.id].production && (
+                  {BUILDINGS_INFO[buildings[selectedCell]!.id]?.production && (
                     <div className="mt-1">
                       <p className="text-[8px] uppercase text-stone-500 font-bold mb-1">Текущая добыча:</p>
                       {renderProduction(BUILDINGS_INFO[buildings[selectedCell]!.id].production, buildings[selectedCell]!.level)}
@@ -246,12 +254,12 @@ export default function PalaceView() {
                 
                 <button 
                   onClick={handleUpgrade}
-                  disabled={!hasEnoughResources(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level), resources)}
+                  disabled={!buildings[selectedCell] || !BUILDINGS_INFO[buildings[selectedCell]!.id] || !hasEnoughResources(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level), resources)}
                   className="w-full text-left py-2 px-3 rounded text-xs font-bold border-l-4 border-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-between wow-panel-metal hover:bg-stone-700 group/btn"
                 >
                   <div className="flex flex-col items-start">
                     <span className="text-amber-500 group-hover/btn:text-amber-300">🔼 Улучшить</span>
-                    {BUILDINGS_INFO[buildings[selectedCell]!.id].production && (
+                    {BUILDINGS_INFO[buildings[selectedCell]!.id]?.production && (
                       <span className="text-[8px] text-green-500 font-bold">Будет: +{formatNumber(Object.values(BUILDINGS_INFO[buildings[selectedCell]!.id].production!)[0] as number * (buildings[selectedCell]!.level + 1))}</span>
                     )}
                   </div>
@@ -290,7 +298,7 @@ export default function PalaceView() {
               </div>
             ) : (
               <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto pr-1 pb-4">
-                {Object.values(BUILDINGS_INFO).map((info) => {
+                {Object.values(BUILDINGS_INFO).filter(b => b.id !== 'tavern').map((info) => {
                   const cost = getUpgradeCost(info.id, 0);
                   const canAfford = hasEnoughResources(cost, resources);
                   return (

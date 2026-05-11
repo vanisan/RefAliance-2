@@ -7,6 +7,7 @@ import { useState } from 'react';
 import ShopView from './ShopView';
 import ArenaView from './ArenaView';
 import WorldMapView from './WorldMapView';
+import TavernView from './TavernView';
 
 interface MapViewProps {
   onStartCombat: (node: MapNode) => void;
@@ -20,6 +21,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
   const [showShop, setShowShop] = useState(false);
   const [showArena, setShowArena] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
+  const [showTavern, setShowTavern] = useState(false);
   const [showBossesModal, setShowBossesModal] = useState(false);
   const [prepNode, setPrepNode] = useState<MapNode | null>(null);
 
@@ -171,6 +173,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         {showShop && <ShopView onClose={() => setShowShop(false)} />}
         {showArena && <ArenaView onClose={() => setShowArena(false)} />}
         {showWorldMap && <WorldMapView onClose={() => setShowWorldMap(false)} />}
+        {showTavern && <TavernView onClose={() => setShowTavern(false)} />}
         
         {showBossesModal && (
           <motion.div
@@ -271,6 +274,17 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                    <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500"/> Арена</div>
                    <span className="text-[9px] text-amber-400 animate-pulse font-black">LIVE PvP</span>
                  </button>
+                 {currentCampaignLevel.startsWith('3-') && (
+                   <button 
+                    onClick={() => {
+                      setSelectedNode(null);
+                      setShowTavern(true);
+                    }}
+                    className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest border-l-4 border-amber-600">
+                     <div className="flex items-center gap-2 font-black text-amber-500 italic">🍻 Таверна Героев</div>
+                     <span className="text-[7px] text-stone-500 font-bold">НОВОЕ</span>
+                   </button>
+                 )}
                </div>
             ) : selectedNode.cleared ? (
               <div className="py-6 flex flex-col items-center opacity-70">

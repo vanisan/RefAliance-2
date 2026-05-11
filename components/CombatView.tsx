@@ -3,7 +3,7 @@ import { useGame } from '../lib/game-context';
 import { MapNode, UNITS_INFO, UnitId } from '../lib/game.types';
 import { addResources, cn } from '../lib/game.utils';
 import { getRandomId, getRandomDamage } from '../lib/combat.utils';
-import { Skull, Shield, Sword } from 'lucide-react';
+import { Skull, Shield, Sword, BookOpen, Swords } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CombatViewProps {
@@ -58,9 +58,13 @@ const getManhattanDist = (u1x: number, u1y: number, u1s: number, u2x: number, u2
 };
 
 export default function CombatView({ node, onEnd }: CombatViewProps) {
-  const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment, setEquipment } = useGame();
+  const { army, setArmy, resources, setResources, mapNodes, setMapNodes, equipment, setEquipment, activeHeroId } = useGame();
   
   const reportedLossesRef = useRef<Record<string, number>>({});
+
+  const [hasHeroActed, setHasHeroActed] = useState(false);
+  const [isHeroTurn, setIsHeroTurn] = useState(false);
+  const [heroAttackAnimation, setHeroAttackAnimation] = useState(false);
 
   // Equipment stats modifiers
   const atkMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.attackBonus || 0), 0) / 100;
@@ -131,7 +135,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   const [gameOver, setGameOver] = useState<'victory' | 'defeat' | null>(null);
   const [round, setRound] = useState(1);
 
-  const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 5));
+  const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 3));
 
   // Forward declarations for ESLint issues
   const markUnitActed = (u: CombatUnit): CombatUnit => {
@@ -479,12 +483,17 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
     let readyUnits = aliveUnits.filter(u => !u.hasActed);
     
-    if (readyUnits.length === 0) {
+    // Add hero to potential acting entities if available and hasn't acted
+    const canHeroAct = activeHeroId && !hasHeroActed && round > 0;
+    
+    if (readyUnits.length === 0 && !canHeroAct) {
       // New Round
       setRound(r => r + 1);
       addLog(`Раунд ${round + 1}`);
       const refreshedUnits = aliveUnits.map(u => ({ ...u, hasActed: false, hasRetaliated: false, movedThisTurn: false, extraTurnUsed: false }));
       setUnits(refreshedUnits);
+      setHasHeroActed(false);
+      setIsHeroTurn(false);
       
       // Safety timeout to avoid recursive loops
       setTimeout(() => {
@@ -494,23 +503,41 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       return;
     }
     
-    readyUnits.sort((a,b) => {
-      const infoA = UNITS_INFO[a.unitId];
-      const infoB = UNITS_INFO[b.unitId];
-      if (infoA.speed !== infoB.speed) return infoB.speed - infoA.speed;
+    const speedHero = 5.5; 
+    
+    const candidates = [
+        ...readyUnits.map(u => ({ type: 'unit' as const, speed: UNITS_INFO[u.unitId].speed, isEnemy: u.isEnemy, id: u.id })),
+        ...(canHeroAct ? [{ type: 'hero' as const, speed: speedHero, isEnemy: false, id: 'hero' }] : [])
+    ];
+
+    if (candidates.length === 0) return;
+
+    candidates.sort((a,b) => {
+      if (a.speed !== b.speed) return b.speed - a.speed;
       if (a.isEnemy !== b.isEnemy) return a.isEnemy ? 1 : -1;
       return 0;
     });
 
-    const next = readyUnits[0];
+    const next = candidates[0];
     if (next) {
-      setActiveUnitId(next.id);
-      const nextTurn = next.isEnemy ? 'enemy' : 'player';
-      setTurn(nextTurn);
-      
-      if (nextTurn === 'enemy') {
-        const aliveInTurn = aliveUnits;
-        setTimeout(() => handleAI(aliveInTurn, next), 1000);
+      if (next.type === 'unit') {
+        setIsHeroTurn(false);
+        setActiveUnitId(next.id);
+        const nextTurn = next.isEnemy ? 'enemy' : 'player';
+        setTurn(nextTurn);
+        
+        if (nextTurn === 'enemy') {
+          const unitObj = units.find(u => u.id === next.id);
+          if (unitObj) {
+            setTimeout(() => handleAI(aliveUnits, unitObj), 1000);
+          }
+        }
+      } else {
+        // Hero Turn
+        setIsHeroTurn(true);
+        setActiveUnitId('hero-token'); 
+        setTurn('player');
+        addLog("Ход вашего героя!");
       }
     }
   };
@@ -617,6 +644,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     setSelectedUnitInfo(null);
     if (turn !== 'player' || gameOver) return;
     const activeUnit = units.find(u => u.id === activeUnitId);
+    if (!activeUnit && !isHeroTurn) return;
+
+    if (isHeroTurn && targetPos && targetPos.isEnemy) {
+      executeHeroAttack(targetPos);
+      return;
+    }
+
     if (!activeUnit) return;
 
     const activeInfo = UNITS_INFO[activeUnit.unitId];
@@ -728,6 +762,41 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     });
   }, [units, setArmy, gameOver]);
 
+  const executeHeroAttack = (defender: CombatUnit) => {
+    if (!activeHeroId) return;
+    import('../lib/game.types').then(({ HEROES_INFO }) => {
+        const hero = HEROES_INFO[activeHeroId as keyof typeof HEROES_INFO];
+        const dmg = hero.damage;
+        
+        setHeroAttackAnimation(true);
+        // Visual effect for hero attack
+        const effectId = getRandomId('hero-atk');
+        setEffects(prev => [...prev, { id: effectId, type: 'fire', x: defender.x, y: defender.y, size: UNITS_INFO[defender.unitId].size || 1 }]);
+        
+        setTimeout(() => {
+            setEffects(prev => prev.filter(e => e.id !== effectId));
+            setHeroAttackAnimation(false);
+
+            const effUnitHp = defender.isEnemy ? UNITS_INFO[defender.unitId].hp : Math.floor(UNITS_INFO[defender.unitId].hp * hpMod);
+            let remainingStackHP = (defender.count - 1) * effUnitHp + defender.hp - dmg;
+            let newCount = Math.max(0, Math.ceil(remainingStackHP / effUnitHp));
+            let killed = defender.count - newCount;
+            let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % effUnitHp === 0 ? effUnitHp : remainingStackHP % effUnitHp);
+
+            setFloatingTexts(prev => [...prev, { id: Date.now(), text: `-${dmg}`, x: defender.x, y: defender.y, color: 'text-indigo-400 font-black' }]);
+            addLog(`${hero.name} наносит ${dmg} урона ${UNITS_INFO[defender.unitId].name}!`);
+
+            const updatedUnits = units.map(u => u.id === defender.id ? { ...u, count: newCount, hp: newTopHP } : u);
+            setUnits(updatedUnits);
+            setHasHeroActed(true);
+            setIsHeroTurn(false);
+            setActiveUnitId(null);
+            
+            setTimeout(() => checkWinCondition(updatedUnits), 500);
+        }, 800);
+    });
+  };
+
   const handleFinish = () => {
     // Final sync for current state. Since useEffect might have already synced up to the last move,
     // this just acts as a final catch-all.
@@ -761,8 +830,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         alert("ПОЗДРАВЛЯЕМ! Вы прошли кампанию первого мира! Вы получили Легендарное Оружие!");
       }
 
-      // Mark node cleared unless it is a daily boss
-      if (node.type !== 'daily_boss') {
+      // Mark node cleared unless it is a daily boss or Level 3-1 (infinite battles)
+      if (node.type !== 'daily_boss' && node.campaignLevel !== '3-1') {
         setMapNodes(mapNodes.map(m => m.id === node.id ? { ...m, cleared: true } : m));
       }
     }
@@ -804,15 +873,20 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           key={`${x}-${y}`} 
           onClick={() => isPickableHealTarget ? handleHeal(uUnderTile.id) : handleCellClick(x, y)}
           className={cn(
-            "relative w-full aspect-square border border-stone-700/30 flex items-center justify-center transition-colors overflow-visible",
-            isAllowedMove && "bg-green-500/10 cursor-pointer hover:bg-green-500/20",
+            "relative w-full aspect-square border border-stone-700/10 flex items-center justify-center transition-colors overflow-visible",
+            isAllowedMove && "cursor-pointer border-green-400/40 shadow-[inset_0_0_10px_rgba(74,222,128,0.2)] bg-green-400/5",
             isPickableTarget && "bg-red-500/10 cursor-pointer hover:bg-red-500/20 z-10",
             isPickableHealTarget && "bg-blue-500/20 cursor-pointer hover:bg-blue-500/40 z-10",
             isUnhealableTarget && "bg-red-500/5 z-0",
             isPaladinAuraZone && "bg-yellow-500/20"
           )}
         >
-          {isAllowedMove && <div className="w-1.5 h-1.5 rounded-full bg-green-500/30"></div>}
+          {isAllowedMove && (
+             <div className="relative flex items-center justify-center pointer-events-none">
+                <div className="absolute w-3 h-3 rounded-full bg-green-500/40 blur-[3px] animate-pulse"></div>
+                <div className="relative w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80]"></div>
+             </div>
+          )}
           {uUnderTile && isOrigin && (
             <motion.div 
               layoutId={uUnderTile.id}
@@ -865,27 +939,26 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-950/30 flex flex-col items-center justify-center pt-16">
+    <div className="fixed inset-0 z-50 bg-stone-950 flex flex-col items-center justify-start py-2 overflow-hidden">
       
-      {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 h-16 bg-stone-900/40 border-b border-stone-800 flex justify-between items-center px-4 shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
-        <h2 className="text-amber-500 font-bold tracking-widest uppercase flex items-center gap-2 text-shadow-glow">
-          <Sword className="w-5 h-5"/> Бой
+      {/* Top Bar - Compact */}
+      <div className="w-full h-10 flex justify-between items-center px-4 mb-2">
+        <h2 className="text-amber-500 font-bold tracking-widest uppercase flex items-center gap-2 text-shadow-glow text-sm">
+          <Sword className="w-4 h-4"/> БОЙ
         </h2>
-        <div className="text-sm font-black flex flex-col items-end gap-0 tracking-widest">
+        <div className="text-xs font-black flex items-center gap-4 tracking-widest">
           <div className="flex items-center gap-2 uppercase">
-            <span className={turn === 'player' ? 'text-amber-400' : 'text-stone-500'}>Мой ход</span>
-            <span className="text-stone-600 font-light text-[10px]">vs</span>
-            <span className={turn === 'enemy' ? 'text-red-400' : 'text-stone-500'}>Враг</span>
+            <span className={cn("text-[10px]", turn === 'player' ? 'text-amber-400' : 'text-stone-500')}>Я</span>
+            <span className="text-stone-600 font-light text-[8px]">VS</span>
+            <span className={cn("text-[10px]", turn === 'enemy' ? 'text-red-400' : 'text-stone-500')}>ВРАГ</span>
           </div>
-          <span className="text-[10px] text-stone-500 font-mono uppercase">Раунд {round}</span>
+          <span className="text-[10px] text-stone-400 font-mono uppercase bg-stone-800 px-2 py-0.5 rounded">Раунд {round}</span>
         </div>
       </div>
 
-      {/* Battlefield Grid */}
-      <div className="bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.2)_1px,transparent_1px)] bg-[size:20px_20px] w-[95vw] h-[95vw] max-w-[500px] max-h-[500px] sm:w-[500px] sm:h-[500px] relative rounded border-4 border-stone-800 shadow-2xl overflow-visible">
-        <img src="/fight.png" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-overlay pointer-events-none" />
-        <div className="absolute inset-0 bg-stone-950/20 backdrop-blur-[1px] rounded-sm pointer-events-none"></div>
+      {/* Battlefield Grid - Responsive sizing */}
+      <div className="bg-stone-900 bg-[url('/fight.png')] bg-cover bg-center w-full aspect-square max-w-[420px] relative rounded border-2 border-stone-800 shadow-2xl overflow-visible shrink-0 mx-auto">
+        <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-[0.5px] rounded-sm pointer-events-none"></div>
         <div 
           className="relative z-10 w-full h-full grid"
           style={{ 
@@ -895,6 +968,17 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         >
           {gridCells}
           
+          {/* Hero Attack Animation */}
+          {heroAttackAnimation && activeHeroId && (
+            <motion.div 
+               initial={{ scale: 0, opacity: 0 }}
+               animate={{ scale: [1, 2], opacity: [1, 0] }}
+               className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+            >
+               <div className="w-full h-full bg-indigo-500/10 blur-3xl animate-pulse"></div>
+            </motion.div>
+          )}
+
           {/* Projectiles */}
           {projectiles.map(p => (
             <motion.div
@@ -1017,7 +1101,72 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         </div>
       </div>
 
+      {/* Hero Slot & Action Bar - Compressed */}
+      <div className="w-full max-w-[420px] mt-2 px-2 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex flex-col items-center gap-0.5">
+             {activeHeroId ? (
+                <div className={cn(
+                  "w-12 h-12 rounded border relative overflow-hidden transition-all wow-panel p-0.5",
+                  isHeroTurn ? "border-amber-400 shadow-[0_0_10px_#f59e0b] scale-105" : "border-stone-800 opacity-60"
+                )}>
+                   <img src={`/heroes/${activeHeroId}.png`} className="w-full h-full object-cover" alt="Hero" />
+                   {hasHeroActed && (
+                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <div className="w-full h-0.5 bg-red-600 rotate-45"></div>
+                     </div>
+                   )}
+                   {isHeroTurn && (
+                     <div className="absolute inset-0 border-2 border-amber-500 animate-pulse pointer-events-none"></div>
+                   )}
+                </div>
+             ) : (
+                <div className="w-12 h-12 rounded border border-stone-800 bg-stone-900/50 flex items-center justify-center">
+                   <div className="text-[7px] text-stone-600 font-black uppercase text-center leading-none">Нет героя</div>
+                </div>
+             )}
+             <span className="text-[7px] font-black text-amber-500 uppercase tracking-widest leading-none">Герой</span>
+          </div>
+
+          <div className="flex-1 flex gap-1 justify-end">
+             <button 
+              onClick={() => setInfoMode(!infoMode)}
+              className={cn(
+                "wow-panel-metal px-3 py-1 flex items-center gap-1.5 transition-all",
+                infoMode ? "bg-indigo-900/40 border-indigo-500" : "hover:bg-stone-700"
+              )}
+             >
+                <BookOpen className="w-4 h-4 text-indigo-400" />
+                <span className="text-[8px] font-black uppercase">Инфо</span>
+             </button>
+             
+             {units.find(u => u.id === activeUnitId)?.unitId === 'berserk' && (
+                <button 
+                  onClick={handleFrenzy}
+                  disabled={units.find(u => u.id === activeUnitId)?.frenzyUsed}
+                  className="wow-panel-metal px-3 py-1 flex items-center gap-1.5 hover:bg-red-900/20 border-red-900 group disabled:opacity-50"
+                 >
+                    <Swords className="w-4 h-4 text-red-500 group-hover:scale-110" />
+                    <span className="text-[8px] font-black text-red-500 uppercase tracking-tighter">Ярость</span>
+                 </button>
+             )}
+             
+             {units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
+                 <button 
+                  onClick={() => setIsHealMode(!isHealMode)}
+                  className={cn(
+                    "wow-panel-metal px-3 py-1 flex items-center gap-1.5 transition-all",
+                    isHealMode ? "bg-green-900/40 border-green-500" : "hover:bg-stone-700"
+                  )}
+                 >
+                    <Shield className="w-4 h-4 text-green-400" />
+                    <span className="text-[8px] font-black text-green-400 uppercase">Хил</span>
+                 </button>
+             )}
+          </div>
+      </div>
+
       {/* Info Panel / Tooltips */}
+      {/* Floating Info Overlay */}
       <AnimatePresence>
         {selectedUnitInfo && (
           <motion.div 
@@ -1074,57 +1223,50 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         )}
       </AnimatePresence>
 
-      <div className="mt-4 w-full max-w-[500px] flex flex-col gap-2">
+      <div className="mt-2 w-full max-w-[420px] flex flex-col gap-1 shrink-0 px-2">
         {/* Battle Controls */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 h-9">
           <button 
             onClick={() => {
               setInfoMode(!infoMode);
               setSelectedUnitInfo(null);
             }}
             className={cn(
-              "flex-1 px-2 py-2 rounded font-black text-[10px] uppercase tracking-widest border transition-all shadow active:scale-95 min-w-[120px]",
+              "flex-1 px-2 py-0 rounded font-black text-[10px] uppercase tracking-widest border transition-all shadow active:scale-95",
               infoMode 
                 ? "bg-red-500/20 border-red-500 text-red-500 shadow-red-500/20" 
                 : "bg-green-500/20 border-green-500 text-green-500 shadow-green-500/20"
             )}
           >
-            {infoMode ? "Отмена Инфо" : "Инфо (Осмотр)"}
+            {infoMode ? "Отмена" : "ИНФО (ОСМОТР)"}
           </button>
           
           {turn === 'player' && (
-            <>
-              <button 
-                onClick={() => {
-                  if (activeUnitId) {
-                    const updatedUnits = units.map(u => u.id === activeUnitId ? markUnitActed(u) : u);
-                    determineNextActiveUnit(updatedUnits);
-                  }
-                }}
-                className="flex-1 px-2 py-2 bg-stone-800 border border-stone-700 text-stone-300 rounded font-black text-[10px] uppercase hover:bg-stone-700 min-w-[80px]"
-              >
-                Пас
-              </button>
-              
-              {units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
-                <div onClick={() => setIsHealMode(true)} className={cn("flex-1 min-w-[60px] flex items-center justify-center bg-blue-900/30 border border-blue-500 rounded p-1 cursor-pointer transition-all hover:bg-blue-800/50", isHealMode && "bg-blue-600/50 border-blue-400")} title="Активировать исцеление">
-                  <img src="/units/driadaheal.png" className={cn("w-6 h-6", !isHealMode && "animate-pulse")} alt="Heal Skill" />
-                </div>
-              )}
-
-              {units.find(u => u.id === activeUnitId)?.unitId === 'berserk' && !units.find(u => u.id === activeUnitId)?.frenzyUsed && (
-                <div onClick={handleFrenzy} className="flex-1 min-w-[60px] flex items-center justify-center bg-red-900/30 border border-red-500 rounded p-1 cursor-pointer transition-all hover:bg-red-800/50 shadow-[0_0_10px_rgba(239,68,68,0.3)] animate-pulse" title="Ярость (доп. ход)">
-                   < Sword className="w-6 h-6 text-red-500" />
-                </div>
-              )}
-            </>
+            <button 
+              onClick={() => {
+                if (activeUnitId === 'hero-token') {
+                  setHasHeroActed(true);
+                  setIsHeroTurn(false);
+                  setActiveUnitId(null);
+                  setTimeout(() => determineNextActiveUnit(units), 100);
+                  return;
+                }
+                if (activeUnitId) {
+                  const updatedUnits = units.map(u => u.id === activeUnitId ? markUnitActed(u) : u);
+                  determineNextActiveUnit(updatedUnits);
+                }
+              }}
+              className="flex-1 px-2 py-0 bg-stone-800 border border-stone-700 text-stone-300 rounded font-black text-[10px] uppercase hover:bg-stone-700"
+            >
+              ПАС
+            </button>
           )}
         </div>
 
-        {/* Combat Log */}
-        <div className="w-full h-24 wow-panel p-2 overflow-y-auto text-[10px] font-mono flex flex-col-reverse text-stone-400">
+        {/* Combat Log - Height restricted to 3 lines */}
+        <div className="w-full h-[52px] wow-panel p-1.5 overflow-hidden text-[9px] font-mono flex flex-col-reverse text-stone-400 bg-stone-900/80">
           {log.map((m, i) => (
-            <div key={i} className={i === 0 ? "text-stone-200 font-bold" : ""}>
+            <div key={i} className={cn("leading-tight truncate", i === 0 ? "text-amber-200 font-bold" : "opacity-60")}>
               &gt; {m}
             </div>
           ))}
