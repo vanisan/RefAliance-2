@@ -18,7 +18,7 @@ export default function BottomNav({ activeTab, onChange, hasBarracks }: BottomNa
   ] as const;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-stone-900 border-t-2 border-stone-800 flex z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-stone-900 border-t border-stone-800 flex z-50 shadow-[0_-20px_40px_rgba(0,0,0,0.8)] backdrop-blur-md">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const isDisabled = tab.disabled;

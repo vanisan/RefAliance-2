@@ -13,8 +13,8 @@ export default function Header() {
 
   return (
     <div className="fixed top-2 left-2 right-2 z-50">
-      <header className="flex justify-between items-center wow-panel p-3 backdrop-blur-md">
-        <div className="flex items-center space-x-3">
+      <header className="flex justify-between items-center wow-panel p-2 backdrop-blur-md">
+        <div className="flex items-center space-x-2">
           <div className="w-10 h-10 rounded-full bg-stone-700 wow-border-gold flex items-center justify-center text-stone-200 font-bold overflow-hidden shadow-lg shrink-0">
             <User className="w-5 h-5"/>
           </div>

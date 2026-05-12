@@ -50,7 +50,7 @@ export default function GameClient() {
   return (
     <div className={cn(
       "h-[100dvh] bg-stone-900 text-stone-200 font-sans flex flex-col relative overflow-hidden",
-      combatNode ? "pt-0 pb-0" : "pt-24 pb-16"
+      combatNode ? "pt-0 pb-0" : "pt-16 pb-16"
     )}>
       <div className="absolute inset-0 bg-[url('/city.png')] opacity-60 bg-cover bg-center mix-blend-overlay pointer-events-none z-0"></div>
       {!combatNode && (
