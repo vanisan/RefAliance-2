@@ -19,7 +19,7 @@ export default function PalaceView() {
     // Check if cell is locked
     const isLocked = index >= 12 && (index - 11) > referrals;
     if (isLocked) {
-      alert(`Эта клетка заблокирована! Она откроется за рефералов. Нужно еще ${ (index - 11) - referrals} реф.`);
+      alert(`Цю клітину заблоковано! Вона відкриється за рефералів. Потрібно ще ${ (index - 11) - referrals} реф.`);
       return;
     }
     setSelectedCell(index === selectedCell ? null : index);
@@ -36,7 +36,7 @@ export default function PalaceView() {
     const info = BUILDINGS_INFO[buildingId];
     const cost = getUpgradeCost(buildingId, 0);
     if (!hasEnoughResources(cost, resources)) {
-      alert("Недостаточно ресурсов!");
+      alert("Недостатньо ресурсів!");
       return;
     }
 
@@ -55,13 +55,13 @@ export default function PalaceView() {
     
     // PALACE LEVEL CAP
     if (building.level >= palaceLevel * 5) {
-      alert(`Дворец ${palaceLevel} уровня позволяет улучшать здания только до ${palaceLevel * 5} уровня! Улучшите дворец.`);
+      alert(`Палац ${palaceLevel} рівня дозволяє покращувати будівлі тільки до ${palaceLevel * 5} рівня! Покращте палац.`);
       return;
     }
 
     const cost = getUpgradeCost(building.id, building.level);
     if (!hasEnoughResources(cost, resources)) {
-       alert("Недостаточно ресурсов!");
+       alert("Недостатньо ресурсів!");
        return;
     }
 
@@ -74,25 +74,25 @@ export default function PalaceView() {
   };
 
   const PALACE_DESCRIPTIONS: Record<number, string> = {
-    1: "Начальное укрепление власти. Позволяет организовать базовое управление поселением.",
-    2: "Централизация ресурсов. Дворец становится архитектурной доминантой города. Открывает путь к имперским амбициям.",
-    3: "Величественная резиденция. Потоки ресурсов текут в казну беспрерывно. Ваш авторитет неоспорим.",
-    4: "Имперский собор. Стены дворца украшены золотом и рунами. Знание и сила объединяются.",
-    5: "Цитадель Вечности. Дворец черпает энергию из самого мироздания. Здания могут достичь совершенства.",
-    6: "Дворец Богов. Высшая точка развития. Грань между правителем и божеством стирается."
+    1: "Початкове зміцнення влади. Дозволяє організувати базове управління поселенням.",
+    2: "Централізація ресурсів. Палац стає архітектурною домінантою міста. Відкриває шлях до імперських амбіцій.",
+    3: "Велична резиденція. Потоки ресурсів течуть у скарбницю безперервно. Ваш авторитет незаперечний.",
+    4: "Імперський собор. Стіни палацу прикрашені золотом та рунами. Знання та сила об'єднуються.",
+    5: "Цитадель Вічності. Палац черпає енергію із самого світобудови. Будівлі можуть досягти досконалості.",
+    6: "Палац Богів. Вища точка розвитку. Межа між правителем і божеством стирається."
   };
 
   const handleUpgradePalace = () => {
     const cost = getPalaceUpgradeCost(palaceLevel);
     if (!hasEnoughResources(cost, resources)) {
-      alert("Недостаточно ресурсов для улучшения дворца!");
+      alert("Недостатньо ресурсів для покращення палацу!");
       return;
     }
     setResources(deductResources(resources, cost));
     setPalaceLevel(palaceLevel + 1);
     setShowPalaceUpgrade(false);
     playSound('/sfx/lvlupbuilding.mp3');
-    alert(`Поздравляем! Ваш Дворец теперь ${palaceLevel + 1} уровня! Лимит зданий увеличен до ${(palaceLevel + 1) * 5}.`);
+    alert(`Вітаємо! Ваш Палац тепер ${palaceLevel + 1} рівня! Ліміт будівель збільшено до ${(palaceLevel + 1) * 5}.`);
   };
 
   const handleSell = () => {
@@ -148,9 +148,9 @@ export default function PalaceView() {
       <div className="flex flex-col items-center mb-6 mt-2 relative z-20">
         <div className="relative group" onClick={() => setShowPalaceUpgrade(true)}>
           <div className="w-24 h-24 bg-stone-800 rounded-lg wow-border-gold flex flex-col items-center justify-end cursor-pointer transition-all hover:scale-105 shadow-xl relative overflow-hidden group-hover:shadow-[0_0_20px_#f59e0b]">
-            <img src="/buildings/hall.webp" alt="Дворец" className="absolute inset-0 w-full h-full object-contain z-0 p-1.5 scale-110" />
+            <img src="/buildings/hall.webp" alt="Палац" className="absolute inset-0 w-full h-full object-contain z-0 p-1.5 scale-110" />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950 via-stone-900 to-transparent pt-4 pb-2 flex flex-col items-center">
-              <p className="text-[11px] text-amber-500 font-bold uppercase tracking-widest text-shadow-glow relative z-10 shadow-black leading-none">Дворец</p>
+              <p className="text-[11px] text-amber-500 font-bold uppercase tracking-widest text-shadow-glow relative z-10 shadow-black leading-none">Палац</p>
               <p className="text-[11px] font-black text-stone-200 tracking-widest relative z-10 shadow-black mt-0.5">LVL {palaceLevel}</p>
             </div>
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 z-20">
@@ -163,10 +163,10 @@ export default function PalaceView() {
             </div>
           )}
         </div>
-        <p className="text-[9px] text-stone-500 mt-2 uppercase font-bold tracking-tighter">Лимит зданий: {palaceLevel * 5} ур.</p>
+        <p className="text-[9px] text-stone-500 mt-2 uppercase font-bold tracking-tighter">Ліміт будівель: {palaceLevel * 5} ур.</p>
         <div className="flex items-center gap-1 mt-1 bg-stone-950/50 px-2 py-0.5 rounded-full border border-stone-800">
            <Users className="w-3 h-3 text-indigo-400" />
-           <span className="text-[10px] text-stone-300 font-bold">Рефералы: {referrals}</span>
+           <span className="text-[10px] text-stone-300 font-bold">Реферали: {referrals}</span>
         </div>
       </div>
 
@@ -209,10 +209,12 @@ export default function PalaceView() {
                     {!isSelected && <div className="absolute bottom-0.5 right-1 text-[8px] text-amber-400/80 font-bold z-10 font-mono">L.{building.level}</div>}
                   </>
                 ) : (
-                  <span className="text-stone-700 text-2xl font-light hover:text-stone-500 tracking-tighter opacity-20 group-hover:opacity-100 transition-opacity">+</span>
-                )}
-                {i >= 12 && !isLocked && (
-                  <div className="absolute top-0.5 right-0.5 bg-indigo-500 w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(99,102,241,1)]"></div>
+                  <>
+                    <span className="text-stone-700 text-2xl font-light hover:text-stone-500 tracking-tighter opacity-20 group-hover:opacity-100 transition-opacity">+</span>
+                    {i >= 12 && !isLocked && (
+                      <div className="absolute top-0.5 right-0.5 bg-indigo-500 w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(99,102,241,1)]"></div>
+                    )}
+                  </>
                 )}
               </motion.button>
             );
@@ -231,7 +233,7 @@ export default function PalaceView() {
           >
             <div className="flex justify-between items-center mb-3">
               <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest text-shadow-glow">
-                {buildings[selectedCell] ? 'Действия здания' : 'Построить'}
+                {buildings[selectedCell] ? 'Дії будівлі' : 'Побудувати'}
               </p>
               <button onClick={() => setSelectedCell(null)} className="text-stone-400 hover:text-stone-200">
                 <X className="w-4 h-4"/>
@@ -246,7 +248,7 @@ export default function PalaceView() {
                   </div>
                   {BUILDINGS_INFO[buildings[selectedCell]!.id]?.production && (
                     <div className="mt-1">
-                      <p className="text-[8px] uppercase text-stone-500 font-bold mb-1">Текущая добыча:</p>
+                      <p className="text-[8px] uppercase text-stone-500 font-bold mb-1">Поточний видобуток:</p>
                       {renderProduction(BUILDINGS_INFO[buildings[selectedCell]!.id].production, buildings[selectedCell]!.level)}
                     </div>
                   )}
@@ -258,9 +260,9 @@ export default function PalaceView() {
                   className="w-full text-left py-2 px-3 rounded text-xs font-bold border-l-4 border-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-between wow-panel-metal hover:bg-stone-700 group/btn"
                 >
                   <div className="flex flex-col items-start">
-                    <span className="text-amber-500 group-hover/btn:text-amber-300">🔼 Улучшить</span>
+                    <span className="text-amber-500 group-hover/btn:text-amber-300">🔼 Покращити</span>
                     {BUILDINGS_INFO[buildings[selectedCell]!.id]?.production && (
-                      <span className="text-[8px] text-green-500 font-bold">Будет: +{formatNumber(Object.values(BUILDINGS_INFO[buildings[selectedCell]!.id].production!)[0] as number * (buildings[selectedCell]!.level + 1))}</span>
+                      <span className="text-[8px] text-green-500 font-bold">Буде: +{formatNumber(Object.values(BUILDINGS_INFO[buildings[selectedCell]!.id].production!)[0] as number * (buildings[selectedCell]!.level + 1))}</span>
                     )}
                   </div>
                   <div className="flex items-center">
@@ -271,12 +273,12 @@ export default function PalaceView() {
                   onClick={handleSell}
                   className="w-full text-left py-2 px-3 rounded font-bold border-l-4 border-red-800 transition-colors flex justify-between text-xs wow-panel-metal hover:bg-stone-700"
                 >
-                  <span className="text-red-500">💰 Снести</span>
-                  <span className="text-[9px] text-stone-500 mt-0.5">Вернет 50% базы</span>
+                  <span className="text-red-500">💰 Знести</span>
+                  <span className="text-[9px] text-stone-500 mt-0.5">Поверне 50% бази</span>
                 </button>
                 {buildings[selectedCell]?.id === 'barracks' && (
                   <button className="w-full text-left py-2 px-3 rounded font-bold border-l-4 border-amber-600 transition-colors mt-1 text-xs wow-panel-metal text-stone-300">
-                    <span>⚔️ Нанимайте Армию во вкладке "Армия"</span>
+                    <span>⚔️ Наймайте Армію у вкладці "Армія"</span>
                   </button>
                 )}
                 {buildings[selectedCell]?.id === 'forge' && (
@@ -284,7 +286,7 @@ export default function PalaceView() {
                     onClick={() => setShowForge(true)}
                     className="w-full text-left py-2 px-3 rounded font-bold border-l-4 border-stone-400 transition-colors mt-1 text-xs wow-panel-metal text-stone-100 hover:bg-stone-700"
                   >
-                    <span>⚒️ Кузница (Осадные орудия)</span>
+                    <span>⚒️ Кузня (Облогові знаряддя)</span>
                   </button>
                 )}
                 {buildings[selectedCell]?.id === 'altar' && (
@@ -292,7 +294,7 @@ export default function PalaceView() {
                     onClick={() => setShowAltar(true)}
                     className="w-full text-left py-2 px-3 rounded font-bold border-l-4 border-amber-600 transition-colors mt-1 text-xs wow-panel-metal text-stone-100 hover:bg-stone-700"
                   >
-                    <span>✨ Магический Алтарь</span>
+                    <span>✨ Магічний Вівтар</span>
                   </button>
                 )}
               </div>
@@ -316,7 +318,7 @@ export default function PalaceView() {
                       <span className="font-black text-sm tracking-widest uppercase text-amber-500">{info.name}</span>
                       <span className="text-[10px] text-stone-400 font-semibold">{info.description}</span>
                       <div className="mt-1 flex items-center justify-between w-full">
-                        <span className="text-[9px] uppercase font-bold tracking-widest text-stone-500">Цена</span>
+                        <span className="text-[9px] uppercase font-bold tracking-widest text-stone-500">Ціна</span>
                         {renderCost(cost)}
                       </div>
                     </button>
@@ -342,8 +344,8 @@ export default function PalaceView() {
                <img src="/buildings/hall.webp" alt="UI" className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none translate-x-1/3 -translate-y-1/3" />
                <div className="flex justify-between items-start mb-6">
                  <div>
-                   <h2 className="text-xl font-black text-amber-500 uppercase tracking-tighter">Улучшение Дворца</h2>
-                   <p className="text-xs text-stone-400">Текущий уровень: <span className="text-stone-100 font-bold">{palaceLevel}</span></p>
+                   <h2 className="text-xl font-black text-amber-500 uppercase tracking-tighter">Покращення Палацу</h2>
+                   <p className="text-xs text-stone-400">Поточний рівень: <span className="text-stone-100 font-bold">{palaceLevel}</span></p>
                  </div>
                  <button onClick={() => setShowPalaceUpgrade(false)} className="bg-stone-800 p-1 rounded hover:bg-stone-700">
                     <X className="w-5 h-5 text-stone-500" />
@@ -352,19 +354,19 @@ export default function PalaceView() {
 
                <div className="space-y-4 mb-8">
                   <div className="p-3 bg-stone-900/80 rounded border border-amber-900/30 text-[10px] text-stone-300 italic leading-relaxed">
-                     "{PALACE_DESCRIPTIONS[palaceLevel] || "Развивайте свой дворец для получения новых возможностей."}"
+                     "{PALACE_DESCRIPTIONS[palaceLevel] || "Розвивайте свій палац для отримання нових можливостей."}"
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-stone-900/50 rounded border border-stone-800">
                      <ArrowUpCircle className="w-10 h-10 text-green-500" />
                      <div>
-                       <p className="text-sm font-bold text-stone-100">Новый лимит уровней</p>
-                       <p className="text-xs text-stone-500">Позволяет качать здания до <span className="text-green-400 font-black">{(palaceLevel + 1) * 5} уровня</span></p>
+                       <p className="text-sm font-bold text-stone-100">Новий ліміт рівнів</p>
+                       <p className="text-xs text-stone-500">Дозволяє прокачувати будівлі до <span className="text-green-400 font-black">{(palaceLevel + 1) * 5} рівня</span></p>
                      </div>
                   </div>
                </div>
 
                <div className="wow-panel-metal p-4 mb-6">
-                 <p className="text-[10px] uppercase font-bold text-stone-500 mb-2 tracking-widest">Стоимость улучшения:</p>
+                 <p className="text-[10px] uppercase font-bold text-stone-500 mb-2 tracking-widest">Вартість покращення:</p>
                  <div className="grid grid-cols-2 gap-3">
                     {Object.entries(getPalaceUpgradeCost(palaceLevel)).map(([res, val]) => {
                       if (val === 0) return null;
@@ -377,7 +379,7 @@ export default function PalaceView() {
                               {res === 'wood' && <Trees className="w-4 h-4 text-amber-600" />}
                               {res === 'stone' && <Mountain className="w-4 h-4 text-stone-400" />}
                               {res === 'food' && <Wheat className="w-4 h-4 text-orange-400" />}
-                              <span className="text-[10px] uppercase font-bold text-stone-400">{res === 'gold' ? 'Золото' : res === 'wood' ? 'Дерево' : res === 'stone' ? 'Камень' : 'Еда'}</span>
+                              <span className="text-[10px] uppercase font-bold text-stone-400">{res === 'gold' ? 'Золото' : res === 'wood' ? 'Дерево' : res === 'stone' ? 'Камінь' : 'Їжа'}</span>
                            </div>
                            <div className={cn("text-xs font-black", enough ? "text-green-400" : "text-red-500")}>
                              {formatNumber(val as number)}
@@ -393,7 +395,7 @@ export default function PalaceView() {
                   disabled={!hasEnoughResources(getPalaceUpgradeCost(palaceLevel), resources)}
                   className="w-full py-4 wow-button font-black uppercase text-sm tracking-widest disabled:opacity-50 disabled:grayscale"
                >
-                 Улучшить Дворец
+                 Покращити Палац
                </button>
             </motion.div>
           </motion.div>

@@ -59,7 +59,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const [timer, setTimer] = useState(TURN_TIME);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const [round, setRound] = useState(1);
-  const [log, setLog] = useState<string[]>(['Арена ждет героев!']);
+  const [log, setLog] = useState<string[]>(['Арена чекає на героїв!']);
   const [gameOver, setGameOver] = useState<'win' | 'loss' | null>(null);
   
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
@@ -81,7 +81,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   // --- LOBBY LOGIC ---
   useEffect(() => {
     if (!user || !supabase) {
-      if (!supabase) setConnectionError("Supabase не настроен. Арена временно недоступна.");
+      if (!supabase) setConnectionError("Supabase не налаштовано. Арена тимчасово недоступна.");
       return;
     }
 
@@ -98,7 +98,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       .on('broadcast', { event: 'match_invitation' }, ({ payload }) => {
         if (payload.targetId === user.id) {
           // Received a match invitation
-          if (confirm(`Игрок ${payload.fromName} вызывает вас на бой! Принять?`)) {
+          if (confirm(`Гравець ${payload.fromName} викликає вас на бій! Прийняти?`)) {
             joinMatch(payload.matchId, payload.fromPlayer, 1);
           }
         }
@@ -126,7 +126,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     if (!user) return;
     const totalUnits = Object.values(army).reduce((acc, count) => acc + (Number(count) || 0), 0);
     if (totalUnits === 0) {
-      alert("У вас нет армии! Сначала наймите войска.");
+      alert("У вас немає армії! Спочатку найміть війська.");
       return;
     }
 
@@ -202,20 +202,20 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         // If we are playing and someone left
         if (view === 'battle' && !gameOver && presenceCount < 2 && match?.status === 'playing') {
           // Someone left
-          addLog("Противник покинул поле боя! Техническая победа.");
+          addLog("Супротивник залишив поле бою! Технічна перемога.");
           setGameOver('win');
           channel.send({ type: 'broadcast', event: 'surrender', payload: { from: user?.id } });
         }
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         if (view === 'battle' && !gameOver && match?.status === 'playing') {
-          addLog("Противник покинул бой.");
+          addLog("Супротивник залишив бій.");
           setGameOver('win');
         }
       })
       .on('broadcast', { event: 'surrender' }, () => {
         if (!gameOver) {
-          addLog("Бой завершен. Противник сдался.");
+          addLog("Бій завершено. Супротивник здався.");
           setGameOver('loss');
         }
       })
@@ -235,7 +235,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           };
           setMatch(updated);
           syncFullState(updated);
-          addLog(`Игрок ${payload.player.name} вошел в бой!`);
+          addLog(`Гравець ${payload.player.name} увійшов у бій!`);
         }
       })
       .on('broadcast', { event: 'sync_state' }, ({ payload }) => {
@@ -574,7 +574,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const handleRemoteMove = (unitId: string, x: number, y: number) => {
     const updated = units.map(u => u.id === unitId ? { ...u, x, y, hasActed: true } : u);
     setUnits(updated);
-    addLog(`${UNITS_INFO[units.find(u => u.id === unitId)!.unitId].name} переместился.`);
+    addLog(`${UNITS_INFO[units.find(u => u.id === unitId)!.unitId].name} перемістився.`);
     if (turn === myIndex) finishAction(updated);
   };
 
@@ -610,7 +610,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     });
 
     setUnits(updated);
-    addLog(`Дриада воскрешает ${healAmount} ${UNITS_INFO[target.unitId].name}!`);
+    addLog(`Дріада воскрешає ${healAmount} ${UNITS_INFO[target.unitId].name}!`);
     
     const effId = getRandomId('heal');
     setEffects(prev => [...prev, { id: effId, type: 'heal', x: target.x, y: target.y, size: UNITS_INFO[target.unitId].size || 1 }]);
@@ -674,7 +674,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     });
 
     setUnits(updated);
-    addLog(`${attackerInfo.name} -> ${damageObj.totalDmg} урона. Убито: ${defender.count - newCount}`);
+    addLog(`${attackerInfo.name} -> ${damageObj.totalDmg} шкоди. Вбито: ${defender.count - newCount}`);
     
     setTimeout(() => {
       if (turn === myIndex) finishAction(updated);
@@ -739,7 +739,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
            crystals: Math.floor(opponent.resources.crystals * 0.5),
         };
         setResources(prev => addResources(prev, loot));
-        addLog(`Вы захватили 50% ресурсов врага!`);
+        addLog(`Ви захопили 50% ресурсів ворога!`);
       } else {
         // Fallback
         setResources(prev => addResources(prev, { crystals: 50 } as any));
@@ -754,7 +754,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         food: Math.floor(prev.food * 0.5),
         crystals: Math.floor(prev.crystals * 0.5),
       }));
-      addLog("Вы потеряли 50% ресурсов при поражении!");
+      addLog("Ви втратили 50% ресурсів при поразці!");
     }
     onClose();
   };
@@ -786,40 +786,40 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     <div className="flex flex-col items-center w-full max-w-md gap-4">
       {connectionError && (
         <div className="bg-red-950/50 border border-red-500 p-4 rounded text-red-200 text-xs w-full text-center mb-4">
-          <p className="font-bold mb-1">Ошибка подключения</p>
+          <p className="font-bold mb-1">Помилка підключення</p>
           <p>{connectionError}</p>
-          <p className="mt-2 text-[10px] opacity-80">Пожалуйста, проверьте соединение или ключи Supabase в настройках (Secrets) для активации Арены.</p>
+          <p className="mt-2 text-[10px] opacity-80">Будь ласка, перевірте з'єднання або ключі Supabase у налаштуваннях (Secrets) для активації Арени.</p>
         </div>
       )}
       <div className="wow-panel w-full p-4 flex flex-col items-center">
         <Trophy className="w-12 h-12 text-amber-500 mb-2 animate-bounce" />
-        <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow">Арена Героев</h2>
-        <p className="text-[10px] text-stone-400 border-b border-stone-800 pb-2 mb-4 w-full text-center">СРАЖАЙТЕСЬ С РЕАЛЬНЫМИ ИГРОКАМИ ЗА КРИСТАЛЛЫ</p>
+        <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow">Арена Героїв</h2>
+        <p className="text-[10px] text-stone-400 border-b border-stone-800 pb-2 mb-4 w-full text-center">БИЙТЕСЯ З РЕАЛЬНИМИ ГРАВЦЯМИ ЗА КРИСТАЛИ</p>
         
         <div className="w-full space-y-2">
           <div className="flex justify-between items-center px-1">
-            <span className="text-[10px] uppercase font-bold text-stone-500">Игроки в сети</span>
-            <span className="text-[10px] text-green-500 font-mono flex items-center gap-1">● {lobbyPlayers.length} online</span>
+            <span className="text-[10px] uppercase font-bold text-stone-500">Гравці в мережі</span>
+            <span className="text-[10px] text-green-500 font-mono flex items-center gap-1">● {lobbyPlayers.length} онлайн</span>
           </div>
           
           <div className="bg-stone-950/50 rounded border border-stone-800 min-h-[200px] max-h-[300px] overflow-y-auto p-2">
             {lobbyPlayers.length <= 1 ? (
               <div className="h-full flex flex-col items-center justify-center opacity-50 py-10">
                 <MessageSquare className="w-6 h-6 mb-2" />
-                <p className="text-xs uppercase tracking-widest font-black">Ждем противника...</p>
+                <p className="text-xs uppercase tracking-widest font-black">Чекаємо на супротивника...</p>
               </div>
             ) : (
               lobbyPlayers.filter(p => p.id !== user?.id).map(player => (
                 <div key={player.id} className="wow-panel-metal p-2 mb-2 flex items-center justify-between">
                   <div>
                     <h4 className="text-sm font-bold text-amber-400">{player.name}</h4>
-                    <p className="text-[10px] text-stone-500 font-mono">Сила: {player.armyPower} | Дворец: {player.palaceLevel}</p>
+                    <p className="text-[10px] text-stone-500 font-mono">Сила: {player.armyPower} | Палац: {player.palaceLevel}</p>
                   </div>
                   <button 
                     onClick={() => invitePlayer(player)}
                     className="wow-button p-2 text-[10px] font-black uppercase tracking-tighter"
                   >
-                    Вызвать
+                    Викликати
                   </button>
                 </div>
               ))
@@ -917,13 +917,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
              <div className="flex items-center gap-1.5">
                <div className={cn("w-2 h-2 rounded-full", turn === 0 ? "bg-blue-400 animate-pulse" : "bg-stone-700")}></div>
                <span className={cn("text-[10px] font-black uppercase tracking-widest", myIndex === 0 ? "text-blue-400" : "text-stone-500")}>
-                 {match?.players[0].name} {myIndex === 0 && "(Вы)"}
+                 {match?.players[0].name} {myIndex === 0 && "(Ви)"}
                </span>
              </div>
              <div className="flex items-center gap-1.5">
                <div className={cn("w-2 h-2 rounded-full", turn === 1 ? "bg-red-400 animate-pulse" : "bg-stone-700")}></div>
                <span className={cn("text-[10px] font-black uppercase tracking-widest", myIndex === 1 ? "text-red-400" : "text-stone-500")}>
-                 {match?.players[1]?.name || '...'} {myIndex === 1 && "(Вы)"}
+                 {match?.players[1]?.name || '...'} {myIndex === 1 && "(Ви)"}
                </span>
              </div>
            </div>
@@ -937,7 +937,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
               <div className="flex flex-col items-center">
                  <span className="text-[7px] uppercase text-stone-500 font-bold mb-0.5">Раунд {round}</span>
                  <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter">
-                   {turn === myIndex ? 'ВАШ ХОД' : 'ХОД ВРАГА'}
+                   {turn === myIndex ? 'ВАШ ХІД' : 'ХІД ВОРОГА'}
                  </span>
               </div>
            </div>
@@ -951,8 +951,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
            {match?.status === 'waiting' && (
              <div className="absolute inset-0 bg-stone-950/80 z-[60] flex flex-col items-center justify-center rounded">
                <Trophy className="w-10 h-10 text-amber-500 mb-4 animate-bounce" />
-               <h2 className="text-lg font-black uppercase tracking-widest text-amber-400">Ожидание Противника</h2>
-               <p className="text-[10px] text-stone-400 mt-1 uppercase tracking-tighter">Арена ждет героев...</p>
+               <h2 className="text-lg font-black uppercase tracking-widest text-amber-400">Очікування Супротивника</h2>
+               <p className="text-[10px] text-stone-400 mt-1 uppercase tracking-tighter">Арена чекає на героїв...</p>
              </div>
            )}
            
@@ -1083,28 +1083,28 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     <div className="wow-panel p-6 flex flex-col items-center text-center max-w-sm">
       <Trophy className={cn("w-20 h-20 mb-4", gameOver === 'win' ? "text-amber-500 animate-bounce" : "text-stone-600 grayscale")} />
       <h2 className="text-2xl font-black uppercase tracking-widest mb-2">
-        {gameOver === 'win' ? 'ПОБЕДА НА АРЕНЕ!' : 'ПОРАЖЕНИЕ'}
+        {gameOver === 'win' ? 'ПЕРЕМОГА НА АРЕНІ!' : 'ПОРАЗКА'}
       </h2>
       <p className="text-stone-400 text-sm mb-6">
         {gameOver === 'win' 
-          ? 'Вы доказали свое превосходство и разграбили замок противника!' 
-          : 'Ваши войска пали под стенами вражьего замка. Возвращайтесь сильнее.'}
+          ? 'Ви довели свою перевагу та розграбували замок супротивника!' 
+          : 'Ваші війська пали під стінами ворожого замку. Повертайтеся сильнішими.'}
       </p>
       
       {gameOver === 'win' && match && (
         <div className="bg-indigo-950/30 border border-indigo-500 p-3 rounded mb-6 flex flex-col items-center w-full">
-           <span className="text-xs text-indigo-300 font-bold uppercase tracking-widest mb-2">ЗАХВАЧЕНО РЕСУРСОВ (50%)</span>
+           <span className="text-xs text-indigo-300 font-bold uppercase tracking-widest mb-2">ЗАХОПЛЕНО РЕСУРСІВ (50%)</span>
            <div className="grid grid-cols-2 gap-4 text-xs font-bold text-stone-200">
              <span>Золото: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.gold || 0) * 0.5)}</span>
              <span>Дерево: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.wood || 0) * 0.5)}</span>
-             <span>Камень: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.stone || 0) * 0.5)}</span>
-             <span>Еда: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.food || 0) * 0.5)}</span>
+             <span>Камінь: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.stone || 0) * 0.5)}</span>
+             <span>Їжа: {Math.floor((match.players[myIndex === 0 ? 1 : 0]?.resources?.food || 0) * 0.5)}</span>
            </div>
         </div>
       )}
 
       <button onClick={claimReward} className="wow-button w-full py-4 font-black uppercase tracking-widest">
-        ВЕРНУТЬСЯ В ГОРОД
+        ПОВЕРНУТИСЯ В МІСТО
       </button>
     </div>
   );

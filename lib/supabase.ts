@@ -7,7 +7,10 @@ const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
   try {
     return await fetch(url, options);
   } catch (err: any) {
-    console.error("Supabase request failed:", err);
+    if (err.message && err.message.includes('Failed to fetch')) {
+      // Just throw a customized error so we don't spam the console with stack traces
+      throw new Error(`Failed to fetch Supabase URL. Make sure NEXT_PUBLIC_SUPABASE_URL is correct.`);
+    }
     throw err;
   }
 };

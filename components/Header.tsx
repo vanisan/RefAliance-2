@@ -19,7 +19,7 @@ export default function Header() {
             <User className="w-5 h-5"/>
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-0.5">Владения</span>
+            <span className="text-[10px] text-amber-500 font-bold tracking-widest uppercase mb-0.5">Володіння</span>
             <span className="font-bold text-sm text-stone-100 leading-none truncate max-w-[80px] sm:max-w-none">{playerName || '...'}</span>
           </div>
         </div>
@@ -39,19 +39,19 @@ export default function Header() {
               </div>
             </div>
             <div className="text-center hidden xs:block">
-              <p className="text-[9px] uppercase text-stone-400 font-bold">Камень</p>
+              <p className="text-[9px] uppercase text-stone-400 font-bold">Камінь</p>
               <div className="flex items-center justify-center gap-1 font-mono text-stone-300 text-xs">
                 <Mountain className="w-3 h-3 md:hidden" /> {formatNumber(resources.stone)}
               </div>
             </div>
             <div className="text-center hidden xs:block">
-              <p className="text-[9px] uppercase text-rose-500 font-bold">Еда</p>
+              <p className="text-[9px] uppercase text-rose-500 font-bold">Їжа</p>
               <div className="flex items-center justify-center gap-1 font-mono text-rose-400 text-xs">
                 <Wheat className="w-3 h-3 md:hidden" /> {formatNumber(resources.food)}
               </div>
             </div>
             <div className="text-center hidden xs:block">
-              <p className="text-[9px] uppercase text-indigo-400 font-bold">Алмазы</p>
+              <p className="text-[9px] uppercase text-indigo-400 font-bold">Алмази</p>
               <div className="flex items-center justify-center gap-1 font-mono text-indigo-300 text-xs">
                 <span className="text-[10px]">💎</span> {formatNumber(resources.crystals)}
               </div>
@@ -80,7 +80,7 @@ export default function Header() {
           <div className="w-px h-8 bg-stone-700 mx-1 hidden sm:block"></div>
           
           <div className="text-center flex flex-col items-center shrink-0 min-w-[40px]">
-             <p className="text-[9px] uppercase text-indigo-400 font-bold hidden xs:block">Войска</p>
+             <p className="text-[9px] uppercase text-indigo-400 font-bold hidden xs:block">Війська</p>
              <div className="flex items-center justify-center gap-1 font-mono text-indigo-300 text-xs">
                 <Users className="w-3 h-3" /> {formatNumber(currentTroops)}/{formatNumber(maxTroops)}
              </div>

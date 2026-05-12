@@ -15,11 +15,11 @@ export default function NameEntryView() {
     const trimmedName = name.trim();
     
     if (trimmedName.length < 3) {
-      setError('Имя слишком короткое (мин. 3 символа)');
+      setError('Ім\'я занадто коротке (мін. 3 символи)');
       return;
     }
     if (trimmedName.length > 15) {
-      setError('Имя слишком длинное (макс. 15 символов)');
+      setError('Ім\'я занадто довге (макс. 15 символів)');
       return;
     }
     
@@ -46,8 +46,8 @@ export default function NameEntryView() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-black text-amber-500 uppercase tracking-tighter italic">Новый Лидер</h2>
-            <p className="text-[10px] text-stone-500 font-bold uppercase tracking-[0.2em] mt-1">Как называть твоё королевство?</p>
+            <h2 className="text-2xl font-black text-amber-500 uppercase tracking-tighter italic">Новий Лідер</h2>
+            <p className="text-[10px] text-stone-500 font-bold uppercase tracking-[0.2em] mt-1">Як називатиметься твоє королівство?</p>
           </div>
 
           <form onSubmit={handleSubmit} className="w-full space-y-4">
@@ -59,7 +59,7 @@ export default function NameEntryView() {
                   setName(e.target.value);
                   setError('');
                 }}
-                placeholder="Введи имя..."
+                placeholder="Введи ім'я..."
                 autoFocus
                 className="w-full bg-stone-950 border-b-2 border-stone-800 focus:border-amber-500 outline-none p-3 text-center text-stone-100 font-bold tracking-widest uppercase transition-all placeholder:text-stone-700"
               />
@@ -74,12 +74,12 @@ export default function NameEntryView() {
               type="submit"
               className="w-full group relative overflow-hidden bg-amber-600 hover:bg-amber-500 text-stone-900 p-4 rounded font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2"
             >
-              Начать приключение
+              Почати пригоду
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </form>
 
-          <p className="text-[9px] text-stone-600 uppercase font-bold tracking-widest leading-none">Имя будет отображаться в рейтинге игроков</p>
+          <p className="text-[9px] text-stone-600 uppercase font-bold tracking-widest leading-none">Ім'я відображатиметься в рейтингу гравців</p>
         </div>
       </motion.div>
     </div>

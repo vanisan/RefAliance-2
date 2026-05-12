@@ -133,7 +133,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
   });
   const [turn, setTurn] = useState<'player' | 'enemy'>(node.type === 'boss' ? 'enemy' : 'player');
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
-  const [log, setLog] = useState<string[]>(['Бой начался!']);
+  const [log, setLog] = useState<string[]>(['Бій розпочався!']);
   const [gameOver, setGameOver] = useState<'victory' | 'defeat' | null>(null);
   const [round, setRound] = useState(1);
 
@@ -253,11 +253,11 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
 
       addFloatingText(`-${totalDmg}`, def.x, def.y, 'text-rose-500');
 
-      const label = isCounter ? "Ответный удар" : "Атака";
+      const label = isCounter ? "Удар у відповідь" : "Атака";
       if (newCount === 0) {
-        addLog(`${label}: ${UNITS_INFO[att.unitId].name} уничтожил ${UNITS_INFO[def.unitId].name}!`);
+        addLog(`${label}: ${UNITS_INFO[att.unitId].name} знищив ${UNITS_INFO[def.unitId].name}!`);
       } else {
-        addLog(`${label}: ${UNITS_INFO[att.unitId].name} -> ${totalDmg} урона. Убито: ${killed}.`);
+        addLog(`${label}: ${UNITS_INFO[att.unitId].name} -> ${totalDmg} шкоди. Вбито: ${killed}.`);
       }
 
       return { newCount, newTopHP };
@@ -452,7 +452,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       const isNowInRange = getManhattanDist(newX, newY, mySize, primaryTarget.x, primaryTarget.y, UNITS_INFO[primaryTarget.unitId].size || 1) <= ranges;
       
       setUnits(movedUnits);
-      addLog(`${info.name} (враг) перемещается.`);
+      addLog(`${info.name} (ворог) переміщується.`);
       
       // If ranged enemy moved into range, they can't attack in the same turn in this logic (hasActed set to true)
       // unless we specifically handle double actions. But for AI basic, moving ends turn.
@@ -471,14 +471,14 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     if (alivePlayer.length === 0) {
       if (!gameOver) {
         setGameOver('defeat');
-        addLog("Вы проиграли...");
+        addLog("Ви програли...");
       }
       return;
     }
     if (aliveEnemy.length === 0) {
       if (!gameOver) {
         setGameOver('victory');
-        addLog("Победа!");
+        addLog("Перемога!");
       }
       return;
     }
@@ -542,7 +542,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         setIsHeroTurn(true);
         setActiveUnitId('hero-token'); 
         setTurn('player');
-        addLog("Ход вашего героя!");
+        addLog("Хід вашого героя!");
       }
     }
   };
@@ -559,7 +559,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       return u;
     });
 
-    addLog(`${UNITS_INFO[activeUnit.unitId].name} впадает в ярость! Дополнительный ход.`);
+    addLog(`${UNITS_INFO[activeUnit.unitId].name} впадає в лють! Додатковий хід.`);
     setUnits(updatedUnits);
     
     // Visual effect
@@ -619,7 +619,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       return u;
     });
 
-    addLog(`Дриада воскрешает ${healAmount} ${UNITS_INFO[targetPos.unitId].name}!`);
+    addLog(`Дріада воскрешає ${healAmount} ${UNITS_INFO[targetPos.unitId].name}!`);
     setUnits(updatedUnits);
     setIsHealMode(false);
     
@@ -707,7 +707,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           if (bestX !== -1) {
             const movedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x: bestX, y: bestY } : u);
             const updatedActive = { ...activeUnit, x: bestX, y: bestY };
-            addLog(`${activeInfo.name} приближается и атакует!`);
+            addLog(`${activeInfo.name} наближається і атакує!`);
             
             // Short delay to show movement before attack
             setUnits(movedUnits);
@@ -715,10 +715,10 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               processAttack(movedUnits, updatedActive, targetPos);
             }, 300);
           } else {
-            addLog("Путь к врагу заблокирован.");
+            addLog("Шлях до ворога заблокований.");
           }
         } else {
-          addLog("Враг слишком далеко.");
+          addLog("Ворог занадто далеко.");
         }
       }
     } else {
@@ -728,16 +728,16 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           // Move but don't end turn
           const updatedUnits = units.map(u => u.id === activeUnit.id ? { ...u, x, y, movedThisTurn: true, hasActed: false } : u);
           setUnits(updatedUnits);
-          addLog(`${activeInfo.name} переместилась и готова к удару!`);
+          addLog(`${activeInfo.name} перемістилася і готова до удару!`);
           // We don't call determineNextActiveUnit, so she stays selected
         } else {
           const updatedUnits = units.map(u => u.id === activeUnit.id ? markUnitActed({ ...u, x, y }) : u);
           setUnits(updatedUnits);
-          addLog(`${activeInfo.name} переместился.`);
+          addLog(`${activeInfo.name} перемістився.`);
           determineNextActiveUnit(updatedUnits);
         }
       } else {
-        addLog("Невозможно переместиться.");
+        addLog("Неможливо переміститися.");
       }
     }
   };
@@ -956,7 +956,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           <div className="flex items-center gap-2 uppercase">
             <span className={cn("text-[10px]", turn === 'player' ? 'text-amber-400' : 'text-stone-500')}>Я</span>
             <span className="text-stone-600 font-light text-[8px]">VS</span>
-            <span className={cn("text-[10px]", turn === 'enemy' ? 'text-red-400' : 'text-stone-500')}>ВРАГ</span>
+            <span className={cn("text-[10px]", turn === 'enemy' ? 'text-red-400' : 'text-stone-500')}>ВОРОГ</span>
           </div>
           <span className="text-[10px] text-stone-400 font-mono uppercase bg-stone-800 px-2 py-0.5 rounded">Раунд {round}</span>
         </div>
@@ -1129,7 +1129,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 </div>
              ) : (
                 <div className="w-12 h-12 rounded border border-stone-800 bg-stone-900/50 flex items-center justify-center">
-                   <div className="text-[7px] text-stone-600 font-black uppercase text-center leading-none">Нет героя</div>
+                   <div className="text-[7px] text-stone-600 font-black uppercase text-center leading-none">Немає героя</div>
                 </div>
              )}
              <span className="text-[7px] font-black text-amber-500 uppercase tracking-widest leading-none">Герой</span>
@@ -1144,7 +1144,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               )}
              >
                 <BookOpen className="w-4 h-4 text-indigo-400" />
-                <span className="text-[8px] font-black uppercase">Инфо</span>
+                <span className="text-[8px] font-black uppercase">Інфо</span>
              </button>
              
              {units.find(u => u.id === activeUnitId)?.unitId === 'berserk' && (
@@ -1154,7 +1154,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                   className="wow-panel-metal px-3 py-1 flex items-center gap-1.5 hover:bg-red-900/20 border-red-900 group disabled:opacity-50"
                  >
                     <Swords className="w-4 h-4 text-red-500 group-hover:scale-110" />
-                    <span className="text-[8px] font-black text-red-500 uppercase tracking-tighter">Ярость</span>
+                    <span className="text-[8px] font-black text-red-500 uppercase tracking-tighter">Лють</span>
                  </button>
              )}
              
@@ -1167,7 +1167,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                   )}
                  >
                     <Shield className="w-4 h-4 text-green-400" />
-                    <span className="text-[8px] font-black text-green-400 uppercase">Хил</span>
+                    <span className="text-[8px] font-black text-green-400 uppercase">Хіл</span>
                  </button>
              )}
           </div>
@@ -1195,13 +1195,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 <div className="flex justify-between items-start">
                   <h3 className="font-bold text-amber-500 uppercase tracking-tighter">{UNITS_INFO[selectedUnitInfo.unitId].name} <span className="text-stone-500 text-xs">x{selectedUnitInfo.count}</span></h3>
                   <div className="text-[10px] bg-stone-800 px-1.5 py-0.5 rounded text-stone-400 uppercase font-mono">
-                    {UNITS_INFO[selectedUnitInfo.unitId].combatType === 'melee' ? 'Ближний' : 'Дальний'}
+                    {UNITS_INFO[selectedUnitInfo.unitId].combatType === 'melee' ? 'Ближній' : 'Дальній'}
                   </div>
                 </div>
                 <p className="text-[10px] text-stone-300 italic mb-1 leading-tight">{UNITS_INFO[selectedUnitInfo.unitId].description}</p>
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   <div className="text-[9px] text-stone-400 flex flex-col">
-                    <span className="uppercase opacity-50">Выносливость</span>
+                    <span className="uppercase opacity-50">Витривалість</span>
                     <span className="text-red-400 font-bold">{selectedUnitInfo.hp} / {selectedUnitInfo.isEnemy ? UNITS_INFO[selectedUnitInfo.unitId].hp : Math.floor(UNITS_INFO[selectedUnitInfo.unitId].hp * hpMod)} HP</span>
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
@@ -1209,19 +1209,19 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                     <span className="text-blue-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].range} кл.</span>
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
-                    <span className="uppercase opacity-50">Ход (Дист.)</span>
+                    <span className="uppercase opacity-50">Хід (Дист.)</span>
                     <span className="text-green-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].speed} кл.</span>
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
-                    <span className="uppercase opacity-50">Урон</span>
+                    <span className="uppercase opacity-50">Шкода</span>
                     <span className="text-amber-400 font-bold">{UNITS_INFO[selectedUnitInfo.unitId].minDamage}-{UNITS_INFO[selectedUnitInfo.unitId].maxDamage}</span>
                   </div>
                   <div className="text-[9px] text-stone-400 flex flex-col">
-                    <span className="uppercase opacity-50">Доп. свойства</span>
+                    <span className="uppercase opacity-50">Дод. властивості</span>
                     <span className="text-stone-300 font-bold uppercase tracking-widest text-[7px]">
-                      {UNITS_INFO[selectedUnitInfo.unitId].special === 'double_attack' ? 'Двойная атака' : 
-                       UNITS_INFO[selectedUnitInfo.unitId].special === 'counter_attack_50' ? 'Ответная (50%)' : 
-                       UNITS_INFO[selectedUnitInfo.unitId].special === 'splash_50' ? 'Сплэш (50%)' : 'Нет'}
+                      {UNITS_INFO[selectedUnitInfo.unitId].special === 'double_attack' ? 'Подвійна атака' : 
+                       UNITS_INFO[selectedUnitInfo.unitId].special === 'counter_attack_50' ? 'Відповідна (50%)' : 
+                       UNITS_INFO[selectedUnitInfo.unitId].special === 'splash_50' ? 'Сплеш (50%)' : 'Ні'}
                     </span>
                   </div>
                 </div>
@@ -1246,7 +1246,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 : "bg-green-500/20 border-green-500 text-green-500 shadow-green-500/20"
             )}
           >
-            {infoMode ? "Отмена" : "ИНФО (ОСМОТР)"}
+            {infoMode ? "Скасувати" : "ІНФО (ОГЛЯД)"}
           </button>
           
           {turn === 'player' && (
@@ -1295,8 +1295,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(0,255,0,0.5)]">
                   <Shield className="w-10 h-10"/>
                 </div>
-                <h1 className="text-4xl font-black text-green-400 mb-2 drop-shadow-lg">ПОБЕДА!</h1>
-                <p className="text-slate-400 text-center mb-6">Враг повержен. Вы добыли трофеи.</p>
+                <h1 className="text-4xl font-black text-green-400 mb-2 drop-shadow-lg">ПЕРЕМОГА!</h1>
+                <p className="text-slate-400 text-center mb-6">Ворог повалений. Ви здобули трофеї.</p>
                 <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl w-full max-w-xs mb-8 flex flex-wrap justify-center gap-4 text-sm font-mono">
                   {node.reward.gold && <span className="text-yellow-500">+{node.reward.gold} Золото</span>}
                   {node.reward.crystals && <span className="text-indigo-400">+{node.reward.crystals} 💎</span>}
@@ -1308,8 +1308,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                 <div className="w-20 h-20 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(255,0,0,0.5)]">
                   <Skull className="w-10 h-10"/>
                 </div>
-                <h1 className="text-4xl font-black text-red-500 mb-2 drop-shadow-lg">ПОРАЖЕНИЕ...</h1>
-                <p className="text-slate-400 text-center mb-8">Ваши войска были уничтожены.</p>
+                <h1 className="text-4xl font-black text-red-500 mb-2 drop-shadow-lg">ПОРАЗКА...</h1>
+                <p className="text-slate-400 text-center mb-8">Ваші війська були знищені.</p>
               </>
             )}
             
@@ -1317,7 +1317,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
               onClick={handleFinish}
               className="px-8 py-3 wow-button font-black rounded-lg shadow-xl tracking-widest uppercase transition-all"
             >
-              Продолжить
+              Продовжити
             </button>
           </motion.div>
         )}

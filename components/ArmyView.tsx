@@ -57,15 +57,18 @@ export default function ArmyView() {
     });
   };
 
-  const renderCost = (cost: any, count: number) => (
-    <div className="flex gap-2 text-[10px] font-mono mb-2">
-      {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3 h-3 mr-0.5"/>{formatNumber(cost.gold * count)}</span>}
-      {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-0.5"/>{formatNumber(cost.wood * count)}</span>}
-      {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-0.5"/>{formatNumber(cost.stone * count)}</span>}
-      {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-0.5"/>{formatNumber(cost.food * count)}</span>}
-      {cost.crystals > 0 && <span className="flex items-center text-cyan-400"><Gem className="w-3 h-3 mr-0.5"/>{formatNumber(cost.crystals * count)}</span>}
-    </div>
-  );
+  const renderCost = (cost: any, count: number) => {
+    if (!cost) return null;
+    return (
+      <div className="flex gap-2 text-[10px] font-mono mb-2">
+        {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3 h-3 mr-0.5"/>{formatNumber(cost.gold * count)}</span>}
+        {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-0.5"/>{formatNumber(cost.wood * count)}</span>}
+        {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-0.5"/>{formatNumber(cost.stone * count)}</span>}
+        {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-0.5"/>{formatNumber(cost.food * count)}</span>}
+        {cost.crystals > 0 && <span className="flex items-center text-cyan-400"><Gem className="w-3 h-3 mr-0.5"/>{formatNumber(cost.crystals * count)}</span>}
+      </div>
+    );
+  };
 
   let recruitableUnits: UnitId[] = [];
   if (barracksLevel >= 1) recruitableUnits.push('knight', 'archer');
@@ -73,8 +76,6 @@ export default function ArmyView() {
   if (barracksLevel >= 3) recruitableUnits.push('assassin');
   if (barracksLevel >= 4) recruitableUnits.push('driada', 'paladin');
   if (barracksLevel >= 5) recruitableUnits.push('dragon', 'titan');
-  if (barracksLevel >= 8) recruitableUnits.push('archidruid');
-  if (barracksLevel >= 12) recruitableUnits.push('despot');
 
   return (
     <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto bg-stone-900/30">
@@ -84,7 +85,7 @@ export default function ArmyView() {
         <div className="absolute inset-0 bg-stone-700/10 blur-xl"></div>
         <div className="flex justify-between items-center mb-2 relative z-10 px-1">
           <h3 className="font-bold text-sm text-amber-500 flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
-            <Shield className="w-4 h-4"/> Мои войска
+            <Shield className="w-4 h-4"/> Мої війська
           </h3>
           <div className="flex gap-2 items-center text-[9px] font-mono bg-stone-900/80 px-1.5 py-0.5 rounded border border-stone-700">
              <Users className="w-3 h-3 text-indigo-400" />
@@ -105,14 +106,14 @@ export default function ArmyView() {
             </div>
           ))}
           {Object.values(army).every(v => v === 0) && (
-            <div className="col-span-2 text-center text-stone-500 text-sm py-4 border border-stone-800 border-dashed rounded-lg">Казармы пустуют... Нанимайте воинов!</div>
+            <div className="col-span-2 text-center text-stone-500 text-sm py-4 border border-stone-800 border-dashed rounded-lg">Казарми порожні... Наймайте воїнів!</div>
           )}
         </div>
       </div>
 
       {/* Recruitment */}
       <div className="space-y-4 relative z-10 w-full pb-8">
-        <h3 className="font-bold text-sm text-stone-400 mb-2 border-b border-stone-800 pb-2 uppercase tracking-widest">Найм (Ур. казармы: {barracksLevel})</h3>
+        <h3 className="font-bold text-sm text-stone-400 mb-2 border-b border-stone-800 pb-2 uppercase tracking-widest">Найм (Рівень казарми: {barracksLevel})</h3>
         
         {recruitableUnits.map(unitId => {
           const info = UNITS_INFO[unitId];
@@ -137,8 +138,8 @@ export default function ArmyView() {
                      </div>
                   )}
                   <div>
-                    <div className="font-black text-sm text-stone-200 uppercase tracking-widest">{info.name}</div>
-                    <div className="text-[10px] text-stone-400 flex flex-wrap gap-x-2 gap-y-1 mt-1 font-mono">
+                    <div className="font-black text-base text-stone-200 uppercase tracking-widest">{info.name}</div>
+                    <div className="text-[11px] text-stone-400 flex flex-wrap gap-x-2 gap-y-1 mt-1 font-mono">
                       <span className="bg-stone-950 px-1 py-0.5 rounded text-red-500">❤ {formatNumber(info.hp)}</span>
                       <span className="bg-stone-950 px-1 py-0.5 rounded text-yellow-500">⚔ {formatNumber(info.attack)}</span>
                       <span className="bg-stone-950 px-1 py-0.5 rounded text-blue-400">🛡 {formatNumber(info.defense)}</span>
@@ -164,7 +165,7 @@ export default function ArmyView() {
                   disabled={!canAfford || count < 1 || !hasSpace}
                   className={`px-5 py-2 wow-button text-[10px] uppercase font-black tracking-widest ${!hasSpace && canAfford ? 'opacity-50 !bg-red-900/50' : ''}`}
                 >
-                  {hasSpace ? 'Нанять' : `Мест нет (${currentTroops}/${maxTroops})`}
+                  {hasSpace ? 'Найняти' : `Місць немає (${currentTroops}/${maxTroops})`}
                 </button>
               </div>
             </div>

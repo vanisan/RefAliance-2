@@ -8,6 +8,7 @@ import ShopView from './ShopView';
 import ArenaView from './ArenaView';
 import WorldMapView from './WorldMapView';
 import TavernView from './TavernView';
+import SummonView from './SummonView';
 
 interface MapViewProps {
   onStartCombat: (node: MapNode) => void;
@@ -16,12 +17,13 @@ interface MapViewProps {
 import BattlePrepModal from './BattlePrepModal';
 
 export default function MapView({ onStartCombat }: MapViewProps) {
-  const { mapNodes, mapRefreshTimer, army, resources, setResources, currentCampaignLevel, setCurrentCampaignLevel } = useGame();
+  const { mapNodes, mapRefreshTimer, army, resources, setResources, currentCampaignLevel, setCurrentCampaignLevel, buildings } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
   const [showShop, setShowShop] = useState(false);
   const [showArena, setShowArena] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
   const [showTavern, setShowTavern] = useState(false);
+  const [showSummon, setShowSummon] = useState(false);
   const [showBossesModal, setShowBossesModal] = useState(false);
   const [prepNode, setPrepNode] = useState<MapNode | null>(null);
 
@@ -72,19 +74,19 @@ export default function MapView({ onStartCombat }: MapViewProps) {
       {/* Map Header */}
       <div className="w-full wow-panel p-2 mt-2 mb-1 max-w-[400px] relative z-20 overflow-hidden flex flex-col items-center justify-center">
         <h2 className="text-sm font-black text-amber-500 relative flex items-center gap-2 uppercase tracking-widest text-shadow-glow">
-          <MapPin className="w-4 h-4"/> Кампания: Уровень {currentCampaignLevel}
+          <MapPin className="w-4 h-4"/> Кампанія: Рівень {currentCampaignLevel}
         </h2>
         <div className="w-[80%] bg-stone-900/80 rounded-full h-1.5 mt-1.5 relative border border-stone-800">
           <div className="bg-amber-600 h-1.5 rounded-full shadow-[0_0_8px_#d97706]" style={{ width: `${levelProgress}%` }}></div>
         </div>
         <div className="flex gap-4 mt-1">
-          <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Прогресс: {levelProgress}%</p>
+          <p className="text-[9px] font-black text-stone-300 relative uppercase tracking-widest">Прогрес: {levelProgress}%</p>
           {allCleared && nextLevelName && (
               <button 
                onClick={handleNextLevel}
                className="text-[9px] font-black text-green-400 relative uppercase tracking-widest animate-pulse flex items-center gap-1 bg-stone-900/80 px-2 py-0.5 rounded border border-green-500 shadow-[0_0_10px_#22c55e,inset_0_0_5px_#22c55e] transition-all hover:scale-105 active:scale-95"
              >
-                Вперед к {nextLevelName}! ➔
+                Вперед до {nextLevelName}! ➔
               </button>
           )}
         </div>
@@ -105,20 +107,8 @@ export default function MapView({ onStartCombat }: MapViewProps) {
             <Swords className="w-2 h-2 text-stone-950" />
           </div>
         </div>
-        <span className="text-[8px] font-black text-red-500 uppercase mt-0.5 tracking-tighter">Боссы</span>
+        <span className="text-[8px] font-black text-red-500 uppercase mt-0.5 tracking-tighter">Боси</span>
       </motion.button>
-
-      {/* World Map Button */}
-      <button 
-        onClick={() => setShowWorldMap(true)}
-        className="absolute top-20 right-4 z-20 wow-panel-metal p-2 flex flex-col items-center shadow-2xl transition-transform active:scale-90 hover:scale-105 border-amber-600 group"
-      >
-         <div className="relative">
-            <Globe className="w-6 h-6 text-amber-500 group-hover:animate-spin-slow" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-ping"></div>
-         </div>
-         <span className="text-[8px] font-black text-amber-500 uppercase mt-0.5 tracking-tighter">Мир</span>
-      </button>
 
       {/* Map Nodes Layer */}
       <div className="absolute inset-0 z-10 pt-24 pb-20 pointer-events-none">
@@ -159,8 +149,8 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                    <Skull className="w-3 h-3 text-red-700 opacity-60" />
                 </div>
               )}
-              <div className="mt-1 text-[7px] font-black bg-stone-950/90 px-1.5 py-0.5 rounded text-amber-500 max-w-[80px] text-center leading-tight border border-stone-700/50 uppercase tracking-tighter shadow-xl">
-                {isBoss ? 'БОССЫ' : node.name}
+              <div className="mt-1 text-[8px] font-black bg-stone-950/90 px-1.5 py-0.5 rounded text-amber-500 max-w-[90px] text-center leading-none border border-stone-700/50 uppercase tracking-tighter shadow-xl truncate">
+                {isBoss ? 'БОСИ' : node.name}
               </div>
             </motion.button>
             );
@@ -174,6 +164,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
         {showArena && <ArenaView onClose={() => setShowArena(false)} />}
         {showWorldMap && <WorldMapView onClose={() => setShowWorldMap(false)} />}
         {showTavern && <TavernView onClose={() => setShowTavern(false)} />}
+        {showSummon && <SummonView onClose={() => setShowSummon(false)} />}
         
         {showBossesModal && (
           <motion.div
@@ -199,7 +190,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
               </div>
 
               <div className="flex items-center justify-between bg-stone-900/50 px-3 py-2 rounded border border-stone-800 mb-4">
-                <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Ключи боссов:</span>
+                <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Ключі босів:</span>
                 <span className={cn("text-xs font-black", resources.bossKeys ? "text-green-400" : "text-red-500")}>
                   {resources.bossKeys || 0} / 2
                 </span>
@@ -230,13 +221,13 @@ export default function MapView({ onStartCombat }: MapViewProps) {
               </div>
               
               <p className="text-[8px] text-stone-500 mt-4 italic text-center">
-                * Ключи восстанавливаются раз в 24 часа. Максимум 2.
+                * Ключі відновлюються раз на 24 години. Максимум 2.
               </p>
             </motion.div>
           </motion.div>
         )}
         
-        {selectedNode && !showShop && !showArena && !showWorldMap && (
+        {selectedNode && !showShop && !showArena && !showWorldMap && !showTavern && !showSummon && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -247,7 +238,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
               <div>
                 <h3 className="font-black text-lg text-amber-500 uppercase tracking-widest text-shadow-glow">{selectedNode.name}</h3>
                 <p className="text-xs text-stone-400 mt-1 uppercase font-bold tracking-widest">
-                  {selectedNode.cleared ? 'Зачищено' : selectedNode.type === 'city' ? 'Мирная локация' : 'Опасная зона'}
+                  {selectedNode.cleared ? 'Зачищено' : selectedNode.type === 'city' ? 'Мирна локація' : 'Небезпечна зона'}
                 </p>
               </div>
               <button onClick={() => setSelectedNode(null)} className="p-1 text-stone-400 hover:text-stone-200 transition-colors">
@@ -274,27 +265,36 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                    <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500"/> Арена</div>
                    <span className="text-[9px] text-amber-400 animate-pulse font-black">LIVE PvP</span>
                  </button>
-                 {currentCampaignLevel.startsWith('3-') && (
+                 <button 
+                  onClick={() => {
+                    setSelectedNode(null);
+                    setShowTavern(true);
+                  }}
+                  className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest border-l-4 border-amber-600">
+                   <div className="flex items-center gap-2 font-black text-amber-500 italic">🍻 Таверна Героїв</div>
+                   <span className="text-[7px] text-stone-500 font-bold">НОВЕ</span>
+                 </button>
+                 {buildings?.some(b => b?.id === 'barracks' && (b?.level ?? 0) >= 10) && (
                    <button 
                     onClick={() => {
                       setSelectedNode(null);
-                      setShowTavern(true);
+                      setShowSummon(true);
                     }}
-                    className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest border-l-4 border-amber-600">
-                     <div className="flex items-center gap-2 font-black text-amber-500 italic">🍻 Таверна Героев</div>
-                     <span className="text-[7px] text-stone-500 font-bold">НОВОЕ</span>
+                    className="wow-panel-metal p-3 flex items-center justify-between hover:bg-stone-700 text-stone-300 transition-colors text-xs font-bold uppercase tracking-widest border-l-4 border-purple-600">
+                     <div className="flex items-center gap-2 font-black text-purple-400 italic">✨ Призов Еліти</div>
+                     <span className="text-[7px] text-purple-500 font-bold">VIP</span>
                    </button>
                  )}
                </div>
             ) : selectedNode.cleared ? (
               <div className="py-6 flex flex-col items-center opacity-70">
                 <Shield className="w-12 h-12 text-stone-500 mb-2"/>
-                <p className="text-sm font-black text-stone-400 uppercase tracking-widest">Эта земля принадлежит вам</p>
+                <p className="text-sm font-black text-stone-400 uppercase tracking-widest">Ця земля належить вам</p>
               </div>
             ) : (
               <div className="mb-4 space-y-4">
                 <div className="wow-panel-metal p-3">
-                  <h4 className="text-[10px] text-red-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Вражеский Гарнизон:</h4>
+                  <h4 className="text-[10px] text-red-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Ворожий гарнізон:</h4>
                   <ul className="text-xs space-y-1 font-bold">
                     {selectedNode.enemies.map((e, idx) => (
                       <li key={idx} className="flex justify-between items-center text-stone-300">
@@ -306,13 +306,13 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                 </div>
                 
                 <div className="wow-panel-metal p-3">
-                  <h4 className="text-[10px] text-amber-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Возможная Награда:</h4>
+                  <h4 className="text-[10px] text-amber-500 uppercase font-black mb-2 tracking-widest border-b border-stone-700/50 pb-1">Можлива нагорода:</h4>
                   <div className="flex flex-wrap gap-2 text-xs font-mono font-bold">
                     {selectedNode.reward.gold && <span className="text-yellow-500 bg-stone-900 px-1.5 py-0.5 rounded border border-yellow-900/50">+{formatNumber(selectedNode.reward.gold)} Золото</span>}
                     {selectedNode.reward.crystals && <span className="text-indigo-400 bg-stone-900 px-1.5 py-0.5 rounded border border-indigo-900/50">+{formatNumber(selectedNode.reward.crystals)} 💎</span>}
                     {selectedNode.reward.wood && <span className="text-amber-600 bg-stone-900 px-1.5 py-0.5 rounded border border-amber-900/50">+{formatNumber(selectedNode.reward.wood)} Дерево</span>}
-                    {selectedNode.reward.stone && <span className="text-stone-400 bg-stone-900 px-1.5 py-0.5 rounded border border-stone-700/50">+{formatNumber(selectedNode.reward.stone)} Камень</span>}
-                    {selectedNode.reward.food && <span className="text-orange-400 bg-stone-900 px-1.5 py-0.5 rounded border border-orange-900/50">+{formatNumber(selectedNode.reward.food)} Еда</span>}
+                    {selectedNode.reward.stone && <span className="text-stone-400 bg-stone-900 px-1.5 py-0.5 rounded border border-stone-700/50">+{formatNumber(selectedNode.reward.stone)} Камінь</span>}
+                    {selectedNode.reward.food && <span className="text-orange-400 bg-stone-900 px-1.5 py-0.5 rounded border border-orange-900/50">+{formatNumber(selectedNode.reward.food)} Їжа</span>}
                   </div>
                 </div>
               </div>
@@ -321,11 +321,11 @@ export default function MapView({ onStartCombat }: MapViewProps) {
             {!selectedNode.cleared && selectedNode.type !== 'city' && (
               <div className="flex flex-col gap-2 mt-4 text-center">
                 {totalArmyCount === 0 && (
-                  <p className="text-[9px] text-red-500 font-bold uppercase animate-pulse">У вас нет войск для боя!</p>
+                  <p className="text-[9px] text-red-500 font-bold uppercase animate-pulse">У вас немає військ для бою!</p>
                 )}
                 {selectedNode.type === 'daily_boss' && (
                   <div className="text-[10px] text-stone-300 mb-2 uppercase font-bold">
-                    Доступно ключей: <span className={cn(resources.bossKeys ? "text-green-400" : "text-red-500 font-black")}>{resources.bossKeys || 0} / 2</span>
+                    Доступно ключів: <span className={cn(resources.bossKeys ? "text-green-400" : "text-red-500 font-black")}>{resources.bossKeys || 0} / 2</span>
                   </div>
                 )}
                 <button 
@@ -333,7 +333,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                     if (totalArmyCount > 0) {
                       if (selectedNode.type === 'daily_boss') {
                         if (!resources.bossKeys || resources.bossKeys < 1) {
-                          alert('У вас нет ключей для атаки на ежедневного босса! (выдается 1 раз в сутки)');
+                          alert('У вас немає ключів для атаки на щоденного боса! (видається 1 раз на добу)');
                           return;
                         }
                       }
@@ -347,7 +347,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                     totalArmyCount === 0 && "opacity-50 grayscale cursor-not-allowed border-stone-700"
                   )}
                 >
-                  <Swords className="w-4 h-4"/> В Атаку!
+                  <Swords className="w-4 h-4"/> В атаку!
                 </button>
               </div>
             )}

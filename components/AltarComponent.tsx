@@ -19,7 +19,7 @@ export default function AltarComponent({ onClose, level = 1 }: { onClose: () => 
         const remaining = 86400000 - (now - lastPrayerTime);
         const hours = Math.floor(remaining / 3600000);
         const minutes = Math.floor((remaining % 3600000) / 60000);
-        setTimeLeft(`${hours}ч ${minutes}м`);
+        setTimeLeft(`${hours}год ${minutes}хв`);
       }
     };
     checkPrayer();
@@ -36,19 +36,19 @@ export default function AltarComponent({ onClose, level = 1 }: { onClose: () => 
   return (
     <div className="fixed inset-0 bg-stone-950/80 z-[100] flex items-center justify-center p-4">
       <div className="wow-panel p-6 max-w-sm w-full">
-        <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-center mb-4">Алтарь</h2>
-        <p className="text-stone-300 text-sm mb-6 text-center">Принесите молитву, чтобы получить 50 алмазов. Доступно раз в сутки.</p>
+        <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-center mb-4">Вівтар</h2>
+        <p className="text-stone-300 text-sm mb-6 text-center">Принесіть молитву, щоб отримати 50 алмазів. Доступно раз на добу.</p>
         
         {canPray ? (
           <button 
             onClick={handlePray}
             className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-stone-900 font-black uppercase rounded shadow-lg text-lg flex items-center justify-center gap-2"
           >
-            <Zap className="w-6 h-6" /> Молиться
+            <Zap className="w-6 h-6" /> Молитися
           </button>
         ) : (
           <div className="text-center py-4 text-stone-500 font-bold">
-            Следующая молитва через: <span className="text-amber-500">{timeLeft}</span>
+            Наступна молитва через: <span className="text-amber-500">{timeLeft}</span>
           </div>
         )}
         
@@ -56,7 +56,7 @@ export default function AltarComponent({ onClose, level = 1 }: { onClose: () => 
           onClick={onClose}
           className="w-full mt-4 py-2 text-stone-500 hover:text-stone-300 font-bold uppercase text-xs"
         >
-          Закрыть
+          Закрити
         </button>
       </div>
     </div>

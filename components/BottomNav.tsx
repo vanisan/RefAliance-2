@@ -10,9 +10,9 @@ interface BottomNavProps {
 
 export default function BottomNav({ activeTab, onChange, hasBarracks }: BottomNavProps) {
   const tabs = [
-    { id: 'palace', label: 'Дворец', icon: <Home className="w-5 h-5" />, disabled: false },
+    { id: 'palace', label: 'Палац', icon: <Home className="w-5 h-5" />, disabled: false },
     { id: 'map', label: 'Карта', icon: <MapIcon className="w-5 h-5" />, disabled: false },
-    { id: 'army', label: 'Армия', icon: <Shield className="w-5 h-5" />, disabled: !hasBarracks },
+    { id: 'army', label: 'Армія', icon: <Shield className="w-5 h-5" />, disabled: !hasBarracks },
     { id: 'ranking', label: 'Рейтинг', icon: <Trophy className="w-5 h-5" />, disabled: false },
     { id: 'menu', label: 'Меню', icon: <Menu className="w-5 h-5" />, disabled: false },
   ] as const;

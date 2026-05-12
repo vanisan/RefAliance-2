@@ -10,10 +10,10 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
   const [activeSlot, setActiveSlot] = useState<EquipmentSlot>('weapon');
 
   const slots: { id: EquipmentSlot; label: string }[] = [
-    { id: 'weapon', label: 'Оружие' },
-    { id: 'chest', label: 'Доспехи' },
-    { id: 'boots', label: 'Обувь' },
-    { id: 'ring', label: 'Кольца' },
+    { id: 'weapon', label: 'Зброя' },
+    { id: 'chest', label: 'Обладунки' },
+    { id: 'boots', label: 'Взуття' },
+    { id: 'ring', label: 'Персні' },
   ];
 
   const items = SHOP_ITEMS.filter(it => it.type === activeSlot);
@@ -38,7 +38,7 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 h-16 bg-stone-900 border-b border-stone-800 flex justify-between items-center px-4 shadow-[0_4px_10px_rgba(0,0,0,0.5)] z-20">
         <h2 className="text-amber-500 font-bold tracking-widest uppercase flex items-center gap-2 text-shadow-glow">
-          Магазин Экипировки
+          Магазин Екіпірування
         </h2>
         <button onClick={onClose} className="text-stone-400 hover:text-white transition-colors">
           <X className="w-6 h-6" />
@@ -65,12 +65,12 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="text-right text-[10px] font-black text-indigo-400 mb-4 tracking-widest uppercase flex items-center justify-end gap-1 text-shadow-glow">
-        💎 Алмазы: {formatNumber(resources.crystals)}
+        💎 Алмази: {formatNumber(resources.crystals)}
       </div>
 
       {/* Current Equipped Item */}
       <div className="mb-6">
-        <h3 className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-2 border-b border-stone-800 pb-1">Экипировано:</h3>
+        <h3 className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-2 border-b border-stone-800 pb-1">Екіпіровано:</h3>
         {currentEquipped ? (
           <div className="wow-panel p-3 border-2 border-amber-900/50 flex gap-4 items-center">
             <div className="w-16 h-16 bg-stone-900 rounded border border-stone-700 p-1 flex-shrink-0">
@@ -78,23 +78,23 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
             </div>
             <div className="flex flex-col flex-1">
               <h4 className="text-sm font-black text-amber-500 uppercase tracking-widest">{currentEquipped.name}</h4>
-              <p className="text-[10px] text-stone-400 mb-1">Уровень: {currentEquipped.tier}</p>
+              <p className="text-[10px] text-stone-400 mb-1">Рівень: {currentEquipped.tier}</p>
               <div className="flex flex-wrap gap-2 text-[10px] font-bold">
-                {currentEquipped.stats.attackBonus > 0 && <span className="flex items-center gap-1 text-red-400"><Sword className="w-3 h-3"/> +{currentEquipped.stats.attackBonus}% к Атаке войска</span>}
-                {currentEquipped.stats.defenseBonus > 0 && <span className="flex items-center gap-1 text-stone-300"><Shield className="w-3 h-3"/> +{currentEquipped.stats.defenseBonus}% к Защите войска</span>}
-                {currentEquipped.stats.hpBonus > 0 && <span className="flex items-center gap-1 text-green-400"><Heart className="w-3 h-3"/> +{currentEquipped.stats.hpBonus}% к Здоровью</span>}
+                {currentEquipped.stats.attackBonus > 0 && <span className="flex items-center gap-1 text-red-400"><Sword className="w-3 h-3"/> +{currentEquipped.stats.attackBonus}% до Атаки війська</span>}
+                {currentEquipped.stats.defenseBonus > 0 && <span className="flex items-center gap-1 text-stone-300"><Shield className="w-3 h-3"/> +{currentEquipped.stats.defenseBonus}% до Захисту війська</span>}
+                {currentEquipped.stats.hpBonus > 0 && <span className="flex items-center gap-1 text-green-400"><Heart className="w-3 h-3"/> +{currentEquipped.stats.hpBonus}% до Здоров'я</span>}
               </div>
             </div>
           </div>
         ) : (
           <div className="text-[10px] text-stone-600 font-bold uppercase tracking-widest w-full text-center py-4 bg-stone-900/50 border border-stone-800 border-dashed rounded">
-            Ничего не экипировано
+            Нічого не екіпіровано
           </div>
         )}
       </div>
 
       {/* Items List */}
-      <h3 className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-2 border-b border-stone-800 pb-1">Доступные товары:</h3>
+      <h3 className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-2 border-b border-stone-800 pb-1">Доступні товари:</h3>
       <div className="space-y-3 pb-24">
         {items.map(item => {
           const isEquipped = currentEquipped?.id === item.id;
@@ -132,12 +132,12 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
                           : 'bg-stone-800 text-stone-600 border border-stone-700 cursor-not-allowed'
                       }`}
                     >
-                      Купить
+                      Купити
                     </button>
                   )}
                   {isEquipped && (
                     <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">
-                      Экипировано
+                      Екіпіровано
                     </span>
                   )}
                 </div>

@@ -19,7 +19,7 @@ export default function TavernView({ onClose }: TavernViewProps) {
     
     const cost = { crystals: hero.cost };
     if (!hasEnoughResources(cost, resources)) {
-      alert('Недостаточно алмазов!');
+      alert('Недостатньо алмазів!');
       return;
     }
 
@@ -29,7 +29,7 @@ export default function TavernView({ onClose }: TavernViewProps) {
       setActiveHeroId(hero.id);
     }
     playSound('/sfx/lvlupbuilding.mp3');
-    alert(`Герой ${hero.name} нанят!`);
+    alert(`Герой ${hero.name} найнятий!`);
   };
 
   const handleSelect = (id: string) => {
@@ -55,8 +55,8 @@ export default function TavernView({ onClose }: TavernViewProps) {
                <User className="w-6 h-6 text-amber-500" />
             </div>
             <div>
-              <h2 className="font-black text-2xl text-amber-500 uppercase tracking-widest text-shadow-glow">Таверна Героев</h2>
-              <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Наймите легендарного защитника вашего королевства</p>
+              <h2 className="font-black text-2xl text-amber-500 uppercase tracking-widest text-shadow-glow">Таверна Героїв</h2>
+              <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Найміть легендарного захисника вашого королівства</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-stone-400 hover:text-stone-200 transition-colors">
@@ -64,18 +64,18 @@ export default function TavernView({ onClose }: TavernViewProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-stone-700">
-           <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-stone-700">
+           <div className="grid grid-cols-2 gap-3">
               {(Object.values(HEROES_INFO) as HeroInfo[]).map(hero => {
                 const isOwned = ownedHeroIds.includes(hero.id);
                 const isActive = activeHeroId === hero.id;
 
                 return (
                   <div key={hero.id} className={cn(
-                    "wow-panel-metal p-0.5 relative flex flex-col group transition-all h-full",
-                    isActive ? "border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.2)]" : "border-stone-800"
+                    "wow-panel-metal p-1 relative flex flex-col group transition-all h-full",
+                    isActive ? "border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.25)]" : "border-stone-800"
                   )}>
-                    <div className="relative aspect-square w-full bg-stone-900 overflow-hidden rounded-t-[2px]">
+                    <div className="relative aspect-[4/3] w-full bg-stone-900 overflow-hidden rounded-t-[4px]">
                        <Image 
                         src={hero.image} 
                         alt={hero.name} 
@@ -83,57 +83,61 @@ export default function TavernView({ onClose }: TavernViewProps) {
                         className="object-cover group-hover:scale-105 transition-transform" 
                         referrerPolicy="no-referrer"
                        />
-                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/60 via-transparent to-transparent"></div>
+                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent"></div>
                        
                        {isActive && (
-                         <div className="absolute top-0.5 left-0.5 bg-amber-600 text-stone-950 text-[5px] font-black px-1 py-0.5 rounded shadow-lg uppercase tracking-tighter z-10">
-                            Активен
+                         <div className="absolute top-1.5 left-1.5 bg-amber-600 text-stone-950 text-[8px] font-black px-2 py-0.5 rounded shadow-lg uppercase tracking-tighter z-10">
+                            У СТРОЮ
                          </div>
                        )}
 
-                       <div className="absolute bottom-0.5 left-1 right-1">
-                         <h3 className="font-black text-amber-400 uppercase tracking-tighter text-[8px] leading-none mb-0.5">{hero.name}</h3>
-                         <p className="text-[6px] text-stone-400 font-bold uppercase tracking-tighter opacity-80 leading-none truncate">{hero.title}</p>
+                       <div className="absolute bottom-1.5 left-2 right-2">
+                         <h3 className="font-black text-amber-400 uppercase tracking-tighter text-xs leading-none mb-0.5 truncate">{hero.name}</h3>
+                         <p className="text-[8px] text-stone-400 font-bold uppercase tracking-widest opacity-80 leading-none truncate">{hero.title}</p>
                        </div>
                     </div>
 
-                    <div className="p-1 space-y-1 bg-stone-900/50 flex-1 flex flex-col justify-between">
-                       <p className="text-[6px] text-stone-500 leading-tight line-clamp-2 h-[14px]">{hero.description}</p>
+                    <div className="p-2 space-y-3 bg-stone-900/50 flex-1 flex flex-col justify-between">
+                       <p className="text-xs text-stone-300 font-medium leading-relaxed italic border-l-2 border-amber-900/50 pl-2 min-h-[48px]">
+                        {hero.description}
+                       </p>
                        
-                       <div className="flex items-center justify-between text-[6px] font-black uppercase">
-                          <div className="flex items-center gap-0.5 text-red-500">
-                             <Sword className="w-1.5 h-1.5" />
-                             <span>{hero.damage}</span>
+                       <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[9px] font-black uppercase bg-stone-950/50 p-1.5 rounded border border-stone-800">
+                             <div className="flex items-center gap-1 text-red-500">
+                                <Sword className="w-3.5 h-3.5" />
+                                <span>{hero.damage}</span>
+                             </div>
+                             {!isOwned && (
+                               <div className="flex items-center gap-1 text-indigo-400">
+                                  <span>{formatNumber(hero.cost)}</span>
+                                  <Sparkles className="w-3.5 h-3.5" />
+                               </div>
+                             )}
                           </div>
-                          {!isOwned && (
-                            <div className="flex items-center gap-0.5 text-indigo-400">
-                               <span>{formatNumber(hero.cost)}</span>
-                               <Sparkles className="w-1.5 h-1.5" />
-                            </div>
+
+                          {isOwned ? (
+                            <button 
+                             onClick={() => handleSelect(hero.id)}
+                             disabled={isActive}
+                             className={cn(
+                               "w-full py-2 rounded font-black text-[10px] uppercase tracking-widest transition-all",
+                               isActive 
+                                 ? "bg-stone-800 text-stone-500 cursor-default border border-stone-700" 
+                                 : "wow-panel-metal bg-stone-700 text-amber-500 hover:bg-stone-600 border border-amber-600/30 shadow-[0_2px_0_rgba(0,0,0,0.5)] active:translate-y-0.5 active:shadow-none"
+                             )}
+                            >
+                              {isActive ? "ОБРАНО" : "ОБРАТИ"}
+                            </button>
+                          ) : (
+                            <button 
+                             onClick={() => handleHire(hero)}
+                             className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-stone-950 rounded font-black text-[10px] uppercase tracking-widest transition-all shadow-[0_3px_0_#92400e] active:translate-y-1 active:shadow-none"
+                            >
+                              КУПИТИ
+                            </button>
                           )}
                        </div>
-
-                       {isOwned ? (
-                         <button 
-                          onClick={() => handleSelect(hero.id)}
-                          disabled={isActive}
-                          className={cn(
-                            "w-full py-0.5 rounded font-black text-[6px] uppercase tracking-tighter transition-all",
-                            isActive 
-                              ? "bg-stone-800 text-stone-500 cursor-default border border-stone-700" 
-                              : "bg-stone-700 text-amber-500 hover:bg-stone-600 border border-amber-600/30"
-                          )}
-                         >
-                           {isActive ? "ОК" : "ВЫБОР"}
-                         </button>
-                       ) : (
-                         <button 
-                          onClick={() => handleHire(hero)}
-                          className="w-full py-0.5 bg-amber-600 hover:bg-amber-500 text-stone-950 rounded font-black text-[6px] uppercase tracking-widest transition-all shadow-[0_1px_0_#92400e] active:translate-y-0.5 active:shadow-none"
-                         >
-                           НАНЯТЬ
-                         </button>
-                       )}
                     </div>
                   </div>
                 );
@@ -144,11 +148,11 @@ export default function TavernView({ onClose }: TavernViewProps) {
         <div className="mt-6 pt-4 border-t border-stone-700/50 flex justify-between items-center bg-stone-950/50 p-3 rounded">
            <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-indigo-400" />
-              <span className="text-[10px] text-stone-400 font-bold uppercase">Ваши алмазы:</span>
+              <span className="text-[10px] text-stone-400 font-bold uppercase">Ваші алмази:</span>
               <span className="text-sm font-black text-indigo-400">{formatNumber(resources.crystals)}</span>
            </div>
            <div className="text-[9px] text-stone-500 italic">
-              * Герои помогают в бою дальними атаками
+              * Герої допомагають у бою дальніми атаками
            </div>
         </div>
       </motion.div>

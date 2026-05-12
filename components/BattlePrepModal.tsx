@@ -12,7 +12,7 @@ interface BattlePrepModalProps {
   enemies?: { unitId: UnitId, count: number }[];
 }
 
-export default function BattlePrepModal({ onStart, onCancel, title = "Подготовка к бою", enemies = [] }: BattlePrepModalProps) {
+export default function BattlePrepModal({ onStart, onCancel, title = "Підготовка до бою", enemies = [] }: BattlePrepModalProps) {
   const { army } = useGame();
   const [selectedArmy, setSelectedArmy] = useState<Record<string, number>>({});
   
@@ -60,7 +60,7 @@ export default function BattlePrepModal({ onStart, onCancel, title = "Подго
         <div className="p-4 overflow-y-auto flex-1 space-y-4">
           {enemies.length > 0 && (
             <div className="bg-stone-950 p-3 rounded border border-red-900/50 mb-4">
-              <h3 className="text-[10px] text-red-500 font-bold uppercase tracking-widest mb-2 border-b border-stone-800 pb-1">Вражеский отряд</h3>
+              <h3 className="text-[10px] text-red-500 font-bold uppercase tracking-widest mb-2 border-b border-stone-800 pb-1">Ворожий загін</h3>
               <div className="flex flex-wrap gap-2 text-xs">
                 {enemies.map((e, idx) => (
                   <span key={idx} className="bg-stone-900 border border-stone-800 px-2 py-1 rounded text-stone-300 flex items-center gap-1">
@@ -72,7 +72,7 @@ export default function BattlePrepModal({ onStart, onCancel, title = "Подго
             </div>
           )}
 
-          <h3 className="text-[10px] text-amber-500 font-bold uppercase tracking-widest border-b border-stone-800 pb-1">Назначьте свои войска</h3>
+          <h3 className="text-[10px] text-amber-500 font-bold uppercase tracking-widest border-b border-stone-800 pb-1">Призначте свої війська</h3>
           
           {Object.entries(army).map(([id, maxCount]) => {
             if (maxCount <= 0) return null;
@@ -121,9 +121,9 @@ export default function BattlePrepModal({ onStart, onCancel, title = "Подго
         <div className="p-4 bg-stone-950 border-t border-stone-800 flex items-center justify-between">
           <div className="text-xs text-stone-400 font-bold uppercase tracking-widest">
             {totalSelected > 0 ? (
-              <span className="text-amber-500">{formatNumber(totalSelected)} юнитов</span>
+              <span className="text-amber-500">{formatNumber(totalSelected)} юнітів</span>
             ) : (
-              <span className="text-red-500">Никого не выбрано</span>
+              <span className="text-red-500">Нікого не обрано</span>
             )}
           </div>
           <button
@@ -136,7 +136,7 @@ export default function BattlePrepModal({ onStart, onCancel, title = "Подго
                 : "bg-stone-800 text-stone-500 cursor-not-allowed"
             )}
           >
-            В Бой <ArrowRight className="w-4 h-4" />
+            У бій <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </motion.div>

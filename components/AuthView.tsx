@@ -40,9 +40,9 @@ export default function AuthView() {
 
   const handleAddReferral = () => {
     const code = refInput.trim().toUpperCase();
-    if (code.length !== 6) return alert('Код должен состоять из 6 символов');
-    if (code === MY_CODE) return alert('Нельзя добавить свой же код');
-    if (referrals.find(r => r.code === code)) return alert('Этот код уже добавлен');
+    if (code.length !== 6) return alert('Код має складатися з 6 символів');
+    if (code === MY_CODE) return alert('Не можна додати свій власний код');
+    if (referrals.find(r => r.code === code)) return alert('Цей код вже додано');
     
     saveReferrals([...referrals, { code, claimTime: 0 }]);
     setRefInput('');
@@ -55,13 +55,13 @@ export default function AuthView() {
     if (!ref) return;
 
     if (now - ref.claimTime < DAY_MS) {
-      return alert('Кристаллы за этого реферала уже собраны сегодня!');
+      return alert('Кристали за цього реферала вже зібрані сьогодні!');
     }
 
     // Add 10 crystals
     setResources(prev => ({ ...prev, crystals: (prev.crystals || 0) + 10 }));
     saveReferrals(referrals.map(r => r.code === code ? { ...r, claimTime: now } : r));
-    alert('Вы получили 10 кристаллов за реферала!');
+    alert('Ви отримали 10 кристалів за реферала!');
   };
 
   const handleCredentialsAuth = async (e?: React.FormEvent) => {
@@ -70,12 +70,12 @@ export default function AuthView() {
     setLoading(true);
 
     if (login.length < 3) {
-      setErrorMsg("Логин слишком короткий (мин. 3 символа)");
+      setErrorMsg("Логін занадто короткий (мін. 3 символи)");
       setLoading(false);
       return;
     }
     if (pass.length < 6) {
-      setErrorMsg("Пароль слишком короткий (мин. 6 символов)");
+      setErrorMsg("Пароль занадто короткий (мін. 6 символів)");
       setLoading(false);
       return;
     }
@@ -104,13 +104,13 @@ export default function AuthView() {
         });
         if (error) {
           if (error.message.includes('already registered') || error.message.includes('User already exists')) {
-            throw new Error("Пользователь с таким логином уже существует. Попробуйте войти.");
+            throw new Error("Користувач із таким логіном вже існує. Спробуйте увійти.");
           }
           throw error;
         }
         
         if (!data.session) {
-          throw new Error("Регистрация успешна, но требуется подтверждение Email! Т.к. мы используем выдуманные логины, зайдите в настройки вашего Supabase (Authentication -> Providers -> Email) и ОТКЛЮЧИТЕ галочку 'Confirm email', затем попробуйте снова.");
+          throw new Error("Реєстрація успішна, але потрібне підтвердження Email! Оскільки ми використовуємо вигадані логіни, зайдіть у налаштування вашої Supabase (Authentication -> Providers -> Email) та ВІДКЛЮЧІТЬ галочку 'Confirm email', потім спробуйте знову.");
         }
 
         setPlayerName(cleanName);
@@ -134,10 +134,10 @@ export default function AuthView() {
         });
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
-            throw new Error('Неверный логин или пароль. Либо аккаунт не существует (нужно зарегистрироваться), либо пароль опечатка.');
+            throw new Error('Невірний логін або пароль. Або акаунт не існує (потрібно зареєструватися), або пароль з помилкою.');
           }
           if (error.message.includes('Email not confirmed')) {
-             throw new Error('Требуется подтверждение почты. Отключите Confirm Email в настройках Supabase.');
+             throw new Error('Потрібне підтвердження пошти. Вимкніть Confirm Email у налаштуваннях Supabase.');
           }
           throw error;
         }
@@ -145,9 +145,9 @@ export default function AuthView() {
     } catch (error: any) {
       console.error("Auth error", error);
       if (error && error.message && error.message.includes('Failed to fetch')) {
-        setErrorMsg('Ошибка связи к сервером Supabase. Убедитесь, что вы добавили NEXT_PUBLIC_SUPABASE_URL и NEXT_PUBLIC_SUPABASE_ANON_KEY в настройках (Settings -> Secrets) AI Studio.');
+        setErrorMsg('Помилка зв\'язку із сервером Supabase. Переконайтеся, що ви додали NEXT_PUBLIC_SUPABASE_URL та NEXT_PUBLIC_SUPABASE_ANON_KEY у налаштуваннях (Settings -> Secrets) AI Studio.');
       } else {
-        setErrorMsg("Ошибка: " + error.message);
+        setErrorMsg("Помилка: " + error.message);
       }
     } finally {
       setLoading(false);
@@ -166,7 +166,7 @@ export default function AuthView() {
       if (error) throw error;
     } catch (error: any) {
       console.error("Login failed", error);
-      setErrorMsg("Ошибка входа: " + error.message);
+      setErrorMsg("Помилка входу: " + error.message);
     }
   };
 
@@ -188,7 +188,7 @@ export default function AuthView() {
 
   return (
     <div className="p-6 wow-panel max-w-[400px] w-full bg-stone-900/40 backdrop-blur-md">
-      <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow mb-6 text-center">Профиль Игрока</h2>
+      <h2 className="text-xl font-black text-amber-500 uppercase tracking-widest text-shadow-glow mb-6 text-center">Профіль Гравця</h2>
       
       {user ? (
         <div className="space-y-6">
@@ -201,24 +201,24 @@ export default function AuthView() {
               </div>
             )}
             <div>
-              <p className="text-xs text-amber-600 font-black uppercase tracking-tighter leading-none mb-1">Игрок</p>
+              <p className="text-xs text-amber-600 font-black uppercase tracking-tighter leading-none mb-1">Гравець</p>
               <p className="text-lg font-bold text-stone-100">{playerName || '...'}</p>
               <p className="text-[10px] text-stone-500 font-mono italic">{login || (user.email?.endsWith(DUMMY_DOMAIN) ? user.user_metadata?.name || 'Player' : user.email)}</p>
             </div>
           </div>
           
           <div className="p-4 wow-panel-metal rounded bg-stone-800/30">
-            <p className="text-xs text-stone-300 font-bold mb-2">Ваш прогресс автоматически сохраняется в облаке.</p>
-            <p className="text-[10px] text-stone-500 uppercase tracking-widest">Прогресс привязан к логину: <span className="text-amber-500">{login || (user.email?.endsWith(DUMMY_DOMAIN) ? user.user_metadata?.name || 'Player' : user.email)}</span></p>
+            <p className="text-xs text-stone-300 font-bold mb-2">Ваш прогрес автоматично зберігається у хмарі.</p>
+            <p className="text-[10px] text-stone-500 uppercase tracking-widest">Прогрес прив'язаний до логіну: <span className="text-amber-500">{login || (user.email?.endsWith(DUMMY_DOMAIN) ? user.user_metadata?.name || 'Player' : user.email)}</span></p>
           </div>
 
           <div className="p-4 rounded border border-indigo-500/30 bg-indigo-950/20">
             <h3 className="text-xs text-indigo-400 font-black uppercase tracking-widest mb-3 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4" /> Реферальная Система
+              <ShieldCheck className="w-4 h-4" /> Реферальна Система
             </h3>
             
             <div className="mb-4 text-center p-2 bg-stone-900 rounded border border-stone-800">
-              <p className="text-[10px] text-stone-500 uppercase tracking-widest mb-1">Ваш код приглашения</p>
+              <p className="text-[10px] text-stone-500 uppercase tracking-widest mb-1">Ваш код запрошення</p>
               <p className="text-xl font-mono text-indigo-400 font-bold tracking-[0.2em]">{MY_CODE}</p>
             </div>
 
@@ -235,14 +235,14 @@ export default function AuthView() {
                 onClick={handleAddReferral}
                 className="px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-black text-[10px] uppercase transition-colors"
               >
-                Добавить
+                Додати
               </button>
             </div>
 
             <div className="space-y-2">
-              <p className="text-[10px] text-stone-400 font-bold uppercase">Ваши рефералы ({referrals.length})</p>
+              <p className="text-[10px] text-stone-400 font-bold uppercase">Ваші реферали ({referrals.length})</p>
               {referrals.length === 0 ? (
-                <p className="text-[10px] text-stone-600 italic">Нет рефералов</p>
+                <p className="text-[10px] text-stone-600 italic">Немає рефералів</p>
               ) : (
                 referrals.map(r => (
                   <div key={r.code} className="flex items-center justify-between bg-stone-900/50 p-2 rounded border border-stone-800">
@@ -257,7 +257,7 @@ export default function AuthView() {
                           : "bg-stone-800 text-stone-600 opacity-50 cursor-not-allowed"
                       )}
                     >
-                      {Date.now() - r.claimTime >= 24 * 60 * 60 * 1000 ? "Собрать +10" : "Собрано"}
+                      {Date.now() - r.claimTime >= 24 * 60 * 60 * 1000 ? "Зібрати +10" : "Зібрано"}
                     </button>
                   </div>
                 ))
@@ -271,11 +271,11 @@ export default function AuthView() {
                 onClick={() => setConfirmReset(true)}
                 className="w-full py-2 bg-stone-900/50 text-red-500/50 text-[9px] font-black uppercase tracking-widest hover:text-red-500 border border-stone-700 rounded transition-all"
               >
-                Сбросить прогресс (Начать с 0)
+                Скинути прогрес (Почати з 0)
               </button>
             ) : (
               <div className="bg-red-950/20 p-2 border border-red-500/30 rounded">
-                <p className="text-red-500 text-[8px] font-black uppercase mb-2">Удалить всё и начать с 1 рыцарем?</p>
+                <p className="text-red-500 text-[8px] font-black uppercase mb-2">Видалити все і почати з 1 лицарем?</p>
                 <div className="flex gap-2">
                   <button 
                     onClick={async () => {
@@ -284,13 +284,13 @@ export default function AuthView() {
                     }}
                     className="flex-1 py-1 bg-red-600 text-white text-[9px] font-black uppercase rounded"
                   >
-                    ДА, УДАЛИТЬ
+                    ТАК, ВИДАЛИТИ
                   </button>
                   <button 
                     onClick={() => setConfirmReset(false)}
                     className="flex-1 py-1 bg-stone-700 text-white text-[9px] font-black uppercase rounded"
                   >
-                    ОТМЕНА
+                    СКАСУВАТИ
                   </button>
                 </div>
               </div>
@@ -300,7 +300,7 @@ export default function AuthView() {
               onClick={handleLogout}
               className="w-full py-3 wow-panel-metal flex items-center justify-center gap-2 text-stone-400 font-black uppercase tracking-widest hover:bg-stone-700 transition-colors border-stone-800 border-b-2"
             >
-              <LogOut className="w-4 h-4"/> Выйти из системы
+              <LogOut className="w-4 h-4"/> Вийти із системи
             </button>
           </div>
         </div>
@@ -316,8 +316,8 @@ export default function AuthView() {
                 className="space-y-4"
               >
                 <div className="mb-6 p-4 bg-amber-900/10 border border-amber-800/30 rounded-lg">
-                  <p className="text-stone-300 text-sm font-bold mb-2 uppercase tracking-tight">Создай свой путь</p>
-                  <p className="text-[10px] text-stone-500 uppercase tracking-widest leading-relaxed italic">Армия и города требуют правителя.</p>
+                  <p className="text-stone-300 text-sm font-bold mb-2 uppercase tracking-tight">Створи свій шлях</p>
+                  <p className="text-[10px] text-stone-500 uppercase tracking-widest leading-relaxed italic">Армія та міста потребують правителя.</p>
                 </div>
 
                 <motion.button 
@@ -327,7 +327,7 @@ export default function AuthView() {
                   className="w-full py-4 bg-white text-stone-900 rounded font-black flex items-center justify-center gap-3 shadow-xl hover:bg-stone-100 transition-colors uppercase tracking-widest text-xs border-b-4 border-stone-300"
                 >
                   <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                  Google Вход
+                  Google Вхід
                 </motion.button>
 
                 <div className="flex items-center gap-3 py-2">
@@ -343,10 +343,10 @@ export default function AuthView() {
                   className="w-full py-4 bg-stone-800 text-stone-200 rounded font-black flex items-center justify-center gap-3 shadow-xl hover:bg-stone-700 transition-colors uppercase tracking-widest text-xs border-b-4 border-stone-950"
                 >
                   <LogIn className="w-4 h-4 text-amber-500" />
-                  Логин и Пароль
+                  Логін та Пароль
                 </motion.button>
                 
-                <p className="mt-4 text-[9px] text-stone-700 uppercase font-black tracking-tighter">Рекомендуем Google, если Логин/Пароль не работают.</p>
+                <p className="mt-4 text-[9px] text-stone-700 uppercase font-black tracking-tighter">Рекомендуємо Google, якщо Логін/Пароль не працюють.</p>
               </motion.div>
             ) : (
               <motion.div
@@ -358,7 +358,7 @@ export default function AuthView() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xs font-black text-amber-500 uppercase italic">
-                    {isRegister ? "Регистрация" : "Вход"}
+                    {isRegister ? "Реєстрація" : "Вхід"}
                   </h3>
                   <button onClick={() => setMode('choice')} className="text-[9px] text-stone-500 uppercase font-bold hover:text-stone-300">Назад</button>
                 </div>
@@ -368,7 +368,7 @@ export default function AuthView() {
                     <LogIn className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-600" />
                     <input 
                       type="text" 
-                      placeholder="ЛОГИН"
+                      placeholder="ЛОГІН"
                       value={login}
                       onChange={(e) => setLogin(e.target.value)}
                       className="w-full bg-stone-950 border border-stone-800 p-3 pl-10 rounded text-stone-100 text-xs font-bold focus:border-amber-500 outline-none uppercase tracking-widest"
@@ -394,7 +394,7 @@ export default function AuthView() {
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-stone-900 border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    isRegister ? "Создать" : "Войти"
+                    isRegister ? "Створити" : "Увійти"
                   )}
                 </button>
 
@@ -402,7 +402,7 @@ export default function AuthView() {
                   onClick={() => setIsRegister(!isRegister)}
                   className="text-[10px] text-amber-500/70 hover:text-amber-500 font-bold uppercase underline"
                 >
-                  {isRegister ? "Уже есть аккаунт?" : "Нет аккаунта?"}
+                  {isRegister ? "Вже є аккаунт?" : "Немає аккаунта?"}
                 </button>
               </motion.div>
             )}

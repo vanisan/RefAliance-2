@@ -27,7 +27,7 @@ export default function RankingView() {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4">
         <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-amber-500 font-bold uppercase tracking-widest text-xs animate-pulse">Загрузка рейтинга...</p>
+        <p className="text-amber-500 font-bold uppercase tracking-widest text-xs animate-pulse">Завантаження рейтингу...</p>
       </div>
     );
   }
@@ -39,8 +39,8 @@ export default function RankingView() {
           <Trophy className="w-6 h-6 text-amber-500" />
         </div>
         <div>
-          <h2 className="text-xl font-black text-amber-500 uppercase tracking-tighter leading-none">Зал Славы</h2>
-          <p className="text-[10px] text-stone-500 uppercase font-bold tracking-widest mt-1">Сильнейшие правители</p>
+          <h2 className="text-xl font-black text-amber-500 uppercase tracking-tighter leading-none">Зал Слави</h2>
+          <p className="text-[10px] text-stone-500 uppercase font-bold tracking-widest mt-1">Найсильніші правителі</p>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export default function RankingView() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-stone-100 truncate">{leader.playerName}</span>
-                {leader.uid === user?.id && <span className="text-[8px] bg-amber-500 text-stone-900 px-1 rounded font-black uppercase">Вы</span>}
+                {leader.uid === user?.id && <span className="text-[8px] bg-amber-500 text-stone-900 px-1 rounded font-black uppercase">Ви</span>}
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 <div className="flex items-center gap-1 text-[10px] text-stone-400 font-mono">
@@ -123,7 +123,7 @@ export default function RankingView() {
                    )}
                 </div>
                 <h3 className="text-xl font-black text-amber-500 uppercase">{selectedUser.playerName}</h3>
-                <p className="text-xs text-stone-500 uppercase font-bold tracking-widest">Мощь армии: {formatNumber(selectedUser.armyPower || 0)}</p>
+                <p className="text-xs text-stone-500 uppercase font-bold tracking-widest">Міць армії: {formatNumber(selectedUser.armyPower || 0)}</p>
               </div>
 
               <div className="space-y-4 max-h-[350px] overflow-y-auto p-1 pr-2 scrollbar-thin">
@@ -134,7 +134,7 @@ export default function RankingView() {
                     </div>
                     <div>
                       <h4 className="text-[10px] font-black text-amber-500 uppercase">Герой Правителя</h4>
-                      <p className="text-[8px] text-stone-400 font-bold uppercase opacity-80">Ведет армию в бой</p>
+                      <p className="text-[8px] text-stone-400 font-bold uppercase opacity-80">Веде армію в бій</p>
                     </div>
                   </div>
                 )}
@@ -162,7 +162,7 @@ export default function RankingView() {
                 onClick={() => setSelectedUser(null)}
                 className="w-full mt-6 py-3 bg-stone-800 text-stone-300 font-black uppercase tracking-widest text-xs rounded hover:bg-stone-700"
               >
-                Закрыть
+                Закрити
               </button>
             </motion.div>
           </div>

@@ -20,14 +20,14 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
     if (!info.cost) return;
 
     if (!hasEnoughResources(info.cost, resources)) {
-      setError("Недостаточно ресурсов!");
+      setError("Недостатньо ресурсів!");
       return;
     }
 
     // Find first empty slot
     const emptySlotIndex = siegeUnits.findIndex(s => s === null);
     if (emptySlotIndex === -1) {
-      setError("Все слоты заняты! Продайте или замените старое орудие.");
+      setError("Усі слоти зайняті! Продайте або замініть старе знаряддя.");
       return;
     }
 
@@ -62,7 +62,7 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <h2 className="text-2xl font-black text-stone-100 uppercase tracking-tighter">Кузня</h2>
-            <p className="text-stone-400 text-sm">Осадные орудия для защиты вашего замка</p>
+            <p className="text-stone-400 text-sm">Облогові знаряддя для захисту вашого замку</p>
           </div>
         </div>
 
@@ -78,7 +78,7 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
 
           {/* Slots */}
           <div>
-            <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-4">Слоты защиты замка</h3>
+            <h3 className="text-stone-400 text-xs font-bold uppercase tracking-widest mb-4">Слоти захисту замку</h3>
             <div className="grid grid-cols-4 gap-4">
               {siegeUnits.map((unitId, idx) => (
                 <div key={idx} className="aspect-square bg-stone-900 border-2 border-stone-800 rounded-lg flex flex-col items-center justify-center relative overflow-hidden group">
@@ -90,7 +90,7 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
                           onClick={() => handleSell(idx)}
                           className="bg-red-600 text-white text-[10px] px-2 py-1 rounded font-bold uppercase"
                         >
-                          Удалить
+                          Видалити
                         </button>
                       </div>
                       <div className="absolute bottom-1 left-0 right-0 text-[8px] text-center bg-black/40 text-stone-300 py-0.5 truncate px-1">
@@ -98,7 +98,7 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
                       </div>
                     </>
                   ) : (
-                    <div className="text-stone-700 text-xs font-bold">ПУСТО</div>
+                    <div className="text-stone-700 text-xs font-bold">ПОРОЖНЬО</div>
                   )}
                   <div className="absolute top-1 left-1 bg-stone-800 text-[8px] px-1 rounded text-stone-500">
                     #{idx + 1}
@@ -163,7 +163,7 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
                           : 'bg-stone-800 text-stone-600 cursor-not-allowed'
                       }`}
                     >
-                      Купить
+                      Купити
                     </button>
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="p-4 bg-stone-900 text-center text-[10px] text-stone-500 uppercase tracking-widest border-t border-white/5">
-          Осадные орудия автоматически появятся в защите при нападении на замок
+          Облогові знаряддя автоматично з'являться в захисті при нападі на замок
         </div>
       </div>
     </motion.div>

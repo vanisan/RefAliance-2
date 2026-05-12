@@ -8,9 +8,12 @@ import { User } from '@supabase/supabase-js';
 
 function handleSupabaseError(error: any) {
   if (error instanceof Error) {
+    if (error.message.includes('Failed to fetch')) return; // Silently suppress the fetch error noise
     console.error('Supabase Error:', error.message);
   } else {
-    console.error('Supabase Error:', JSON.stringify(error, null, 2));
+    const errorStr = JSON.stringify(error, null, 2);
+    if (errorStr.includes('Failed to fetch')) return; // Silently suppress
+    console.error('Supabase Error:', errorStr);
   }
 }
 

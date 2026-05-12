@@ -6,7 +6,7 @@ import { cn } from '../lib/game.utils';
 import BottomNav, { TabType } from '../components/BottomNav';
 import Header from '../components/Header';
 import PalaceView from '../components/PalaceView';
-import MapView from '../components/MapView';
+import WorldMapHub from '../components/WorldMapHub';
 import ArmyView from '../components/ArmyView';
 import CombatView from '../components/CombatView';
 import AuthView from './AuthView';
@@ -65,7 +65,7 @@ export default function GameClient() {
         ) : (
           <>
             {activeTab === 'palace' && <PalaceView />}
-            {activeTab === 'map' && <MapView onStartCombat={handleStartCombat} />}
+            {activeTab === 'map' && <WorldMapHub onStartCombat={handleStartCombat} />}
             {activeTab === 'army' && <ArmyView />}
             {activeTab === 'ranking' && <RankingView />}
             {activeTab === 'menu' && <AuthView />}
