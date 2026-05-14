@@ -7,6 +7,11 @@ import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
 function handleSupabaseError(error: any) {
+  if (error?.code === 'PGRST303' || error?.message?.includes('JWT expired')) {
+      supabase.auth.refreshSession();
+      return;
+  }
+  
   if (error instanceof Error) {
     if (error.message.includes('Failed to fetch')) return; // Silently suppress the fetch error noise
     console.error('Supabase Error:', error.message);

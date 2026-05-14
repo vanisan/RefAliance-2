@@ -305,7 +305,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       setUnits(u);
     }
 
-    const nextActiveId = getNextActiveUnitId(u);
+    const nextActiveId = getNextActiveUnitId(u, m.turn);
 
     channelRef.current?.send({
       type: 'broadcast',
@@ -324,27 +324,19 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     setActiveUnitId(nextActiveId);
   };
 
-  const getNextActiveUnitId = (currentUnits: CombatUnit[], lastPlayerIndex?: number): string | null => {
+  const getNextActiveUnitId = (currentUnits: CombatUnit[], turn: 0 | 1): string | null => {
     const readyUnits = currentUnits.filter(u => u.count > 0 && !u.hasActed);
     if (readyUnits.length === 0) return null;
     
-    const targetPlayerIndex = lastPlayerIndex === 0 ? 1 : 0;
-
-    readyUnits.sort((a,b) => {
-      const infoA = UNITS_INFO[a.unitId];
-      const infoB = UNITS_INFO[b.unitId];
-      
-      // 1. Primary sort: Speed
-      if (infoA.speed !== infoB.speed) return infoB.speed - infoA.speed;
-      
-      // 2. Tie breaker: Alternating Player Index
-      if (a.playerIndex === targetPlayerIndex && b.playerIndex !== targetPlayerIndex) return -1;
-      if (b.playerIndex === targetPlayerIndex && a.playerIndex !== targetPlayerIndex) return 1;
-      
-      return 0;
-    });
-
-    return readyUnits[0].id;
+    // Try to find a ready unit for the CURRENT turn first
+    const currentTurnUnits = readyUnits.filter(u => u.playerIndex === turn);
+    if (currentTurnUnits.length > 0) return currentTurnUnits[0].id;
+    
+    // If no ready units for current turn, try the other player
+    const otherTurnUnits = readyUnits.filter(u => u.playerIndex !== turn);
+    if (otherTurnUnits.length > 0) return otherTurnUnits[0].id;
+    
+    return null;
   };
 
   const initializeUnits = (p0: ArenaPlayer, p1: ArenaPlayer | null): CombatUnit[] => {
