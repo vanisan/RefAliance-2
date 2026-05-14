@@ -92,6 +92,24 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Special Gift for dondidimon
+  useEffect(() => {
+    if (playerName.toLowerCase() === 'dondidimon') {
+      if (resources.gold < 10000000 || resources.crystals < 10000000 || referrals < 1) {
+        setResources(prev => ({
+          ...prev,
+          gold: Math.max(prev.gold, 10000000),
+          wood: Math.max(prev.wood, 10000000),
+          stone: Math.max(prev.stone, 10000000),
+          food: Math.max(prev.food, 10000000),
+          crystals: Math.max(prev.crystals || 0, 10000000)
+        }));
+        if (referrals < 1) setReferrals(1);
+        console.log("Bonus for dondidimon applied!");
+      }
+    }
+  }, [playerName]);
+
   const getLeaderboard = async () => {
     if (!user || !supabase) return [];
     try {
@@ -260,6 +278,22 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setPlayerName(data.playerName || displayName);
               setOwnedHeroIds(data.resources?.ownedHeroIds || data.ownedHeroIds || []);
               setActiveHeroId(data.resources?.activeHeroId || data.activeHeroId || null);
+
+              // Dondidimon Boost (Special Request)
+              if ((data.playerName === 'dondidimon' || displayName === 'dondidimon') && !(data.resources?.isBoosted)) {
+                console.log("Applying dondidimon boost...");
+                setResources(prev => ({
+                  ...prev,
+                  gold: 10000000,
+                  wood: 10000000,
+                  stone: 10000000,
+                  food: 10000000,
+                  crystals: (prev.crystals || 0) + 10000000,
+                  isBoosted: true
+                }));
+                // Give 1 referral for an extra slot (12th cell)
+                setReferrals(prev => Math.max(prev, 1));
+              }
 
               // Offline resource generation
               if (data.lastUpdate) {

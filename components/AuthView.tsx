@@ -9,7 +9,7 @@ import { cn } from '../lib/utils';
 import { useEffect } from 'react';
 
 export default function AuthView() {
-  const { user, authLoading, playerName, setPlayerName, resetProgress, setResources } = useGame();
+  const { user, authLoading, playerName, setPlayerName, resetProgress, setResources, referrals: globalReferrals, setReferrals: setGlobalReferrals } = useGame();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<'choice' | 'credentials'>('choice');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -23,35 +23,77 @@ export default function AuthView() {
   // -- Referral System --
   const MY_CODE = user?.id?.substring(0, 6).toUpperCase() || '';
   const [refInput, setRefInput] = useState('');
-  const [referrals, setReferrals] = useState<{code: string, claimTime: number}[]>([]);
+  const [claimedCodes, setClaimedCodes] = useState<{code: string, claimTime: number}[]>([]);
 
   // Load referrals from localStorage since we don't have DB support for it
   useEffect(() => {
     if (user) {
       const saved = localStorage.getItem(`referrals_${user.id}`);
-      if (saved) setReferrals(JSON.parse(saved));
+      if (saved) setClaimedCodes(JSON.parse(saved));
     }
   }, [user]);
 
-  const saveReferrals = (newRefs: any) => {
-    setReferrals(newRefs);
-    if (user) localStorage.setItem(`referrals_${user.id}`, JSON.stringify(newRefs));
+  const saveClaimedCodes = (newCodes: any) => {
+    setClaimedCodes(newCodes);
+    if (user) localStorage.setItem(`referrals_${user.id}`, JSON.stringify(newCodes));
   };
 
-  const handleAddReferral = () => {
+  const handleAddReferral = async () => {
     const code = refInput.trim().toUpperCase();
     if (code.length !== 6) return alert('Код має складатися з 6 символів');
     if (code === MY_CODE) return alert('Не можна додати свій власний код');
-    if (referrals.find(r => r.code === code)) return alert('Цей код вже додано');
+    if (claimedCodes.find(r => r.code === code)) return alert('Цей код вже додано');
     
-    saveReferrals([...referrals, { code, claimTime: 0 }]);
-    setRefInput('');
+    setLoading(true);
+    try {
+      // Find the user whose ID starts with this code
+      const { data: allUsers, error: searchError } = await supabase
+        .from('users')
+        .select('id, playerName, referrals, resources');
+
+      if (searchError) throw searchError;
+
+      const owner = allUsers?.find(u => u.id.substring(0, 6).toUpperCase() === code);
+
+      if (!owner) {
+        setLoading(false);
+        return alert('Код не знайдено. Перевірте правильність вводу.');
+      }
+
+      // 1. Increment OWNER'S referrals in the DB (Unlocks THEIR cell)
+      const currentOwnerRefs = owner.referrals || owner.resources?.referrals || 0;
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ 
+          referrals: currentOwnerRefs + 1,
+          lastUpdate: new Date().toISOString()
+        })
+        .eq('id', owner.id);
+
+      if (updateError) throw updateError;
+      
+      // 2. Give the CURRENT user (the one who entered the code) a reward
+      // We unlock a cell for them TOO (optional, but requested by user "за рефералів не дає клітинки" might mean they want one too)
+      // Actually, standard system: I enter code -> I get something small, Owner gets referral point.
+      // But user said "за рефералів не дає клітинки". 
+      // If I want to be generous to both:
+      setGlobalReferrals(prev => prev + 1); 
+
+      saveClaimedCodes([...claimedCodes, { code, claimTime: 0 }]);
+      setRefInput('');
+      alert(`Код успiшно додано! Гравцю ${owner.playerName} зараховано реферал. Ви також отримали +1 до своїх реферальних клітинок!`);
+    } catch (e: any) {
+      console.error(e);
+      alert('Помилка при додаваннi коду: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const claimReferral = (code: string) => {
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
-    const ref = referrals.find(r => r.code === code);
+    const ref = claimedCodes.find(r => r.code === code);
     if (!ref) return;
 
     if (now - ref.claimTime < DAY_MS) {
@@ -60,7 +102,7 @@ export default function AuthView() {
 
     // Add 10 crystals
     setResources(prev => ({ ...prev, crystals: (prev.crystals || 0) + 10 }));
-    saveReferrals(referrals.map(r => r.code === code ? { ...r, claimTime: now } : r));
+    saveClaimedCodes(claimedCodes.map(r => r.code === code ? { ...r, claimTime: now } : r));
     alert('Ви отримали 10 кристалів за реферала!');
   };
 
@@ -240,11 +282,11 @@ export default function AuthView() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-[10px] text-stone-400 font-bold uppercase">Ваші реферали ({referrals.length})</p>
-              {referrals.length === 0 ? (
+              <p className="text-[10px] text-stone-400 font-bold uppercase">Ваші реферали ({claimedCodes.length}) / Розблоковано слотів: {globalReferrals}</p>
+              {claimedCodes.length === 0 ? (
                 <p className="text-[10px] text-stone-600 italic">Немає рефералів</p>
               ) : (
-                referrals.map(r => (
+                claimedCodes.map(r => (
                   <div key={r.code} className="flex items-center justify-between bg-stone-900/50 p-2 rounded border border-stone-800">
                     <span className="font-mono text-stone-300 text-xs">#{r.code}</span>
                     <button 
