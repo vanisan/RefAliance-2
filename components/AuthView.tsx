@@ -9,7 +9,7 @@ import { cn } from '../lib/utils';
 import { useEffect } from 'react';
 
 export default function AuthView() {
-  const { user, authLoading, playerName, setPlayerName, resetProgress, setResources, referrals: globalReferrals, setReferrals: setGlobalReferrals } = useGame();
+  const { user, authLoading, playerName, setPlayerName, resetProgress, resources, setResources, referrals: globalReferrals, setReferrals: setGlobalReferrals } = useGame();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<'choice' | 'credentials'>('choice');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -23,87 +23,79 @@ export default function AuthView() {
   // -- Referral System --
   const MY_CODE = user?.id?.substring(0, 6).toUpperCase() || '';
   const [refInput, setRefInput] = useState('');
-  const [claimedCodes, setClaimedCodes] = useState<{code: string, claimTime: number}[]>([]);
+  const [myReferrals, setMyReferrals] = useState<{id: string, name: string}[]>([]);
 
-  // Load referrals from localStorage since we don't have DB support for it
-  useEffect(() => {
-    if (user) {
-      const saved = localStorage.getItem(`referrals_${user.id}`);
-      if (saved) setClaimedCodes(JSON.parse(saved));
+  // Fetch users that I have referred (Vertical Hierarchy)
+  const fetchMyReferrals = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, playerName, resources')
+        .contains('resources', { referredBy: user.id });
+
+      if (error) throw error;
+      setMyReferrals(data?.map(u => ({ id: u.id, name: u.playerName })) || []);
+    } catch (e) {
+      console.error('Error fetching referrals:', e);
     }
-  }, [user]);
-
-  const saveClaimedCodes = (newCodes: any) => {
-    setClaimedCodes(newCodes);
-    if (user) localStorage.setItem(`referrals_${user.id}`, JSON.stringify(newCodes));
   };
+
+  useEffect(() => {
+    fetchMyReferrals();
+  }, [user]);
 
   const handleAddReferral = async () => {
     const code = refInput.trim().toUpperCase();
     if (code.length !== 6) return alert('Код має складатися з 6 символів');
     if (code === MY_CODE) return alert('Не можна додати свій власний код');
-    if (claimedCodes.find(r => r.code === code)) return alert('Цей код вже додано');
     
+    // Check if I (the current user) am already referred
+    if (resources.referredBy) return alert('Ви вже були запрошені іншим гравцем!');
+
     setLoading(true);
     try {
-      // Find the user whose ID starts with this code
+      // Find the Master (owner of the code)
       const { data: allUsers, error: searchError } = await supabase
         .from('users')
         .select('id, playerName, referrals, resources');
 
       if (searchError) throw searchError;
 
-      const owner = allUsers?.find(u => u.id.substring(0, 6).toUpperCase() === code);
+      const master = allUsers?.find(u => u.id.substring(0, 6).toUpperCase() === code);
 
-      if (!owner) {
+      if (!master) {
         setLoading(false);
         return alert('Код не знайдено. Перевірте правильність вводу.');
       }
 
-      // 1. Increment OWNER'S referrals in the DB (Unlocks THEIR cell)
-      const currentOwnerRefs = owner.referrals || owner.resources?.referrals || 0;
-      const { error: updateError } = await supabase
+      // 1. Increment MASTER'S referrals in the DB (Unlocks THEIR cell)
+      const currentMasterRefs = master.referrals || master.resources?.referrals || 0;
+      const { error: masterUpdateError } = await supabase
         .from('users')
         .update({ 
-          referrals: currentOwnerRefs + 1,
+          referrals: currentMasterRefs + 1,
           lastUpdate: new Date().toISOString()
         })
-        .eq('id', owner.id);
+        .eq('id', master.id);
 
-      if (updateError) throw updateError;
+      if (masterUpdateError) throw masterUpdateError;
       
-      // 2. Give the CURRENT user (the one who entered the code) a reward
-      // We unlock a cell for them TOO (optional, but requested by user "за рефералів не дає клітинки" might mean they want one too)
-      // Actually, standard system: I enter code -> I get something small, Owner gets referral point.
-      // But user said "за рефералів не дає клітинки". 
-      // If I want to be generous to both:
-      setGlobalReferrals(prev => prev + 1); 
+      // 2. Mark CURRENT user as referred by the Master
+      setResources(prev => ({ ...prev, referredBy: master.id }));
+      // We don't increment setGlobalReferrals for ourselves anymore, 
+      // because points go to the master who INVITED us.
 
-      saveClaimedCodes([...claimedCodes, { code, claimTime: 0 }]);
       setRefInput('');
-      alert(`Код успiшно додано! Гравцю ${owner.playerName} зараховано реферал. Ви також отримали +1 до своїх реферальних клітинок!`);
+      alert(`Дякуємо! Ви використали код гравця ${master.playerName}. Тепер він отримав додаткову клітинку у Палаці!`);
+      // No longer need to fetch master's referrals for ourselves, 
+      // but we might want to refresh our own referred status if we had a UI for it.
     } catch (e: any) {
-      console.error(e);
-      alert('Помилка при додаваннi коду: ' + e.message);
+      console.error('Referral Error:', e);
+      alert('Помилка при додаваннi коду: ' + (e?.message || e?.error?.message || JSON.stringify(e)));
     } finally {
       setLoading(false);
     }
-  };
-
-  const claimReferral = (code: string) => {
-    const now = Date.now();
-    const DAY_MS = 24 * 60 * 60 * 1000;
-    const ref = claimedCodes.find(r => r.code === code);
-    if (!ref) return;
-
-    if (now - ref.claimTime < DAY_MS) {
-      return alert('Кристали за цього реферала вже зібрані сьогодні!');
-    }
-
-    // Add 10 crystals
-    setResources(prev => ({ ...prev, crystals: (prev.crystals || 0) + 10 }));
-    saveClaimedCodes(claimedCodes.map(r => r.code === code ? { ...r, claimTime: now } : r));
-    alert('Ви отримали 10 кристалів за реферала!');
   };
 
   const handleCredentialsAuth = async (e?: React.FormEvent) => {
@@ -282,27 +274,18 @@ export default function AuthView() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-[10px] text-stone-400 font-bold uppercase">Ваші реферали ({claimedCodes.length}) / Розблоковано слотів: {globalReferrals}</p>
-              {claimedCodes.length === 0 ? (
-                <p className="text-[10px] text-stone-600 italic">Немає рефералів</p>
+              <p className="text-[10px] text-stone-400 font-bold uppercase">Ваші запрошені ({myReferrals.length})</p>
+              {myReferrals.length === 0 ? (
+                <p className="text-[10px] text-stone-600 italic">Ви ще нікого не запросили</p>
               ) : (
-                claimedCodes.map(r => (
-                  <div key={r.code} className="flex items-center justify-between bg-stone-900/50 p-2 rounded border border-stone-800">
-                    <span className="font-mono text-stone-300 text-xs">#{r.code}</span>
-                    <button 
-                      onClick={() => claimReferral(r.code)}
-                      disabled={Date.now() - r.claimTime < 24 * 60 * 60 * 1000}
-                      className={cn(
-                        "px-2 py-1 rounded text-[9px] font-black uppercase transition-colors",
-                        Date.now() - r.claimTime >= 24 * 60 * 60 * 1000
-                          ? "bg-amber-500 text-stone-900 hover:bg-amber-400 cursor-pointer shadow-[0_0_10px_#f59e0b40]"
-                          : "bg-stone-800 text-stone-600 opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      {Date.now() - r.claimTime >= 24 * 60 * 60 * 1000 ? "Зібрати +10" : "Зібрано"}
-                    </button>
-                  </div>
-                ))
+                <div className="max-h-[120px] overflow-y-auto space-y-1">
+                  {myReferrals.map(r => (
+                    <div key={r.id} className="flex items-center justify-between bg-stone-900/50 p-2 rounded border border-stone-800">
+                      <span className="text-stone-300 text-[10px] font-bold">{r.name}</span>
+                      <span className="text-[8px] text-indigo-400 uppercase font-bold">+1 клітинка</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>

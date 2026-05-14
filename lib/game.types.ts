@@ -12,6 +12,7 @@ export interface Resources extends Record<ResourceType, number> {
   activeHeroId?: string | null;
   race?: Race | null;
   hasCompletedTutorial?: boolean;
+  referredBy?: string;
 }
 
 export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge' | 'tavern';
