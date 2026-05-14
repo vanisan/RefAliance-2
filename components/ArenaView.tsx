@@ -250,6 +250,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           addLog(`Гравець ${payload.player.name} увійшов у бій!`);
         }
       })
+      .on('broadcast', { event: 'skip_turn' }, ({ payload }) => {
+        if (myIndex === 0) {
+            const updatedUnits = units.map(u => u.id === payload.unitId ? { ...u, hasActed: true } : u);
+            finishAction(updatedUnits);
+        }
+      })
       .on('broadcast', { event: 'sync_state' }, ({ payload }) => {
         console.log('Received sync_state:', payload);
         if (payload.units && Array.isArray(payload.units)) {
@@ -324,17 +330,15 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     setActiveUnitId(nextActiveId);
   };
 
-  const getNextActiveUnitId = (currentUnits: CombatUnit[], turn: 0 | 1): string | null => {
-    const readyUnits = currentUnits.filter(u => u.count > 0 && !u.hasActed);
-    if (readyUnits.length === 0) return null;
+  const getNextActiveUnitId = (currentUnits: CombatUnit[], currentPlayerTurn: 0 | 1): string | null => {
+    // 1. Get units for the current player that haven't acted
+    const currentUnitsReady = currentUnits.filter(u => u.playerIndex === currentPlayerTurn && u.count > 0 && !u.hasActed);
+    if (currentUnitsReady.length > 0) return currentUnitsReady[0].id;
     
-    // Try to find a ready unit for the CURRENT turn first
-    const currentTurnUnits = readyUnits.filter(u => u.playerIndex === turn);
-    if (currentTurnUnits.length > 0) return currentTurnUnits[0].id;
-    
-    // If no ready units for current turn, try the other player
-    const otherTurnUnits = readyUnits.filter(u => u.playerIndex !== turn);
-    if (otherTurnUnits.length > 0) return otherTurnUnits[0].id;
+    // 2. If no units for current player, check other player
+    const otherPlayerTurn = currentPlayerTurn === 0 ? 1 : 0;
+    const otherUnitsReady = currentUnits.filter(u => u.playerIndex === otherPlayerTurn && u.count > 0 && !u.hasActed);
+    if (otherUnitsReady.length > 0) return otherUnitsReady[0].id;
     
     return null;
   };
@@ -443,11 +447,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   }, [units, myIndex, gameOver, view, setArmy]);
 
   const skipTurn = () => {
-    let updatedUnits = units;
-    if (activeUnitId) {
-      updatedUnits = units.map(u => u.id === activeUnitId ? { ...u, hasActed: true } : u);
-    }
-    finishAction(updatedUnits);
+    channelRef.current?.send({ type: 'broadcast', event: 'skip_turn', payload: { unitId: activeUnitId } });
   };
 
   const finishAction = (updatedUnits: CombatUnit[]) => {
@@ -582,6 +582,11 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     if (unit) {
       addLog(`${UNITS_INFO[unit.unitId].name} перемістився.`);
     }
+
+    // Only Host (Player 0) progresses state for others
+    if (myIndex === 0) {
+      finishAction(updated);
+    }
   };
 
   const localAttack = (attId: string, defId: string) => {
@@ -617,6 +622,11 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
     setUnits(updated);
     addLog(`Дріада воскрешає ${healAmount} ${UNITS_INFO[target.unitId].name}!`);
+    
+    // Only Host (Player 0) progresses state for others
+    if (myIndex === 0) {
+      finishAction(updated);
+    }
     
     const effId = getRandomId('heal');
     setEffects(prev => [...prev, { id: effId, type: 'heal', x: target.x, y: target.y, size: UNITS_INFO[target.unitId].size || 1 }]);
@@ -680,9 +690,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     setUnits(updated);
     addLog(`${attackerInfo.name} -> ${damageObj.totalDmg} шкоди. Вбито: ${defender.count - newCount}`);
     
-    setTimeout(() => {
-      if (turn === myIndex) finishAction(updated);
-    }, 600);
+    // Only Host (Player 0) progresses state for others
+    if (myIndex === 0) {
+      setTimeout(() => {
+        finishAction(updated);
+      }, 600);
+    }
   };
 
   const calculatePvPDamage = (att: CombatUnit, def: CombatUnit, currentUnits: CombatUnit[]) => {
