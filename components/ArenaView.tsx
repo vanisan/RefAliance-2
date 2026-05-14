@@ -137,7 +137,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     setPrepData({ type: 'invite', payload: player });
   };
 
-  const handleStartInvitation = (selectedArmy: Record<string, number>) => {
+  const handleStartInvitation = (selectedArmy: Record<string, number>, selectedSiegeUnits: (UnitId | null)[]) => {
     if (!user || !prepData) return;
     const player = prepData.payload;
     const matchId = `match_${user.id}_${Date.now()}`;
@@ -148,7 +148,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       hpMod,
       atkMod,
       defMod,
-      siegeUnits,
+      siegeUnits: selectedSiegeUnits, // Use selected
       resources
     };
 
@@ -168,7 +168,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     startMatch(matchId, myPlayer, 0);
   };
 
-  const handleJoinInvitation = (selectedArmy: Record<string, number>) => {
+  const handleJoinInvitation = (selectedArmy: Record<string, number>, selectedSiegeUnits: (UnitId | null)[]) => {
     if (!user || !prepData) return;
     const inv = prepData.payload;
     const myPlayer: ArenaPlayer = {
@@ -178,7 +178,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       hpMod,
       atkMod,
       defMod,
-      siegeUnits,
+      siegeUnits: selectedSiegeUnits, // Use selected
       resources
     };
     

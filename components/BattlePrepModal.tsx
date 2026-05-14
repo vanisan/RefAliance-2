@@ -6,15 +6,16 @@ import { Swords, X, Shield, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface BattlePrepModalProps {
-  onStart: (selectedArmy: Record<string, number>) => void;
+  onStart: (selectedArmy: Record<string, number>, selectedSiegeUnits: (UnitId | null)[]) => void;
   onCancel: () => void;
   title?: string;
   enemies?: { unitId: UnitId, count: number }[];
 }
 
 export default function BattlePrepModal({ onStart, onCancel, title = "Підготовка до бою", enemies = [] }: BattlePrepModalProps) {
-  const { army } = useGame();
+  const { army, siegeUnits } = useGame();
   const [selectedArmy, setSelectedArmy] = useState<Record<string, number>>({});
+  const [selectedSiege, setSelectedSiege] = useState<(UnitId | null)[]>(siegeUnits || [null, null, null, null]);
   
   // Initialize with max available
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function BattlePrepModal({ onStart, onCancel, title = "Підго
   };
 
   const handleStart = () => {
-    onStart(selectedArmy);
+    onStart(selectedArmy, selectedSiege);
   };
 
   const totalSelected = Object.values(selectedArmy).reduce((a, b) => a + b, 0);
@@ -72,7 +73,29 @@ export default function BattlePrepModal({ onStart, onCancel, title = "Підго
             </div>
           )}
 
-          <h3 className="text-[10px] text-amber-500 font-bold uppercase tracking-widest border-b border-stone-800 pb-1">Призначте свої війська</h3>
+          <h3 className="text-[10px] text-amber-500 font-bold uppercase tracking-widest border-b border-stone-800 pb-1 mt-4">Облогові знаряддя</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[0, 1, 2, 3].map(i => (
+              <select 
+                key={i}
+                value={selectedSiege[i] || ""}
+                onChange={(e) => {
+                  const val = e.target.value as UnitId;
+                  const newSiege = [...selectedSiege];
+                  newSiege[i] = val || null;
+                  setSelectedSiege(newSiege);
+                }}
+                className="bg-stone-800 p-2 text-xs rounded border border-stone-700 text-stone-300"
+              >
+                <option value="">Пустий слот</option>
+                {['balista', 'elven_balista', 'archer_tower', 'mage_tower'].map(s => (
+                  <option key={s} value={s}>{UNITS_INFO[s as UnitId]?.name || s}</option>
+                ))}
+              </select>
+            ))}
+          </div>
+
+          <h3 className="text-[10px] text-amber-500 font-bold uppercase tracking-widest border-b border-stone-800 pb-1 mt-4">Призначте свої війська</h3>
           
           {Object.entries(army).map(([id, maxCount]) => {
             if (maxCount <= 0) return null;
