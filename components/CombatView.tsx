@@ -163,33 +163,8 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         });
       }
 
-      // Player Siege Units
-    const playerSiege = (node as any).targetSiegeUnits as (UnitId | null)[];
-    if (playerSiege) {
-      playerSiege.forEach((unitId, idx) => {
-        if (!unitId) return;
-        const info = UNITS_INFO[unitId];
-        const size = 1; // Player units are 1x1 in current grid mostly
-        const sY = idx * 2;
-        if (sY + size <= GRID_HEIGHT) {
-          initialUnits.push({
-            id: `p-siege-${idx}`,
-            unitId: unitId,
-            count: 1,
-            startCount: 1,
-            hp: Math.floor(info.hp * hpMod), 
-            isEnemy: false,
-            x: 0,
-            y: sY,
-            hasActed: false,
-            hasRetaliated: false
-          });
-        }
-      });
-    }
-
-    return initialUnits;
-  });
+      return initialUnits;
+    });
 
   const [turn, setTurn] = useState<'player' | 'enemy'>(node.type === 'boss' || node.type === 'settlement' ? 'enemy' : 'player');
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);

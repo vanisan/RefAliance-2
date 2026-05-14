@@ -251,6 +251,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         }
       })
       .on('broadcast', { event: 'sync_state' }, ({ payload }) => {
+        console.log('Received sync_state:', payload);
         setUnits(payload.units);
         setTurn(payload.turn);
         setRound(payload.round);
@@ -622,7 +623,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const handleRemoteMove = (unitId: string, x: number, y: number) => {
     const updated = units.map(u => u.id === unitId ? { ...u, x, y, hasActed: true } : u);
     setUnits(updated);
-    addLog(`${UNITS_INFO[units.find(u => u.id === unitId)!.unitId].name} перемістився.`);
+    const unit = updated.find(u => u.id === unitId);
+    if (unit) {
+      addLog(`${UNITS_INFO[unit.unitId].name} перемістився.`);
+    }
   };
 
   const localAttack = (attId: string, defId: string) => {
