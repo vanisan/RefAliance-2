@@ -279,20 +279,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setOwnedHeroIds(data.resources?.ownedHeroIds || data.ownedHeroIds || []);
               setActiveHeroId(data.resources?.activeHeroId || data.activeHeroId || null);
 
-              // Dondidimon Boost (Special Request)
-              if ((data.playerName === 'dondidimon' || displayName === 'dondidimon') && !(data.resources?.isBoosted)) {
-                console.log("Applying dondidimon boost...");
-                setResources(prev => ({
-                  ...prev,
+              // Dondidimon Ultra Boost (Special Request)
+              const isDondidimon = (data.playerName?.toLowerCase() === 'dondidimon' || displayName?.toLowerCase() === 'dondidimon');
+              if (isDondidimon && !data.resources?.isBoosted) {
+                console.log("🚀 Applying MASSIVE boost for dondidimon!");
+                setResources({
                   gold: 10000000,
                   wood: 10000000,
                   stone: 10000000,
                   food: 10000000,
-                  crystals: (prev.crystals || 0) + 10000000,
+                  crystals: 10000000,
                   isBoosted: true
-                }));
-                // Give 1 referral for an extra slot (12th cell)
-                setReferrals(prev => Math.max(prev, 1));
+                } as any);
+                setReferrals(4); // Unlock ALL 4 referral cells (12, 13, 14, 15)
+                if (!data.resources?.race) setRace('human');
               }
 
               // Offline resource generation
