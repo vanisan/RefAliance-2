@@ -252,7 +252,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       })
       .on('broadcast', { event: 'sync_state' }, ({ payload }) => {
         console.log('Received sync_state:', payload);
-        setUnits(payload.units);
+        if (payload.units && Array.isArray(payload.units)) {
+           const validatedUnits = payload.units.filter((u: CombatUnit) => u.unitId && UNITS_INFO[u.unitId]);
+           setUnits(validatedUnits);
+        }
         setTurn(payload.turn);
         setRound(payload.round);
         setTimer(payload.timer);
@@ -354,7 +357,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       const info = UNITS_INFO[id as UnitId];
       if (!info) return;
       
-      if (count > 0 && info.speed > 0) { // Don't include siege units in normal army list
+      if (count > 0 && info.speed > 0) { 
         initialUnits.push({
           id: `p0-${id}`,
           unitId: id as UnitId,
@@ -369,26 +372,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         y0 += (info.size || 1);
       }
     });
-
-    // P0 Siege Units (If any)
-    if (p0.siegeUnits) {
-       p0.siegeUnits.forEach((sId, idx) => {
-         if (sId) {
-            const info = UNITS_INFO[sId];
-            initialUnits.push({
-              id: `p0-siege-${idx}`,
-              unitId: sId,
-              count: 1,
-              startCount: 1,
-              hp: Math.floor(info.hp * p0.hpMod),
-              playerIndex: 0,
-              x: 0,
-              y: idx * 2, // Distributed
-              hasActed: false
-            });
-         }
-       });
-    }
 
     // P1 - Right
     if (p1) {
@@ -413,26 +396,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           y1 += (info.size || 1);
         }
       });
-
-      // P1 Siege Units (Defender usually has these)
-      if (p1.siegeUnits) {
-        p1.siegeUnits.forEach((sId, idx) => {
-          if (sId) {
-             const info = UNITS_INFO[sId];
-             initialUnits.push({
-               id: `p1-siege-${idx}`,
-               unitId: sId,
-               count: 1,
-               startCount: 1,
-               hp: Math.floor(info.hp * p1.hpMod),
-               playerIndex: 1,
-               x: GRID_WIDTH - (info.size || 1),
-               y: idx * 2,
-               hasActed: false
-             });
-          }
-        });
-      }
     }
 
     return initialUnits;
