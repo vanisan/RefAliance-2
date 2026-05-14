@@ -460,10 +460,18 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       // New Round
       nextRound += 1;
       finalUnits = updatedUnits.map(u => ({ ...u, hasActed: false }));
-      const newNextId = getNextActiveUnitId(finalUnits);
-      const nextActiveUnit = finalUnits.find(u => u.id === newNextId);
-      nextTurn = (nextActiveUnit?.playerIndex as 0 | 1) ?? 0;
       
+      // Determine who goes first: Try Player 1 first (as a default for new rounds), or Player 0
+      nextTurn = 1; 
+      let newNextId = getNextActiveUnitId(finalUnits, nextTurn);
+      
+      if (!newNextId) {
+        nextTurn = 0;
+        newNextId = getNextActiveUnitId(finalUnits, nextTurn);
+      }
+      
+      const nextActiveUnit = finalUnits.find(u => u.id === newNextId);
+       
       setUnits(finalUnits);
       setRound(nextRound);
       setTurn(nextTurn);
@@ -488,7 +496,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         turn: nextTurn,
         round: nextRound,
         timer: TURN_TIME,
-        activeUnitId: nextId || getNextActiveUnitId(finalUnits)
+        activeUnitId: nextId || getNextActiveUnitId(finalUnits, nextTurn)
       }
     });
   };
@@ -571,10 +579,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const localMove = (unitId: string, x: number, y: number) => {
-    const updated = units.map(u => u.id === unitId ? { ...u, x, y, hasActed: true } : u);
     channelRef.current?.send({ type: 'broadcast', event: 'move', payload: { unitId, x, y } });
     handleRemoteMove(unitId, x, y);
-    finishAction(updated);
   };
 
   const handleRemoteMove = (unitId: string, x: number, y: number) => {
@@ -584,76 +590,62 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     if (unit) {
       addLog(`${UNITS_INFO[unit.unitId].name} перемістився.`);
     }
+    
+    // Only Host progresses state
+    if (myIndex === 0) {
+      finishAction(updated);
+    }
   };
 
   const localAttack = (attId: string, defId: string) => {
     channelRef.current?.send({ type: 'broadcast', event: 'attack', payload: { attId, defId } });
     handleRemoteAttack(attId, defId);
-    // processAttack already calls setUnits, need to compute updated units
-    const att = units.find(u => u.id === attId)!;
-    const def = units.find(u => u.id === defId)!;
-    const damageObj = calculatePvPDamage(att, def, units);
-    let remainingStackHP = (def.count - 1) * damageObj.effUnitHp + def.hp - damageObj.totalDmg;
-    let newCount = Math.max(0, Math.ceil(remainingStackHP / damageObj.effUnitHp));
-    let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % damageObj.effUnitHp === 0 ? damageObj.effUnitHp : remainingStackHP % damageObj.effUnitHp);
-    const updated = units.map(u => {
-      if (u.id === att.id) return { ...u, hasActed: true };
-      if (u.id === def.id) return { ...u, count: newCount, hp: newTopHP };
-      return u;
-    });
-    finishAction(updated);
   };
 
   const handleRemoteAttack = (attId: string, defId: string) => {
-    const att = units.find(u => u.id === attId)!;
-    const def = units.find(u => u.id === defId)!;
+    const att = units.find(u => u.id === attId);
+    const def = units.find(u => u.id === defId);
     
-    // Logic from CombatView
-    processAttack(att, def);
+    if (att && def) {
+        processAttack(att, def);
+    }
   };
 
   const localHeal = (driadaId: string, targetId: string) => {
     channelRef.current?.send({ type: 'broadcast', event: 'heal', payload: { driadaId, targetId } });
-    
-    // Recalculate updated immediately to pass to finishAction
-    const driada = units.find(u => u.id === driadaId)!;
-    const target = units.find(u => u.id === targetId)!;
-    const lost = target.startCount - target.count;
-    const healAmount = Math.min(lost, Math.floor(Math.random() * 3) + 1);
-
-    const updated = units.map(u => {
-      if (u.id === driada.id) return { ...u, hasActed: true };
-      if (u.id === target.id) return { ...u, count: u.count + healAmount };
-      return u;
-    });
-    
     handleRemoteHeal(driadaId, targetId);
-    finishAction(updated);
   };
 
   const handleRemoteHeal = (driadaId: string, targetId: string) => {
-    const driada = units.find(u => u.id === driadaId)!;
-    const target = units.find(u => u.id === targetId)!;
+    const driada = units.find(u => u.id === driadaId);
+    const target = units.find(u => u.id === targetId);
     
-    const lost = target.startCount - target.count;
-    const healAmount = Math.min(lost, Math.floor(Math.random() * 3) + 1);
+    if (driada && target) {
+      const lost = target.startCount - target.count;
+      const healAmount = Math.min(lost, Math.floor(Math.random() * 3) + 1);
 
-    const updated = units.map(u => {
-      if (u.id === driada.id) return { ...u, hasActed: true };
-      if (u.id === target.id) return { ...u, count: u.count + healAmount };
-      return u;
-    });
+      const updated = units.map(u => {
+        if (u.id === driada.id) return { ...u, hasActed: true };
+        if (u.id === target.id) return { ...u, count: u.count + healAmount };
+        return u;
+      });
 
-    setUnits(updated);
-    addLog(`Дріада воскрешає ${healAmount} ${UNITS_INFO[target.unitId].name}!`);
-    
-    const effId = getRandomId('heal');
-    setEffects(prev => [...prev, { id: effId, type: 'heal', x: target.x, y: target.y, size: UNITS_INFO[target.unitId].size || 1 }]);
-    setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effId)), 700);
+      setUnits(updated);
+      addLog(`Дріада воскрешає ${healAmount} ${UNITS_INFO[target.unitId].name}!`);
+      
+      const effId = getRandomId('heal');
+      setEffects(prev => [...prev, { id: effId, type: 'heal', x: target.x, y: target.y, size: UNITS_INFO[target.unitId].size || 1 }]);
+      setTimeout(() => setEffects(prev => prev.filter(e => e.id !== effId)), 700);
 
-    const fId = Date.now() + Math.random();
-    setFloatingTexts(prev => [...prev, { id: fId, text: `+${healAmount}`, x: target.x, y: target.y, color: 'text-green-500' }]);
-    setTimeout(() => setFloatingTexts(prev => prev.filter(f => f.id !== fId)), 1000);
+      const fId = Date.now() + Math.random();
+      setFloatingTexts(prev => [...prev, { id: fId, text: `+${healAmount}`, x: target.x, y: target.y, color: 'text-green-500' }]);
+      setTimeout(() => setFloatingTexts(prev => prev.filter(f => f.id !== fId)), 1000);
+      
+      // Only Host progresses state
+      if (myIndex === 0) {
+        finishAction(updated);
+      }
+    }
   };
 
   // --- COMBAT CORE ---
@@ -708,6 +700,11 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
     setUnits(updated);
     addLog(`${attackerInfo.name} -> ${damageObj.totalDmg} шкоди. Вбито: ${defender.count - newCount}`);
+    
+    // Only Host progresses state
+    if (myIndex === 0) {
+      finishAction(updated);
+    }
   };
 
   const calculatePvPDamage = (att: CombatUnit, def: CombatUnit, currentUnits: CombatUnit[]) => {
