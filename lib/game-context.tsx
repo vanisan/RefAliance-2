@@ -262,32 +262,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setOwnedHeroIds(data.resources?.ownedHeroIds || data.ownedHeroIds || []);
               setActiveHeroId(data.resources?.activeHeroId || data.activeHeroId || null);
 
-              // Dondidimon Ultra Boost (Special Request)
-              const lowerName = data.playerName?.toLowerCase() || "";
-              const lowerDisplay = displayName?.toLowerCase() || "";
-              const isDondidimon = (lowerName === 'dondidimon' || lowerDisplay === 'dondidimon');
-              
-              if (isDondidimon) {
-                // If gold is significantly below the expected boost, apply it
-                if (resources.gold < 10000000) {
-                  console.log("🚀 Applying MASSIVE boost for dondidimon! Target: gold < 10M, Wood 10M, Stone 10M, Food 10M, Crystals 10M.");
-                  setResources(prev => ({
-                    ...prev,
-                    gold: 10000000, wood: 10000000, stone: 10000000, food: 10000000, crystals: 10000000
-                  }));
-                }
-                // Ensure all referral slots (cells 12, 13, 14, 15) are unlocked
-                if (referrals < 4) {
-                  console.log("Setting referrals to 4 for dondidimon.");
-                  setReferrals(4);
-                }
-                // Ensure a race is assigned if missing
-                if (!race) {
-                  console.log("Setting default race human for dondidimon.");
-                  setRace('human');
-                }
-              }
-
               // Offline resource generation
               if (data.lastUpdate) {
                 const lastUpdate = new Date(data.lastUpdate).getTime();

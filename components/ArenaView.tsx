@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useGame } from '../lib/game-context';
 import { UnitId, UNITS_INFO, ArenaMatchState, ArenaPlayer } from '../lib/game.types';
 import { cn, addResources } from '../lib/game.utils';
@@ -9,6 +9,7 @@ import { Trophy, Swords, X, Timer, MessageSquare, Shield, Sword, Heart } from 'l
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import BattlePrepModal from './BattlePrepModal';
 
 const GRID_WIDTH = 8;
 const GRID_HEIGHT = 8;
@@ -70,6 +71,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
+  const reportedLossesRef = useRef<Record<string, number>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
   const lobbyChannelRef = useRef<RealtimeChannel | null>(null);
 
@@ -80,6 +82,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 5));
 
   const [invitation, setInvitation] = useState<{ matchId: string, fromName: string, fromPlayer: any } | null>(null);
+  const [prepData, setPrepData] = useState<{ type: 'invite' | 'join', payload: any } | null>(null);
 
   // --- LOBBY LOGIC ---
   useEffect(() => {
@@ -125,17 +128,23 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const invitePlayer = (player: any) => {
     if (!user) return;
-    const totalUnits = Object.values(army).reduce((acc, count) => acc + (Number(count) || 0), 0);
-    if (totalUnits === 0) {
+    const totalUnitsCount = Object.values(army).reduce((acc, count) => acc + (Number(count) || 0), 0);
+    if (totalUnitsCount === 0) {
       alert("У вас немає армії! Спочатку найміть війська.");
       return;
     }
 
+    setPrepData({ type: 'invite', payload: player });
+  };
+
+  const handleStartInvitation = (selectedArmy: Record<string, number>) => {
+    if (!user || !prepData) return;
+    const player = prepData.payload;
     const matchId = `match_${user.id}_${Date.now()}`;
     const myPlayer: ArenaPlayer = {
       id: user.id,
       name: playerName || user.email?.split('@')[0] || 'Unknown',
-      army,
+      army: selectedArmy as any,
       hpMod,
       atkMod,
       defMod,
@@ -155,16 +164,17 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       }
     });
 
-    // We act as Player 0
+    setPrepData(null);
     startMatch(matchId, myPlayer, 0);
   };
 
-  const joinMatch = (matchId: string, opponent: ArenaPlayer, role: 0 | 1) => {
-    if (!user) return;
+  const handleJoinInvitation = (selectedArmy: Record<string, number>) => {
+    if (!user || !prepData) return;
+    const inv = prepData.payload;
     const myPlayer: ArenaPlayer = {
       id: user.id,
       name: playerName || user.email?.split('@')[0] || 'Unknown',
-      army,
+      army: selectedArmy as any,
       hpMod,
       atkMod,
       defMod,
@@ -172,12 +182,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       resources
     };
     
-    // We are player 1
-    startMatch(matchId, opponent, role, myPlayer);
+    setPrepData(null);
+    startMatch(inv.matchId, inv.fromPlayer, 1, myPlayer);
   };
 
   const startMatch = (id: string, p0: ArenaPlayer, role: 0 | 1, p1?: ArenaPlayer) => {
     if (!supabase) return;
+    reportedLossesRef.current = {};
     setMyIndex(role);
     
     // Defender (P1) goes first if they have siege units, or just by default as requested
@@ -460,8 +471,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       const next = { ...prev };
       
       myPlayerUnitsInBattle.forEach(u => {
-        if (next[u.unitId] !== u.count) {
-          next[u.unitId] = u.count;
+        const totalLosses = u.startCount - u.count;
+        const previouslyReported = reportedLossesRef.current[u.id] || 0;
+        const newLosses = Math.max(0, totalLosses - previouslyReported);
+        
+        if (newLosses > 0) {
+          next[u.unitId] = Math.max(0, (next[u.unitId] || 0) - newLosses);
+          reportedLossesRef.current[u.id] = totalLosses;
           changed = true;
         }
       });
@@ -522,12 +538,40 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const [isHealMode, setIsHealMode] = useState(false);
+  const [autoCombat, setAutoCombat] = useState(false);
 
+  // AI Auto-combat
   useEffect(() => {
-    if (turn !== myIndex) {
-      setIsHealMode(false);
+    if (autoCombat && turn === myIndex && !gameOver && activeUnitId) {
+      const activeUnit = units.find(u => u.id === activeUnitId);
+      if (!activeUnit || activeUnit.hasActed) return;
+
+      const timer = setTimeout(() => {
+        const enemies = units.filter(u => u.playerIndex !== myIndex && u.count > 0);
+        if (enemies.length === 0) return;
+
+        // Simple Target: Nearest enemy
+        let target = enemies[0];
+        let minDist = 999;
+        enemies.forEach(e => {
+            const dist = Math.abs(e.x - activeUnit.x) + Math.abs(e.y - activeUnit.y);
+            if (dist < minDist) { minDist = dist; target = e; }
+        });
+
+        // Try to move towards or attack
+        const info = UNITS_INFO[activeUnit.unitId];
+        if (minDist <= info.range) {
+           handleCellClick(target.x, target.y);
+        } else {
+           // Move closer
+           const dx = Math.sign(target.x - activeUnit.x);
+           const dy = Math.sign(target.y - activeUnit.y);
+           handleCellClick(activeUnit.x + dx, activeUnit.y + dy);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [turn, myIndex]);
+  }, [autoCombat, turn, myIndex, gameOver, activeUnitId, units]);
 
   // --- ACTIONS ---
   const handleCellClick = (x: number, y: number) => {
@@ -579,7 +623,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     const updated = units.map(u => u.id === unitId ? { ...u, x, y, hasActed: true } : u);
     setUnits(updated);
     addLog(`${UNITS_INFO[units.find(u => u.id === unitId)!.unitId].name} перемістився.`);
-    if (turn === myIndex) finishAction(updated);
   };
 
   const localAttack = (attId: string, defId: string) => {
@@ -623,8 +666,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     const fId = Date.now() + Math.random();
     setFloatingTexts(prev => [...prev, { id: fId, text: `+${healAmount}`, x: target.x, y: target.y, color: 'text-green-500' }]);
     setTimeout(() => setFloatingTexts(prev => prev.filter(f => f.id !== fId)), 1000);
-
-    if (turn === myIndex) finishAction(updated);
   };
 
   // --- COMBAT CORE ---
@@ -1089,6 +1130,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
                 <img src="/units/driadaheal.png" className="w-4 h-4" />
               </button>
             )}
+            <button 
+              onClick={() => setAutoCombat(!autoCombat)}
+              className={cn("wow-button p-2 text-[10px] font-black uppercase tracking-tighter", autoCombat && "bg-red-600")}
+            >
+              {autoCombat ? 'ПАУЗА AI' : 'АВТОБІЙ'}
+            </button>
           </div>
         )}
       </div>
@@ -1162,7 +1209,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
               </button>
               <button 
                 onClick={() => {
-                  joinMatch(invitation.matchId, invitation.fromPlayer, 1);
+                  setPrepData({ type: 'join', payload: invitation });
                   setInvitation(null);
                 }}
                 className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black uppercase tracking-widest rounded-lg transition-colors"
@@ -1173,6 +1220,14 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {prepData && (
+        <BattlePrepModal 
+          onStart={prepData.type === 'invite' ? handleStartInvitation : handleJoinInvitation}
+          onCancel={() => setPrepData(null)}
+          title={prepData.type === 'invite' ? `Заклик ${prepData.payload.name}` : `Бій проти ${prepData.payload.fromName}`}
+        />
+      )}
     </div>
   );
 }
