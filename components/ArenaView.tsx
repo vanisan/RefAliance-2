@@ -571,8 +571,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const localMove = (unitId: string, x: number, y: number) => {
+    const updated = units.map(u => u.id === unitId ? { ...u, x, y, hasActed: true } : u);
     channelRef.current?.send({ type: 'broadcast', event: 'move', payload: { unitId, x, y } });
     handleRemoteMove(unitId, x, y);
+    finishAction(updated);
   };
 
   const handleRemoteMove = (unitId: string, x: number, y: number) => {
@@ -582,16 +584,24 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     if (unit) {
       addLog(`${UNITS_INFO[unit.unitId].name} перемістився.`);
     }
-
-    // Only Host (Player 0) progresses state for others
-    if (myIndex === 0) {
-      finishAction(updated);
-    }
   };
 
   const localAttack = (attId: string, defId: string) => {
     channelRef.current?.send({ type: 'broadcast', event: 'attack', payload: { attId, defId } });
     handleRemoteAttack(attId, defId);
+    // processAttack already calls setUnits, need to compute updated units
+    const att = units.find(u => u.id === attId)!;
+    const def = units.find(u => u.id === defId)!;
+    const damageObj = calculatePvPDamage(att, def, units);
+    let remainingStackHP = (def.count - 1) * damageObj.effUnitHp + def.hp - damageObj.totalDmg;
+    let newCount = Math.max(0, Math.ceil(remainingStackHP / damageObj.effUnitHp));
+    let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % damageObj.effUnitHp === 0 ? damageObj.effUnitHp : remainingStackHP % damageObj.effUnitHp);
+    const updated = units.map(u => {
+      if (u.id === att.id) return { ...u, hasActed: true };
+      if (u.id === def.id) return { ...u, count: newCount, hp: newTopHP };
+      return u;
+    });
+    finishAction(updated);
   };
 
   const handleRemoteAttack = (attId: string, defId: string) => {
@@ -604,7 +614,21 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const localHeal = (driadaId: string, targetId: string) => {
     channelRef.current?.send({ type: 'broadcast', event: 'heal', payload: { driadaId, targetId } });
+    
+    // Recalculate updated immediately to pass to finishAction
+    const driada = units.find(u => u.id === driadaId)!;
+    const target = units.find(u => u.id === targetId)!;
+    const lost = target.startCount - target.count;
+    const healAmount = Math.min(lost, Math.floor(Math.random() * 3) + 1);
+
+    const updated = units.map(u => {
+      if (u.id === driada.id) return { ...u, hasActed: true };
+      if (u.id === target.id) return { ...u, count: u.count + healAmount };
+      return u;
+    });
+    
     handleRemoteHeal(driadaId, targetId);
+    finishAction(updated);
   };
 
   const handleRemoteHeal = (driadaId: string, targetId: string) => {
@@ -622,11 +646,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
     setUnits(updated);
     addLog(`Дріада воскрешає ${healAmount} ${UNITS_INFO[target.unitId].name}!`);
-    
-    // Only Host (Player 0) progresses state for others
-    if (myIndex === 0) {
-      finishAction(updated);
-    }
     
     const effId = getRandomId('heal');
     setEffects(prev => [...prev, { id: effId, type: 'heal', x: target.x, y: target.y, size: UNITS_INFO[target.unitId].size || 1 }]);
@@ -689,13 +708,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
     setUnits(updated);
     addLog(`${attackerInfo.name} -> ${damageObj.totalDmg} шкоди. Вбито: ${defender.count - newCount}`);
-    
-    // Only Host (Player 0) progresses state for others
-    if (myIndex === 0) {
-      setTimeout(() => {
-        finishAction(updated);
-      }, 600);
-    }
   };
 
   const calculatePvPDamage = (att: CombatUnit, def: CombatUnit, currentUnits: CombatUnit[]) => {
