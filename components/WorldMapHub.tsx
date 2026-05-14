@@ -25,9 +25,19 @@ interface WorldMapHubProps {
 
 export default function WorldMapHub({ onStartCombat }: WorldMapHubProps) {
   const { currentCampaignLevel } = useGame();
-  const [view, setView] = useState<'hub' | 'campaign' | 'realms'>('hub');
+  const [view, setView] = useState<'hub' | 'campaign' | 'realms' | 'city'>('hub');
 
   const menuItems = [
+    {
+      id: 'city',
+      name: 'Моє Місто',
+      description: 'Магазин, Арена, Призов',
+      icon: <Globe className="w-8 h-8" />,
+      color: 'border-blue-500 text-blue-500',
+      bg: 'bg-blue-950/20',
+      active: true,
+      label: 'HUB'
+    },
     {
       id: 'campaign',
       name: 'Кампанія',
@@ -40,11 +50,11 @@ export default function WorldMapHub({ onStartCombat }: WorldMapHubProps) {
     },
     {
       id: 'realms',
-      name: 'Карта володінь',
-      description: 'Території гравців',
-      icon: <Globe className="w-8 h-8" />,
-      color: 'border-blue-500 text-blue-500',
-      bg: 'bg-blue-950/20',
+      name: 'Землі Лордів',
+      description: 'Карта володінь',
+      icon: <Users className="w-8 h-8" />,
+      color: 'border-indigo-500 text-indigo-500',
+      bg: 'bg-indigo-950/20',
       active: true,
       label: 'LIVE'
     },
@@ -57,18 +67,23 @@ export default function WorldMapHub({ onStartCombat }: WorldMapHubProps) {
       bg: 'bg-stone-900/40',
       active: false,
       label: 'LOCKED'
-    },
-    {
-      id: 'siege',
-      name: 'Світова облога',
-      description: 'Глобальна подія',
-      icon: <Crown className="w-8 h-8" />,
-      color: 'border-stone-600 text-stone-600',
-      bg: 'bg-stone-900/40',
-      active: false,
-      label: 'LOCKED'
     }
   ];
+
+  if (view === 'city') {
+    return (
+      <div className="w-full h-full relative">
+        <button 
+          onClick={() => setView('hub')}
+          className="fixed top-24 left-4 z-[40] bg-stone-900/90 backdrop-blur-sm p-2 rounded border border-amber-600/50 text-amber-500 shadow-xl flex items-center gap-2 px-3 hover:bg-stone-800 transition-all active:scale-95 wow-panel-metal"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Світ</span>
+        </button>
+        <MapView onStartCombat={onStartCombat} forceCityOpen={true} />
+      </div>
+    );
+  }
 
   if (view === 'campaign') {
     return (
@@ -86,7 +101,7 @@ export default function WorldMapHub({ onStartCombat }: WorldMapHubProps) {
   }
 
   if (view === 'realms') {
-    return <WorldMapView onClose={() => setView('hub')} />;
+    return <WorldMapView onClose={() => setView('hub')} onStartCombat={onStartCombat} />;
   }
 
   return (
@@ -110,6 +125,7 @@ export default function WorldMapHub({ onStartCombat }: WorldMapHubProps) {
                 whileTap={item.active ? { scale: 0.98 } : {}}
                 onClick={() => {
                   if (item.active) {
+                    if (item.id === 'city') setView('city');
                     if (item.id === 'campaign') setView('campaign');
                     if (item.id === 'realms') setView('realms');
                   }

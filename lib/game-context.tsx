@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { Resources, Building, UnitId, MapNode, INITIAL_MAP_NODES, BUILDINGS_INFO, EquipmentSlot, EquipmentItem } from './game.types';
-import { addResources, calculateArmyPower } from './game.utils';
+import { Resources, Building, UnitId, MapNode, INITIAL_MAP_NODES, BUILDINGS_INFO, EquipmentSlot, EquipmentItem, Race } from './game.types';
+import { addResources, calculateArmyPower, getEmptyArmy } from './game.utils';
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -33,6 +33,7 @@ interface GameState {
   referrals: number;
   ownedHeroIds: string[];
   activeHeroId: string | null;
+  race: Race | null;
   user: User | null;
   authLoading: boolean;
   getLeaderboard: () => Promise<any[]>;
@@ -42,6 +43,7 @@ interface GameState {
   setResources: (res: Resources | ((prev: Resources) => Resources)) => void;
   setBuildings: (b: (Building | null)[] | ((prev: (Building | null)[]) => (Building | null)[]) | ((prev: (Building | null)[]) => (Building | null)[])) => void;
   setArmy: (army: Record<UnitId, number> | ((prev: Record<UnitId, number>) => Record<UnitId, number>)) => void;
+  setRace: (race: Race | null) => void;
   setSiegeUnits: (units: (UnitId | null)[] | ((prev: (UnitId | null)[]) => (UnitId | null)[])) => void;
   setMapNodes: (nodes: MapNode[] | ((prev: MapNode[]) => MapNode[])) => void;
   setPalaceLevel: (lv: number | ((prev: number) => number)) => void;
@@ -52,19 +54,17 @@ interface GameState {
   setReferrals: (n: number | ((prev: number) => number)) => void;
   setOwnedHeroIds: (ids: string[] | ((prev: string[]) => string[])) => void;
   setActiveHeroId: (id: string | null) => void;
+  attackSettlementResult: (targetId: string, won: boolean) => Promise<Resources | null>;
 }
 
-const CURRENT_GAME_VERSION = 3;
-const defaultResources: Resources = { gold: 100, wood: 100, stone: 100, food: 100, crystals: 0, bossKeys: 2, lastBossKeyTime: Date.now() };
-const defaultArmy: Record<UnitId, number> = { 
-  knight: 1, archer: 0, berserk: 0, mage: 0, dragon: 0, titan: 0, 
-  goblin: 0, orc: 0, skelet: 0, vampire: 0, demon: 0, giant: 0,
-  assassin: 0, hydra: 0, souleater: 0, driada: 0, paladin: 0,
-  banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
-  balista: 0, elven_balista: 0, archer_tower: 0, mage_tower: 0,
-  veliar: 0, kronos: 0, archimond: 0, despot: 0,
-  skorpidus: 0, scarbius: 0
+const CURRENT_GAME_VERSION = 4;
+const defaultResources: Resources = { 
+  gold: 100, wood: 100, stone: 100, food: 100, crystals: 0, 
+  bossKeys: 2, lastBossKeyTime: Date.now(),
+  settlementKeys: 1, lastSettlementKeyTime: Date.now(),
+  hasCompletedTutorial: false
 };
+const defaultArmy = getEmptyArmy();
 const defaultSiegeUnits: (UnitId | null)[] = [null, null, null, null];
 const DEFAULT_GRID_SIZE = 16;
 
@@ -81,6 +81,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [referrals, setReferrals] = useState(0);
   const [ownedHeroIds, setOwnedHeroIds] = useState<string[]>([]);
   const [activeHeroId, setActiveHeroId] = useState<string | null>(null);
+  const [race, setRace] = useState<Race | null>(null);
   const [mapNodes, setMapNodes] = useState<MapNode[]>(INITIAL_MAP_NODES);
   const [equipment, setEquipment] = useState<Record<EquipmentSlot, EquipmentItem | null>>({
     weapon: null, chest: null, boots: null, ring: null
@@ -113,6 +114,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     setPalaceLevel(1);
     setBuildings(Array(DEFAULT_GRID_SIZE).fill(null));
     setArmy(defaultArmy);
+    setRace(null);
     setSiegeUnits(defaultSiegeUnits);
     setMapNodes(INITIAL_MAP_NODES);
     setEquipment({ weapon: null, chest: null, boots: null, ring: null });
@@ -125,7 +127,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.from('users').upsert({
         id: user.id,
         playerName,
-        resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null },
+        resources: { ...defaultResources, race: null, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null, hasCompletedTutorial: false },
         palaceLevel: 1,
         buildings: Array(DEFAULT_GRID_SIZE).fill(null),
         army: defaultArmy,
@@ -170,16 +172,27 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             const displayName = u.user_metadata?.name || u.email?.split('@')[0] || "";
             // FORCED RESET for legacy users (version mismatch or old names)
             if (data.version !== CURRENT_GAME_VERSION || data.playerName === 'Hero' || data.playerName === 'Герой') {
-              console.log("Legacy user detected, resetting progress...");
+              console.log("Migration or Legacy user detected, resetting progress...");
               const newName = (data.playerName && data.playerName !== 'Hero' && data.playerName !== 'Герой') ? data.playerName : displayName;
+              
+              // Only keep special units if migrating from v3 to v4
+              let newArmy = { ...defaultArmy };
+              if (data.version === 3 && data.army) {
+                // Keep: dragon, titan, archidruid, despot
+                if (data.army.dragon) newArmy.dragon = data.army.dragon;
+                if (data.army.titan) newArmy.titan = data.army.titan;
+                if (data.army.archidruid) newArmy.archidruid = data.army.archidruid;
+                if (data.army.despot) newArmy.despot = data.army.despot;
+              }
+
               await supabase.from('users').upsert({
                 id: u.id,
                 playerName: newName,
-                resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null },
+                resources: { ...defaultResources, race: null, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null, hasCompletedTutorial: false },
                 palaceLevel: 1,
                 buildings: Array(DEFAULT_GRID_SIZE).fill(null),
-                army: defaultArmy,
-                armyPower: calculateArmyPower(defaultArmy),
+                army: newArmy,
+                armyPower: calculateArmyPower(newArmy),
                 mapNodes: INITIAL_MAP_NODES,
                 equipment: { weapon: null, chest: null, boots: null, ring: null },
                 currentCampaignLevel: "1-1",
@@ -191,7 +204,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setResources(defaultResources);
               setPalaceLevel(1);
               setBuildings(Array(DEFAULT_GRID_SIZE).fill(null));
-              setArmy(defaultArmy);
+              setArmy(newArmy);
+              setRace(null);
               setSiegeUnits(defaultSiegeUnits);
               setMapNodes(INITIAL_MAP_NODES);
               setEquipment({ weapon: null, chest: null, boots: null, ring: null });
@@ -203,8 +217,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             } else {
               setResources({ ...defaultResources, ...(data.resources || {}) });
               setPalaceLevel(data.palaceLevel || 1);
+              setRace(data.resources?.race || data.race || null);
               
               let loadedBuildings = data.buildings || Array(DEFAULT_GRID_SIZE).fill(null);
+              loadedBuildings = loadedBuildings.map((b: any) => b ? { ...b, level: b.level || 1 } : null);
               // Migrate buildings if old size or larger
               if (loadedBuildings.length !== DEFAULT_GRID_SIZE) {
                 if (loadedBuildings.length < DEFAULT_GRID_SIZE) {
@@ -262,6 +278,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                       let totalProd: Partial<Resources> = {
                         gold: baseProd, wood: baseProd, stone: baseProd, food: baseProd
                       };
+
+                      // Racial Bonuses (+5 units/sec = +25 per 5s tick)
+                      const userRace = data.resources?.race || data.race;
+                      if (userRace === 'human') totalProd.gold = (totalProd.gold || 0) + 25;
+                      if (userRace === 'orc') totalProd.food = (totalProd.food || 0) + 25;
+                      if (userRace === 'elf') totalProd.wood = (totalProd.wood || 0) + 25;
+
                       const userBuildings = data.buildings || [];
                       userBuildings.forEach((b: Building | null) => {
                         if (b && BUILDINGS_INFO[b.id]?.production) {
@@ -294,7 +317,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             await supabase.from('users').upsert({
               id: u.id,
               playerName: initialName,
-              resources: { ...defaultResources, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null },
+              resources: { ...defaultResources, race: null, referrals: 0, siegeUnits: defaultSiegeUnits, ownedHeroIds: [], activeHeroId: null, hasCompletedTutorial: false },
               palaceLevel: 1,
               buildings: Array(DEFAULT_GRID_SIZE).fill(null),
               army: defaultArmy,
@@ -327,7 +350,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const armyPower = calculateArmyPower(army);
         const { error } = await supabase.from('users').update({
           playerName,
-          resources: { ...resources, referrals, siegeUnits, ownedHeroIds, activeHeroId },
+          resources: { ...resources, race, referrals, siegeUnits, ownedHeroIds, activeHeroId },
           palaceLevel,
           buildings,
           army,
@@ -367,25 +390,40 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       });
       
       setResources(prev => {
-        const baseProd = 0.5; // 1 unit per 10s, tick is 5s
-        let totalProd: Partial<Resources> = {
-          gold: baseProd, wood: baseProd, stone: baseProd, food: baseProd
+        const baseTickProd = 0.5; // per tick (5s), which is 0.1/s
+        
+        // Racial Bonuses (+5 units/sec = +25 per 5s tick)
+        // We use the current race state which is fresh because the effect restarts on race change
+        const goldBonus = race === 'human' ? 25 : 0;
+        const woodBonus = race === 'elf' ? 25 : 0;
+        const foodBonus = race === 'orc' ? 25 : 0;
+
+        let totalProd: Resources = {
+          gold: baseTickProd + goldBonus,
+          wood: baseTickProd + woodBonus,
+          stone: baseTickProd,
+          food: baseTickProd + foodBonus,
+          crystals: 0,
+          bossKeys: 0,
+          lastBossKeyTime: 0
         };
+
         buildings.forEach(b => {
           if (b && BUILDINGS_INFO[b.id]?.production) {
             const prod = BUILDINGS_INFO[b.id].production;
-            if (prod?.gold) totalProd.gold = (totalProd.gold || 0) + prod.gold * b.level;
-            if (prod?.wood) totalProd.wood = (totalProd.wood || 0) + prod.wood * b.level;
-            if (prod?.stone) totalProd.stone = (totalProd.stone || 0) + prod.stone * b.level;
-            if (prod?.food) totalProd.food = (totalProd.food || 0) + prod.food * b.level;
+            if (prod?.gold) totalProd.gold += prod.gold * b.level;
+            if (prod?.wood) totalProd.wood += prod.wood * b.level;
+            if (prod?.stone) totalProd.stone += prod.stone * b.level;
+            if (prod?.food) totalProd.food += prod.food * b.level;
           }
         });
         
-        const finalProd: Partial<Resources> = {
-          gold: (totalProd.gold || 0) * multiplier,
-          wood: (totalProd.wood || 0) * multiplier,
-          stone: (totalProd.stone || 0) * multiplier,
-          food: (totalProd.food || 0) * multiplier,
+        const finalProd: Resources = {
+          ...totalProd,
+          gold: totalProd.gold * multiplier,
+          wood: totalProd.wood * multiplier,
+          stone: totalProd.stone * multiplier,
+          food: totalProd.food * multiplier,
         };
         
         let nextState = addResources(prev, finalProd);
@@ -403,17 +441,99 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
              };
            }
         }
+        if (nextState.settlementKeys !== undefined && nextState.settlementKeys < 1 && nextState.lastSettlementKeyTime) {
+           const timePassed = now - nextState.lastSettlementKeyTime;
+           const RECHARGE_TIME = 86400000; // 24 hours
+           if (timePassed >= RECHARGE_TIME) {
+             nextState = {
+               ...nextState,
+               settlementKeys: 1,
+               lastSettlementKeyTime: now
+             };
+           }
+        }
         return nextState;
       });
     }, 5000); // Resource tick attempt every 5 seconds
     
     return () => clearInterval(tick);
-  }, [buildings, currentCampaignLevel]);
+  }, [buildings, currentCampaignLevel, race]);
+
+  const attackSettlementResult = async (targetId: string, won: boolean): Promise<Resources | null> => {
+    if (!user || !supabase) return null;
+
+    try {
+      // 1. Get target resources
+      const { data: target, error: targetError } = await supabase.from('users').select('*').eq('id', targetId).single();
+      if (targetError || !target) throw targetError;
+
+      const targetRes = target.resources as Resources;
+
+      if (won) {
+        // Attacker won: take 100% of gold, wood, stone, food. 0% crystals.
+        const stolen: Partial<Resources> = {
+          gold: targetRes.gold,
+          wood: targetRes.wood,
+          stone: targetRes.stone,
+          food: targetRes.food,
+          crystals: 0,
+        };
+
+        const newTargetRes = {
+          ...targetRes,
+          gold: 0,
+          wood: 0,
+          stone: 0,
+          food: 0,
+        };
+
+        await supabase.from('users').update({ resources: newTargetRes }).eq('id', targetId);
+        setResources(prev => addResources(prev, stolen));
+        return stolen as Resources;
+      } else {
+        // Attacker lost: lose 50% of ALL resources to defender
+        const lost: Partial<Resources> = {
+          gold: Math.floor(resources.gold * 0.5),
+          wood: Math.floor(resources.wood * 0.5),
+          stone: Math.floor(resources.stone * 0.5),
+          food: Math.floor(resources.food * 0.5),
+          crystals: Math.floor((resources.crystals || 0) * 0.5),
+        };
+
+        // Deduct from attacker locally
+        setResources(prev => ({
+          ...prev,
+          gold: prev.gold - (lost.gold || 0),
+          wood: prev.wood - (lost.wood || 0),
+          stone: prev.stone - (lost.stone || 0),
+          food: prev.food - (lost.food || 0),
+          crystals: (prev.crystals || 0) - (lost.crystals || 0),
+        }));
+
+        // Add to defender in DB
+        const newTargetRes = {
+          ...targetRes,
+          gold: targetRes.gold + (lost.gold || 0),
+          wood: targetRes.wood + (lost.wood || 0),
+          stone: targetRes.stone + (lost.stone || 0),
+          food: targetRes.food + (lost.food || 0),
+          crystals: (targetRes.crystals || 0) + (lost.crystals || 0),
+        };
+        await supabase.from('users').update({ resources: newTargetRes }).eq('id', targetId);
+
+        return lost as Resources;
+      }
+    } catch (e) {
+      handleSupabaseError(e);
+      return null;
+    }
+  };
 
   return (
     <GameContext.Provider value={{
       playerName, resources, setResources,
       palaceLevel, setPalaceLevel,
+      race, setRace,
       buildings, setBuildings,
       army, setArmy,
       siegeUnits, setSiegeUnits,
@@ -425,6 +545,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       referrals, setReferrals,
       ownedHeroIds, setOwnedHeroIds,
       activeHeroId, setActiveHeroId,
+      attackSettlementResult,
       user, authLoading,
       getLeaderboard,
       resetProgress,

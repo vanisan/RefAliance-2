@@ -1,11 +1,17 @@
+export type Race = 'human' | 'orc' | 'elf';
 export type ResourceType = 'gold' | 'stone' | 'wood' | 'food' | 'crystals';
 export interface Resources extends Record<ResourceType, number> {
   bossKeys?: number;
   lastBossKeyTime?: number;
+  settlementKeys?: number;
+  lastSettlementKeyTime?: number;
+  lastSettlementAttackTime?: number;
   referrals?: number;
   siegeUnits?: (UnitId | null)[];
   ownedHeroIds?: string[];
   activeHeroId?: string | null;
+  race?: Race | null;
+  hasCompletedTutorial?: boolean;
 }
 
 export type BuildingId = 'barracks' | 'farm' | 'mine' | 'mill' | 'quarry' | 'altar' | 'magistrat' | 'forge' | 'tavern';
@@ -30,7 +36,7 @@ export interface BuildingInfo {
 export const BUILDINGS_INFO: Record<BuildingId, BuildingInfo> = {
   barracks: { 
     id: 'barracks', name: 'Казарма', icon: 'Sword', image: '/buildings/barracks.webp',
-    baseCost: { gold: 2500, wood: 2500, stone: 2500, food: 2500, crystals: 0 }, costMultiplier: 2, 
+    baseCost: { gold: 100, wood: 50, stone: 0, food: 50, crystals: 0 }, costMultiplier: 2, 
     description: 'Дозволяє наймати війська' 
   },
   farm: { 
@@ -94,7 +100,17 @@ export const HEROES_INFO: Record<HeroId, HeroInfo> = {
   thrall: { id: 'thrall', name: 'Тралл', title: 'Орк', image: '/heroes/thrall.png', cost: 10000, damage: 500, description: 'Вождь Орди. Наносить 500 шкоди обраному загону.' },
 };
 
-export type UnitId = 'knight' | 'archer' | 'berserk' | 'mage' | 'dragon' | 'titan' | 'goblin' | 'orc' | 'skelet' | 'vampire' | 'demon' | 'giant' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'archidruid' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower' | 'veliar' | 'kronos' | 'archimond' | 'despot' | 'skorpidus' | 'scarbius';
+export type UnitId = 
+  // Human Race
+  'h_peasant' | 'h_footman' | 'h_archer' | 'h_knight' | 'h_archmage' |
+  // Orc Race
+  'o_peon' | 'o_grunt' | 'o_headhunter' | 'o_raider' | 'o_shaman' |
+  // Elf Race
+  'e_wisp' | 'e_archer' | 'e_huntress' | 'e_druid' | 'e_dryad' |
+  // Elite Units (Kept)
+  'dragon' | 'titan' | 'archidruid' | 'despot' |
+  // Enemy/Special Units
+  'knight' | 'archer' | 'berserk' | 'mage' | 'goblin' | 'orc' | 'skelet' | 'zombie' | 'sinner' | 'spider' | 'vampire' | 'demon' | 'giant' | 'morlord' | 'assassin' | 'hydra' | 'souleater' | 'driada' | 'paladin' | 'banshee' | 'arachnid' | 'frostdragon' | 'balista' | 'elven_balista' | 'archer_tower' | 'mage_tower' | 'veliar' | 'kronos' | 'archimond' | 'skorpidus' | 'scarbius';
 
 export interface ArenaPlayer {
   id: string;
@@ -127,19 +143,20 @@ export interface UnitInfo {
   maxDamage: number;
   speed: number;
   range: number; // 1 for melee, >1 for ranged
+  initiative?: number;
   size?: number; // 1 standard, 2 for 2x2
   cost?: Resources; // For hiring
   isEnemy: boolean;
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action' | 'double_turn' | 'crit_25_x2' | 'splash_linear_40' | 'frenzy';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action' | 'double_turn' | 'crit_25_x2' | 'splash_linear_40' | 'frenzy' | 'crit_30_x1_5' | 'aura_def_10_hp_20' | 'charge_attack' | 'splash_25' | 'active_curse_10' | 'double_attack_80' | 'active_resurrect_1_4' | 'active_throw_back' | 'triple_attack_50_25';
 }
 
 export interface MapNode {
   id: string;
   name: string;
-  type: 'city' | 'combat' | 'boss' | 'daily_boss';
+  type: 'city' | 'combat' | 'boss' | 'daily_boss' | 'settlement';
   x: number;
   y: number;
   enemies: { unitId: UnitId; count: number }[];
@@ -148,6 +165,9 @@ export interface MapNode {
   campaignLevel: string;
   itemReward?: string;
   selectedArmy?: Record<UnitId, number>;
+  targetId?: string;
+  targetSiegeUnits?: (UnitId | null)[];
+  targetName?: string;
 }
 
 export type EquipmentSlot = 'chest' | 'weapon' | 'boots' | 'ring';
@@ -195,57 +215,141 @@ const TIER_COSTS = [50, 150, 400, 1000, 2000, 3500, 5000];
 });
 
 export const UNITS_INFO: Record<UnitId, UnitInfo> = {
+  // --- HUMAN RACE ---
+  h_peasant: { 
+    id: 'h_peasant', name: 'Лицар', hp: 40, attack: 10, defense: 10, minDamage: 7, maxDamage: 13, speed: 2, range: 1, initiative: 11,
+    cost: { gold: 300, food: 300, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/human/knight.png',
+    combatType: 'melee', description: 'Благородний воїн Альянсу.'
+  },
+  h_footman: { 
+    id: 'h_footman', name: 'Снайпер', hp: 80, attack: 25, defense: 10, minDamage: 18, maxDamage: 32, speed: 2, range: 4, initiative: 15,
+    cost: { gold: 500, food: 400, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/human/sniper.png',
+    combatType: 'ranged', special: 'crit_30_x1_5', description: '30% шанс нанести x1.5 шкоди.'
+  },
+  h_archer: { 
+    id: 'h_archer', name: 'Паладін', hp: 300, attack: 30, defense: 25, minDamage: 22, maxDamage: 38, speed: 2, range: 1, initiative: 10,
+    cost: { gold: 1200, food: 700, stone: 400, wood: 0, crystals: 0 }, isEnemy: false, image: '/human/paladin.png',
+    combatType: 'melee', special: 'aura_def_10_hp_20', description: 'Підвищує захист на 10 і хп на 20 усіх в радіусі 1 клітинки.'
+  },
+  h_knight: { 
+    id: 'h_knight', name: 'Грифон', hp: 500, attack: 75, defense: 40, minDamage: 60, maxDamage: 90, speed: 5, range: 2, initiative: 14,
+    cost: { gold: 2400, food: 1500, stone: 1000, wood: 400, crystals: 0 }, isEnemy: false, image: '/human/gryphon.png',
+    combatType: 'melee', special: 'charge_attack', description: 'Миттєва атака після руху до ворога.'
+  },
+  h_archmage: { 
+    id: 'h_archmage', name: 'Архімаг', hp: 400, attack: 120, defense: 30, minDamage: 100, maxDamage: 140, speed: 2, range: 5, initiative: 9,
+    cost: { gold: 6000, food: 6000, stone: 6000, wood: 6000, crystals: 0 }, isEnemy: false, image: '/human/archimage.png',
+    combatType: 'ranged', special: 'splash_25', description: 'Сплеш 25% від цілі в радіусі 1 клітинки.'
+  },
+
+  // --- ORC RACE ---
+  o_peon: { 
+    id: 'o_peon', name: 'Троль', hp: 40, attack: 15, defense: 8, minDamage: 10, maxDamage: 20, speed: 2, range: 2, initiative: 5,
+    cost: { gold: 300, food: 300, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/orcs/troll.png',
+    combatType: 'melee', description: 'Просто бойовий юніт.'
+  },
+  o_grunt: { 
+    id: 'o_grunt', name: 'Звіролов', hp: 120, attack: 20, defense: 15, minDamage: 14, maxDamage: 26, speed: 4, range: 2, initiative: 12,
+    cost: { gold: 500, food: 400, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/orcs/beastmaster.png',
+    combatType: 'ranged', special: 'double_action', description: 'Може ходити 2 рази підряд.'
+  },
+  o_headhunter: { 
+    id: 'o_headhunter', name: 'Некромант', hp: 150, attack: 50, defense: 10, minDamage: 35, maxDamage: 65, speed: 2, range: 4, initiative: 7,
+    cost: { gold: 1200, food: 700, stone: 400, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/orcs/necromant.png',
+    combatType: 'ranged', special: 'active_curse_10', description: 'Активне вміння - зменшує атаку на 10 та захист на 10 до кінця бою ворогу.'
+  },
+  o_raider: { 
+    id: 'o_raider', name: 'Носоріг', hp: 400, attack: 60, defense: 30, minDamage: 45, maxDamage: 75, speed: 4, range: 2, initiative: 1,
+    cost: { gold: 2400, food: 1500, stone: 1000, wood: 400, crystals: 0 }, isEnemy: false, image: '/units/orcs/rhino.png',
+    combatType: 'melee', special: 'charge_attack', description: 'Миттєва атака після руху до ворога.'
+  },
+  o_shaman: { 
+    id: 'o_shaman', name: 'Король шаманів', hp: 425, attack: 125, defense: 30, minDamage: 100, maxDamage: 150, speed: 2, range: 4, initiative: 6,
+    cost: { gold: 6000, food: 6000, stone: 6000, wood: 6000, crystals: 0 }, isEnemy: false, image: '/units/orcs/shamanking.png',
+    combatType: 'ranged', special: 'splash_25', description: 'Сплеш 25% від цілі в радіусі 1 клітинки.'
+  },
+
+  // --- ELF RACE ---
+  e_wisp: { 
+    id: 'e_wisp', name: 'Вбивця', hp: 30, attack: 20, defense: 5, minDamage: 14, maxDamage: 26, speed: 3, range: 1, initiative: 17,
+    cost: { gold: 300, food: 300, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/elfs/assassin.png',
+    combatType: 'melee', description: 'Просто бойовий юніт.'
+  },
+  e_archer: { 
+    id: 'e_archer', name: 'Лучник', hp: 70, attack: 30, defense: 8, minDamage: 20, maxDamage: 40, speed: 2, range: 4, initiative: 16,
+    cost: { gold: 500, food: 400, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/elfs/archer.png',
+    combatType: 'ranged', special: 'double_attack_80', description: 'Атакує двічі. 1 стріла 100% шкоди, друга 80%.'
+  },
+  e_huntress: { 
+    id: 'e_huntress', name: 'Друїд', hp: 150, attack: 40, defense: 15, minDamage: 30, maxDamage: 50, speed: 2, range: 3, initiative: 13,
+    cost: { gold: 1200, food: 700, stone: 400, wood: 0, crystals: 0 }, isEnemy: false, image: '/elfs/druid.png',
+    combatType: 'ranged', special: 'active_resurrect_1_4', description: 'Активне вміння - може воскресити від 1 до 4 юнітів (не більше ніж померло).'
+  },
+  e_druid: { 
+    id: 'e_druid', name: 'Трент', hp: 600, attack: 55, defense: 50, minDamage: 40, maxDamage: 70, speed: 2, range: 1, initiative: 4,
+    cost: { gold: 2400, food: 1500, stone: 1000, wood: 400, crystals: 0 }, isEnemy: false, image: '/elfs/treant.png',
+    combatType: 'melee', special: 'active_throw_back', description: 'Активне вміння - перекидає ворога назад за себе і наносить 50% шкоди.'
+  },
+  e_dryad: { 
+    id: 'e_dryad', name: 'Соколине око', hp: 330, attack: 140, defense: 25, minDamage: 110, maxDamage: 170, speed: 3, range: 6, initiative: 18,
+    cost: { gold: 6000, food: 6000, stone: 6000, wood: 6000, crystals: 0 }, isEnemy: false, image: '/elfs/hawkeye.png',
+    combatType: 'ranged', special: 'triple_attack_50_25', description: 'Атакує тричі: 100%, 50%, 25%.'
+  },
   knight: { 
-    id: 'knight', name: 'Лицар', hp: 35, attack: 10, defense: 10, minDamage: 5, maxDamage: 10, speed: 2, range: 1, 
-    cost: { gold: 150, food: 80, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/knight.png',
+    id: 'knight', name: 'Лицар', hp: 35, attack: 10, defense: 10, minDamage: 5, maxDamage: 10, speed: 2, range: 1, initiative: 11,
+    cost: { gold: 300, food: 160, wood: 0, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/knight.png',
     combatType: 'melee', description: 'Шляхетний воїн. Ближній бій. Атака: звичайна.'
   },
   archer: { 
-    id: 'archer', name: 'Лучник', hp: 15, attack: 12, defense: 5, minDamage: 4, maxDamage: 8, speed: 2, range: 5, 
-    cost: { gold: 200, wood: 50, food: 50, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/archer.png',
-    combatType: 'ranged', description: 'Майстер лука. Дальній бій. Атака: звичайна.'
+    id: 'archer', name: 'Лучник', hp: 15, attack: 12, defense: 5, minDamage: 4, maxDamage: 8, speed: 2, range: 5, initiative: 16,
+    cost: { gold: 400, wood: 100, food: 100, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/archer.png',
+    combatType: 'ranged', description: 'Майстер лука. Дальний бій. Атака: звичайна.'
   },
   berserk: { 
     id: 'berserk', name: 'Берсерк', hp: 40, attack: 15, defense: 5, minDamage: 8, maxDamage: 15, speed: 2, range: 1, 
-    cost: { gold: 200, food: 50, stone: 50, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/berserk.png',
+    cost: { gold: 400, food: 100, stone: 100, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/berserk.png',
     combatType: 'melee', special: 'frenzy', description: 'Лютий боєць. Ближній бій. Вміння "Лють": дозволяє зробити ще один хід (раз за бій).'
   },
   mage: { 
     id: 'mage', name: 'Маг', hp: 20, attack: 18, defense: 6, minDamage: 10, maxDamage: 18, speed: 2, range: 5, 
-    cost: { gold: 300, wood: 100, stone: 100, food: 0, crystals: 0 }, isEnemy: false, image: '/units/mage.png',
+    cost: { gold: 600, wood: 200, stone: 200, food: 0, crystals: 0 }, isEnemy: false, image: '/units/mage.png',
     combatType: 'ranged', description: 'Повелитель вогню. Дальній бій. Атака: звичайна.'
   },
   dragon: { 
-    id: 'dragon', name: 'Дракон', hp: 200, attack: 40, defense: 30, minDamage: 25, maxDamage: 50, speed: 6, range: 1, 
-    cost: { gold: 3000, stone: 500, food: 1000, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/dragon.png',
-    combatType: 'melee', description: 'Легендарний звір. Ближній бій. Атака: звичайна.'
+    id: 'dragon', name: 'Дракон', hp: 1000, attack: 150, defense: 50, minDamage: 100, maxDamage: 150, speed: 5, range: 1, initiative: 3,
+    isEnemy: false, image: '/units/dragon.png',
+    combatType: 'melee', description: 'Легендарний звір. Ближній бій. Величезна міць.'
   },
   titan: { 
-    id: 'titan', name: 'Титан', hp: 300, attack: 50, defense: 40, minDamage: 40, maxDamage: 60, speed: 2, range: 8, size: 2, 
-    cost: { gold: 5000, stone: 1000, wood: 200, food: 750, crystals: 0 }, isEnemy: false, image: '/units/titan.png',
-    combatType: 'ranged', description: 'Стародавній гігант. Дальній бій. Атака: звичайна.'
+    id: 'titan', name: 'Титан', hp: 1500, attack: 200, defense: 60, minDamage: 150, maxDamage: 250, speed: 1, range: 5, initiative: 2, size: 1, 
+    isEnemy: false, image: '/units/titan.png',
+    combatType: 'ranged', description: 'Стародавній гігант. Дальній бій. Нищівні атаки.'
   },
   
-  skelet: { id: 'skelet', name: 'Скелет', hp: 10, attack: 5, defense: 5, minDamage: 2, maxDamage: 4, speed: 2, range: 1, isEnemy: true, image: '/mobs/skeleton.png', combatType: 'melee', description: 'Ожилий мрець. Ближній бій.' },
-  goblin: { id: 'goblin', name: 'Гоблін', hp: 15, attack: 10, defense: 5, minDamage: 3, maxDamage: 6, speed: 2, range: 1, isEnemy: true, image: '/mobs/goblin.png', combatType: 'melee', description: 'Дрібний бешкетник. Ближній бій.' },
-  orc: { id: 'orc', name: 'Орк', hp: 70, attack: 25, defense: 25, minDamage: 10, maxDamage: 18, speed: 2, range: 1, isEnemy: true, image: '/mobs/orc.png', combatType: 'melee', description: 'Могутній варвар. Ближній бій.' },
-  vampire: { id: 'vampire', name: 'Вампір', hp: 150, attack: 55, defense: 30, minDamage: 25, maxDamage: 45, speed: 4, range: 1, isEnemy: true, image: '/mobs/vampire.png', combatType: 'melee', description: 'Нічний мисливець. Ближній бій.' },
-  demon: { id: 'demon', name: 'Демон', hp: 250, attack: 180, defense: 35, minDamage: 80, maxDamage: 120, speed: 3, range: 1, isEnemy: true, image: '/mobs/demon.png', combatType: 'melee', description: 'Створіння безодні. Ближній бій.' },
-  giant: { id: 'giant', name: 'Велетень', hp: 400, attack: 150, defense: 40, minDamage: 60, maxDamage: 100, speed: 2, range: 8, size: 2, isEnemy: true, image: '/mobs/velikan.png', combatType: 'ranged', description: 'Гірський ісполин. Дальній бій.' },
+  skelet: { id: 'skelet', name: 'Скелет', hp: 15, attack: 5, defense: 5, minDamage: 2, maxDamage: 4, speed: 2, range: 1, isEnemy: true, image: '/mobs/skeleton.png', combatType: 'melee', description: 'Ожилий мрець.' },
+  zombie: { id: 'zombie', name: 'Зомбі', hp: 30, attack: 10, defense: 5, minDamage: 5, maxDamage: 8, speed: 1, range: 1, isEnemy: true, image: '/mobs/zombie.png', combatType: 'melee', description: 'Повільний, але міцніший.' },
+  sinner: { id: 'sinner', name: 'Грішник', hp: 50, attack: 15, defense: 10, minDamage: 10, maxDamage: 15, speed: 2, range: 1, isEnemy: true, image: '/mobs/sinner.png', combatType: 'melee', description: 'Темна душа.' },
+  spider: { id: 'spider', name: 'Павук', hp: 40, attack: 20, defense: 12, minDamage: 12, maxDamage: 18, speed: 4, range: 1, isEnemy: true, image: '/mobs/spider.png', combatType: 'melee', description: 'Швидкий хижак.' },
+  goblin: { id: 'goblin', name: 'Гоблін', hp: 15, attack: 10, defense: 5, minDamage: 3, maxDamage: 6, speed: 2, range: 1, isEnemy: true, image: '/mobs/goblin.png', combatType: 'melee', description: 'Дрібний бешкетник.' },
+  orc: { id: 'orc', name: 'Орк', hp: 70, attack: 25, defense: 25, minDamage: 10, maxDamage: 18, speed: 2, range: 1, isEnemy: true, image: '/mobs/orc.png', combatType: 'melee', description: 'Могутній варвар.' },
+  vampire: { id: 'vampire', name: 'Вампір', hp: 100, attack: 40, defense: 15, minDamage: 15, maxDamage: 25, speed: 4, range: 1, isEnemy: true, image: '/mobs/vampire.png', combatType: 'melee', description: 'П\'є кров.' },
+  demon: { id: 'demon', name: 'Демон', hp: 150, attack: 30, defense: 20, minDamage: 20, maxDamage: 35, speed: 3, range: 1, isEnemy: true, image: '/mobs/demon.png', combatType: 'melee', description: 'Пекельна істота.' },
+  giant: { id: 'giant', name: 'Велетень', hp: 400, attack: 150, defense: 40, minDamage: 60, maxDamage: 100, speed: 2, range: 8, size: 2, isEnemy: true, image: '/mobs/velikan.png', combatType: 'ranged', description: 'Гірський ісполин.' },
+  morlord: { id: 'morlord', name: 'Морлорд', hp: 2000, attack: 150, defense: 30, minDamage: 100, maxDamage: 180, speed: 1, range: 4, isEnemy: true, image: '/mobs/morlord.png', combatType: 'ranged', description: 'Гігант з глибин.' },
   
   assassin: { 
-    id: 'assassin', name: 'Вбивця', hp: 120, attack: 30, defense: 15, minDamage: 15, maxDamage: 30, speed: 5, range: 1, 
-    cost: { gold: 700, stone: 0, wood: 0, food: 150, crystals: 0 }, isEnemy: false, image: '/units/assasin.png',
+    id: 'assassin', name: 'Вбивця', hp: 120, attack: 30, defense: 15, minDamage: 15, maxDamage: 30, speed: 5, range: 1, initiative: 17,
+    cost: { gold: 1400, stone: 0, wood: 0, food: 300, crystals: 0 }, isEnemy: false, image: '/units/assasin.png',
     combatType: 'melee', special: 'double_attack', description: 'Прихований вбивця. Ближній бій. Атака: подвійна.'
   },
   paladin: {
-    id: 'paladin', name: 'Паладин', hp: 200, attack: 20, defense: 50, minDamage: 15, maxDamage: 25, speed: 2, range: 1,
-    cost: { gold: 1000, food: 400, stone: 100, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/paladin.png',
+    id: 'paladin', name: 'Паладин', hp: 200, attack: 20, defense: 50, minDamage: 15, maxDamage: 25, speed: 2, range: 1, initiative: 10,
+    cost: { gold: 2000, food: 800, stone: 200, wood: 0, crystals: 0 }, isEnemy: false, image: '/units/paladin.png',
     combatType: 'melee', special: 'aura_def_20', description: 'Святий воїн. Союзники в радіусі 1 кл. отримують +20% захисту.'
   },
   driada: {
     id: 'driada', name: 'Дріада', hp: 130, attack: 15, defense: 10, minDamage: 10, maxDamage: 20, speed: 3, range: 4,
-    cost: { gold: 850, food: 150, wood: 500, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/driada.png',
+    cost: { gold: 1700, food: 300, wood: 1000, stone: 0, crystals: 0 }, isEnemy: false, image: '/units/driada.png',
     combatType: 'ranged', special: 'heal_resurrect', description: 'Дитя лісу. Раз за хід може воскресити 1-3 вбитих у бою істот.'
   },
   hydra: { 
@@ -269,33 +373,33 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     description: 'Величезний павук. Висока швидкість переміщення. Ближній бій.'
   },
   frostdragon: {
-    id: 'frostdragon', name: 'Крижаний дракон', hp: 400, attack: 110, defense: 50, minDamage: 100, maxDamage: 120, speed: 10, range: 1, size: 2,
+    id: 'frostdragon', name: 'Крижаний дракон', hp: 800, attack: 180, defense: 60, minDamage: 100, maxDamage: 200, speed: 5, range: 1, size: 2,
     isEnemy: true, image: '/units/frostdragon.png', combatType: 'melee',
-    description: 'Повелитель холоду. Миттєво переміщується по полю бою. Ближній бій.'
+    description: 'Повелитель холоду. Ближній бій.'
   },
   archidruid: {
-    id: 'archidruid', name: 'Архідруїд', hp: 500, attack: 80, defense: 50, minDamage: 100, maxDamage: 140, speed: 2, range: 5,
-    cost: { gold: 10000, food: 500, crystals: 10, wood: 0, stone: 0 }, isEnemy: false, image: '/units/archiduid.png',
-    combatType: 'ranged', special: 'splash_50', description: 'Верховний захисник природи. Дальній бій. Атака: сплеш-урон 50% в радіусі 1 кл.'
+    id: 'archidruid', name: 'Архідруїд', hp: 1200, attack: 180, defense: 40, minDamage: 120, maxDamage: 180, speed: 3, range: 5, initiative: 8,
+    isEnemy: false, image: '/units/archidruid.png',
+    combatType: 'ranged', special: 'splash_50', description: 'Верховний захисник природи. Дальний бій. Сплеш-урон 50%.'
   },
   balista: {
-    id: 'balista', name: 'Баліста', hp: 100, attack: 40, defense: 10, minDamage: 30, maxDamage: 50, speed: 0, range: 20,
-    cost: { gold: 1000, wood: 200, stone: 200, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/balista.png',
+    id: 'balista', name: 'Баліста', hp: 100, attack: 40, defense: 10, minDamage: 30, maxDamage: 50, speed: 0, range: 20, initiative: 99,
+    cost: { gold: 2000, wood: 400, stone: 400, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/balista.png',
     combatType: 'ranged', description: 'Облогове знаряддя. Атака через все поле.'
   },
   elven_balista: {
-    id: 'elven_balista', name: 'Ельфійська баліста', hp: 250, attack: 80, defense: 20, minDamage: 60, maxDamage: 100, speed: 0, range: 20,
-    cost: { gold: 3000, wood: 400, stone: 400, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/elvenbalista.png',
+    id: 'elven_balista', name: 'Ельфійська баліста', hp: 250, attack: 80, defense: 20, minDamage: 60, maxDamage: 100, speed: 0, range: 20, initiative: 100,
+    cost: { gold: 6000, wood: 800, stone: 800, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/elvenbalista.png',
     combatType: 'ranged', description: 'Покращене облогове знаряддя ельфів. Атака через все поле.'
   },
   archer_tower: {
-    id: 'archer_tower', name: 'Вежа лучників', hp: 600, attack: 200, defense: 40, minDamage: 150, maxDamage: 250, speed: 0, range: 20,
-    cost: { gold: 10000, wood: 800, stone: 800, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/archertower.png',
+    id: 'archer_tower', name: 'Вежа лучників', hp: 600, attack: 200, defense: 40, minDamage: 150, maxDamage: 250, speed: 0, range: 20, initiative: 101,
+    cost: { gold: 20000, wood: 1600, stone: 1600, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/archertower.png',
     combatType: 'ranged', description: 'Потужна оборонна вежа. Атака через все поле.'
   },
   mage_tower: {
-    id: 'mage_tower', name: 'Вежа магів', hp: 1000, attack: 400, defense: 60, minDamage: 300, maxDamage: 500, speed: 0, range: 20,
-    cost: { gold: 35000, wood: 2000, stone: 2000, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/magetower.png',
+    id: 'mage_tower', name: 'Вежа магів', hp: 1000, attack: 400, defense: 60, minDamage: 300, maxDamage: 500, speed: 0, range: 20, initiative: 102,
+    cost: { gold: 70000, wood: 4000, stone: 4000, food: 0, crystals: 0 }, isEnemy: false, image: '/forge/magetower.png',
     combatType: 'ranged', description: 'Вершина магічного захисту. Атака через все поле.'
   },
   veliar: {
@@ -307,21 +411,20 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     isEnemy: true, image: '/bosses/kronos.png', combatType: 'melee', description: 'Стародавній дух лісу. Ближній бій.'
   },
   archimond: {
-    id: 'archimond', name: 'Архімонд (Верховний демон)', hp: 10000, attack: 666, defense: 66, minDamage: 666, maxDamage: 666, speed: 1, range: 5, size: 2,
-    isEnemy: true, image: '/bosses/archimond.png', combatType: 'ranged', special: 'splash_50', description: 'Повелитель Палаючого Легіону. Дальній бій. Атака: сплеш-урон 50%.'
+    id: 'archimond', name: 'Архімонд (Верховний демон)', hp: 5000, attack: 400, defense: 100, minDamage: 300, maxDamage: 500, speed: 2, range: 5, size: 2,
+    isEnemy: true, image: '/bosses/archimond.png', combatType: 'ranged', special: 'splash_50', description: 'ГОЛОВНИЙ БОС. Сплеш-урон 50%.'
   },
   despot: {
-    id: 'despot', name: 'Деспот', hp: 1000, attack: 200, defense: 40, minDamage: 100, maxDamage: 150, speed: 2, range: 1,
-    cost: { gold: 20000, food: 1000, wood: 500, stone: 500, crystals: 20 },
-    isEnemy: false, image: '/units/despot.png', combatType: 'melee', description: 'Безжалісний тиран. Ближній бій.'
+    id: 'despot', name: 'Деспот', hp: 2000, attack: 250, defense: 80, minDamage: 200, maxDamage: 300, speed: 5, range: 1, initiative: 100,
+    isEnemy: false, image: '/units/despot.png', combatType: 'melee', description: 'Безжалісний тиран. Ближній бій. Найсильніший юніт.'
   },
   skorpidus: {
-    id: 'skorpidus', name: 'Скорпідус', hp: 300, attack: 100, defense: 20, minDamage: 50, maxDamage: 100, speed: 3, range: 1,
-    isEnemy: true, image: '/mobs/skorpidus.png', combatType: 'melee', description: 'Гігантський пустельний скорпіон.'
+    id: 'skorpidus', name: 'Скорпідус', hp: 350, attack: 125, defense: 20, minDamage: 50, maxDamage: 100, speed: 3, range: 1,
+    isEnemy: true, image: '/mobs/skorpidus.png', combatType: 'melee', description: 'Отруйний жах. Ближній бій.'
   },
   scarbius: {
-    id: 'scarbius', name: 'Скарбіус', hp: 5000, attack: 300, defense: 100, minDamage: 200, maxDamage: 300, speed: 2, range: 1, size: 2,
-    isEnemy: true, image: '/bosses/scarbius.png', combatType: 'melee', description: 'Король скорпіонів. Велика броня.'
+    id: 'scarbius', name: 'Цар Скорпіонів', hp: 3500, attack: 250, defense: 50, minDamage: 150, maxDamage: 300, speed: 3, range: 1, size: 2,
+    isEnemy: true, image: '/bosses/scarbius.png', combatType: 'melee', description: 'БОС. Величезний захист.'
   }
 };
 

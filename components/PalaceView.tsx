@@ -1,19 +1,27 @@
 import { useState } from 'react';
 import { useGame } from '../lib/game-context';
 import { BuildingId, BUILDINGS_INFO } from '../lib/game.types';
-import { getUpgradeCost, hasEnoughResources, deductResources, addResources, formatNumber, cn, getPalaceUpgradeCost, playSound } from '../lib/game.utils';
-import { Coins, Trees, Mountain, Wheat, ArrowUpCircle, Trash2, Hammer, X, Lock, Users, Swords, Sparkles } from 'lucide-react';
+import { getUpgradeCost, getCumulativeBuildingCost, hasEnoughResources, deductResources, addResources, formatNumber, cn, getPalaceUpgradeCost, playSound } from '../lib/game.utils';
+import { Coins, Trees, Mountain, Wheat, ArrowUpCircle, Trash2, Hammer, X, Lock, Users, Swords, Sparkles, Move } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ForgeView from './ForgeView';
 import AltarComponent from './AltarComponent';
 import TavernView from './TavernView';
 
 export default function PalaceView() {
-  const { resources, setResources, buildings, setBuildings, palaceLevel, setPalaceLevel, referrals, setReferrals } = useGame();
+  const { resources, setResources, buildings, setBuildings, palaceLevel, setPalaceLevel, referrals, setReferrals, race } = useGame();
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [showForge, setShowForge] = useState(false);
   const [showAltar, setShowAltar] = useState(false);
   const [showPalaceUpgrade, setShowPalaceUpgrade] = useState(false);
+  const [showSellConfirm, setShowSellConfirm] = useState(false);
+  const [movingBuildingFrom, setMovingBuildingFrom] = useState<number | null>(null);
+
+  const raceTheme = {
+    human: { name: 'Людський Замок', color: 'text-blue-400', glow: 'shadow-blue-500/20', bg: 'bg-blue-900/10' },
+    orc: { name: 'Головна Цитадель', color: 'text-red-500', glow: 'shadow-red-600/20', bg: 'bg-red-950/10' },
+    elf: { name: 'Древо Життя', color: 'text-emerald-400', glow: 'shadow-emerald-500/20', bg: 'bg-emerald-900/10' }
+  }[race || 'human'];
 
   const handleCellClick = (index: number) => {
     // Check if cell is locked
@@ -22,6 +30,23 @@ export default function PalaceView() {
       alert(`Цю клітину заблоковано! Вона відкриється за рефералів. Потрібно ще ${ (index - 11) - referrals} реф.`);
       return;
     }
+
+    if (movingBuildingFrom !== null) {
+      if (movingBuildingFrom === index) {
+         setMovingBuildingFrom(null);
+         return;
+      }
+      const newBuildings = [...buildings];
+      const temp = newBuildings[index];
+      newBuildings[index] = newBuildings[movingBuildingFrom];
+      newBuildings[movingBuildingFrom] = temp;
+      setBuildings(newBuildings);
+      setMovingBuildingFrom(null);
+      playSound('/sfx/soundofbuilding.mp3'); 
+      return;
+    }
+
+    setShowSellConfirm(false);
     setSelectedCell(index === selectedCell ? null : index);
   };
 
@@ -98,20 +123,30 @@ export default function PalaceView() {
   const handleSell = () => {
     if (selectedCell === null || !buildings[selectedCell]) return;
     
-    // Give back 50% of base cost (simple logic)
-    const info = BUILDINGS_INFO[buildings[selectedCell]!.id];
-    if (!info) { // Fallback for removed buildings
+    if (!showSellConfirm) {
+      setShowSellConfirm(true);
+      return;
+    }
+
+    const building = buildings[selectedCell]!;
+    const info = BUILDINGS_INFO[building.id];
+    
+    if (!info) {
         const newBuildings = [...buildings];
         newBuildings[selectedCell] = null;
         setBuildings(newBuildings);
         setSelectedCell(null);
+        setShowSellConfirm(false);
         return;
     }
+
+    const totalSpent = getCumulativeBuildingCost(building.id, building.level);
     const refund = {
-      gold: Math.floor(info.baseCost.gold * 0.5),
-      wood: Math.floor(info.baseCost.wood * 0.5),
-      stone: Math.floor(info.baseCost.stone * 0.5),
-      food: Math.floor(info.baseCost.food * 0.5),
+      gold: Math.floor(totalSpent.gold * 0.5),
+      wood: Math.floor(totalSpent.wood * 0.5),
+      stone: Math.floor(totalSpent.stone * 0.5),
+      food: Math.floor(totalSpent.food * 0.5),
+      crystals: Math.floor((totalSpent.crystals || 0) * 0.5),
     };
     
     setResources(addResources(resources, refund));
@@ -119,6 +154,8 @@ export default function PalaceView() {
     newBuildings[selectedCell] = null;
     setBuildings(newBuildings);
     setSelectedCell(null);
+    setShowSellConfirm(false);
+    playSound('/sfx/trash.mp3'); // Assuming there might be a trash sound or just none
   };
 
   const renderCost = (cost: any) => (
@@ -141,65 +178,91 @@ export default function PalaceView() {
   );
 
   return (
-    <div className="w-full h-full flex flex-col items-center pt-2 px-4 pb-24 relative overflow-y-auto bg-stone-900/30 bg-[radial-gradient(circle,rgba(68,64,60,0.1)_1px,transparent_1px)] bg-[size:32px_32px]">
+    <div className={cn("w-full h-[calc(100vh-4rem)] flex flex-col items-center relative overflow-hidden bg-stone-900/40", raceTheme.bg)}>
       <div className="absolute inset-0 bg-[url('/city.png')] opacity-10 bg-cover bg-center mix-blend-overlay pointer-events-none transition-opacity duration-1000"></div>
-      
-      {/* Palace Header */}
-      <motion.div 
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="flex flex-col items-center mb-6 mt-16 sm:mt-4 relative z-20 w-full"
-      >
-        <div className="relative group" onClick={() => setShowPalaceUpgrade(true)}>
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-32 h-32 sm:w-36 sm:h-36 bg-stone-800 rounded-xl wow-border-gold flex flex-col items-center justify-end cursor-pointer shadow-[0_0_20px_rgba(245,158,11,0.2)] relative overflow-hidden group-hover:shadow-[0_0_30px_#f59e0b] transition-all"
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 to-transparent animate-pulse pointer-events-none"></div>
-            <img src="/buildings/hall.webp" alt="Палац" className="absolute inset-0 w-full h-full object-contain z-0 p-3 scale-110 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 pb-3 flex flex-col items-center w-full">
-              <p className="text-sm sm:text-base text-yellow-400 font-black uppercase tracking-widest text-shadow-glow relative z-10 shadow-black leading-none drop-shadow-lg mb-1">Головний Палац</p>
-              <p className="text-[11px] sm:text-[13px] font-bold text-stone-300 tracking-widest relative z-10 shadow-black px-3 py-0.5 bg-black/50 border border-stone-800 rounded-lg">Рівень <span className="text-white text-shadow-glow ml-1">{palaceLevel}</span></p>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 z-20 backdrop-blur-sm">
-               <ArrowUpCircle className="w-12 h-12 text-amber-400 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
-            </div>
-          </motion.div>
-          {palaceLevel >= 10 && (
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -top-3 -right-3 bg-gradient-to-br from-amber-400 to-amber-600 text-stone-900 text-[10px] sm:text-xs px-2.5 py-0.5 rounded shadow-[0_0_15px_rgba(245,158,11,0.5)] font-black border border-yellow-200"
-            >
-              MAX
-            </motion.div>
-          )}
-        </div>
-        <div className="flex flex-col items-center gap-1 mt-4">
-            <div className="flex items-center gap-1.5 bg-stone-950/70 px-3 py-1 rounded-full border border-stone-700/50 shadow-inner backdrop-blur-sm">
-               <span className="text-[10px] sm:text-xs text-stone-400 uppercase font-black tracking-widest">Ліміт ур: <span className="text-amber-500">{palaceLevel * 5}</span></span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-stone-950/70 px-3 py-1 rounded-full border border-stone-700/50 shadow-inner backdrop-blur-sm">
-               <Users className="w-3.5 h-3.5 text-indigo-400 drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]" />
-               <span className="text-[10px] sm:text-xs text-stone-300 font-bold tracking-wider">Реферали: <span className="text-indigo-300">{referrals}</span></span>
-            </div>
-        </div>
-      </motion.div>
 
-      {/* Grid wrapper */}
+      {/* Palace Header - More Compact */}
+      <div className="w-full flex-col flex items-center pt-2 pb-2 bg-stone-950/60 backdrop-blur-md relative z-[60] border-b border-stone-800/50 shadow-lg">
+        <motion.div 
+          initial={{ y: -10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="flex flex-col items-center relative w-full"
+        >
+          <div className="relative group scale-[0.75] sm:scale-95 -mb-4 sm:mb-0" onClick={() => setShowPalaceUpgrade(true)}>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={cn("w-16 h-16 sm:w-20 sm:h-20 bg-stone-800 rounded-xl wow-border-gold flex flex-col items-center justify-center cursor-pointer relative overflow-hidden transition-all group-hover:shadow-[0_0_30px_#f59e0b]", raceTheme.glow)}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 to-transparent animate-pulse pointer-events-none"></div>
+              <img 
+                src={race === 'human' ? '/buildings/magistrat.webp' : '/buildings/hall.webp'} 
+                className={cn("absolute inset-0 w-full h-full object-contain z-0 p-1 mb-2 scale-110 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]", 
+                  race === 'elf' ? 'sepia-[0.3] hue-rotate-[90deg]' : 
+                  race === 'orc' ? 'sepia-[0.3] hue-rotate-[-30deg]' : 
+                  ''
+                )} 
+                alt="Палац" 
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-black/80 pt-0.5 pb-0.5 flex flex-col items-center w-full border-t border-amber-900/30">
+                <p className={cn("text-[7px] font-black uppercase tracking-wider text-shadow-glow relative z-10 shadow-black leading-none drop-shadow-lg text-center px-1 truncate w-full", raceTheme.color)}>
+                  {raceTheme.name}
+                </p>
+              </div>
+            </motion.div>
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap z-30">
+               <p className="text-[9px] sm:text-[10px] font-bold text-white tracking-widest relative z-10 shadow-black px-1.5 py-0.5 bg-stone-900 border border-stone-700 rounded shadow-lg ring-1 ring-amber-500/30">Lvl {palaceLevel}</p>
+            </div>
+          </div>
+          
+          <div className="flex flex-row items-center gap-2 mt-4 sm:mt-5">
+              <div className="flex items-center gap-1 bg-stone-950/80 px-2 py-0.5 rounded-md border border-stone-700/50 shadow-inner">
+                 <span className="text-[9px] sm:text-[10px] text-stone-400 uppercase font-black">Буд. ліміт: <span className="text-amber-500">Lvl {palaceLevel * 5}</span></span>
+              </div>
+              <div className="flex items-center gap-1 bg-stone-950/80 px-2 py-0.5 rounded-md border border-stone-700/50 shadow-inner">
+                 <Users className="w-3 h-3 text-indigo-400" />
+                 <span className="text-[9px] sm:text-[10px] text-stone-300 font-bold uppercase">Реф: <span className="text-indigo-300">{referrals}</span></span>
+              </div>
+          </div>
+        </motion.div>
+      </div>
+
+      <div className="w-full flex-1 flex flex-col items-center justify-start pt-4 sm:pt-10 px-2 py-0 min-h-0 bg-stone-900/30">
+
+      <AnimatePresence>
+        {movingBuildingFrom !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="mb-4 bg-blue-900/30 border-2 border-blue-500 rounded-lg p-2 px-4 shadow-[0_0_20px_rgba(59,130,246,0.3)] flex items-center justify-between min-w-[300px]"
+          >
+            <span className="text-blue-300 font-bold uppercase text-[10px] tracking-widest flex items-center gap-2"><Move className="w-4 h-4"/> Клікніть клітинку для перенесення</span>
+            <button 
+               onClick={() => setMovingBuildingFrom(null)}
+               className="bg-blue-950 px-2 py-1 rounded text-red-400 uppercase text-[9px] font-black border border-blue-900"
+            >
+              Скасувати
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Grid wrapper - moved higher */}
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="w-full flex justify-center mb-8 px-2 max-w-[420px] mx-auto"
+        className="w-full flex justify-center px-1 max-w-[340px] mx-auto shrink shrink-0"
       >
-        <div className="grid grid-cols-4 gap-2 sm:gap-3 w-full max-w-[420px] p-3 sm:p-4 wow-panel relative bg-stone-900/80 backdrop-blur-md border border-stone-700/50 shadow-[0_0_30px_rgba(0,0,0,0.5)] rounded-2xl">
-          <div className="absolute inset-0 bg-gradient-to-b from-stone-800/20 to-transparent rounded-2xl pointer-events-none"></div>
+        <div className="grid grid-cols-4 gap-1 w-full p-2 sm:p-3 wow-panel relative bg-stone-900/90 backdrop-blur-md border border-stone-700/50 shadow-[0_20px_50px_rgba(0,0,0,0.7)] rounded-2xl">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent rounded-2xl pointer-events-none"></div>
           {buildings.map((building, i) => {
             const isSelected = selectedCell === i;
             // 12 base cells (0-11), 4 referral cells (12-15)
             const isLocked = i >= 12 && (i - 11) > referrals;
+            const isMovingFrom = movingBuildingFrom === i;
+            const isMoveTarget = movingBuildingFrom !== null && !isLocked && movingBuildingFrom !== i;
             
             return (
               <motion.button
@@ -211,15 +274,19 @@ export default function PalaceView() {
                   "aspect-square rounded-xl border flex flex-col items-center justify-center relative overflow-hidden group shadow-lg transition-all",
                   isLocked 
                      ? "border-stone-800/50 bg-stone-900/30 grayscale cursor-not-allowed opacity-30"
+                    : isMovingFrom
+                      ? "border-blue-500 bg-blue-900/50 shadow-[0_0_15px_#3b82f6,inset_0_0_15px_rgba(59,130,246,0.5)] z-10 animate-pulse"
                     : isSelected 
                       ? "border-amber-400 bg-stone-700/80 shadow-[0_0_15px_#f59e0b,inset_0_0_15px_rgba(245,158,11,0.5)] z-10" 
-                      : building ? "border-amber-900/60 bg-stone-800/80 hover:bg-stone-700/90 hover:border-amber-700/80" : "border-stone-800 border-dashed hover:border-amber-900/50 bg-stone-900/40"
+                      : isMoveTarget 
+                        ? building ? "border-blue-400/50 bg-blue-900/20 hover:border-blue-400 hover:bg-blue-800/50" : "border-blue-500/50 border-dashed hover:border-blue-400 hover:bg-blue-900/20 bg-stone-900/40 animate-pulse"
+                        : building ? "border-amber-900/60 bg-stone-800/80 hover:bg-stone-700/90 hover:border-amber-700/80" : "border-stone-800 border-dashed hover:border-amber-900/50 bg-stone-900/40"
                 )}
               >
                 {isLocked ? (
                   <div className="flex flex-col items-center gap-1 opacity-50">
                     <Lock className="w-4 h-4 text-stone-600" />
-                    <span className="text-[7px] text-stone-600 font-bold uppercase tracking-widest leading-none text-center px-1 border-t border-stone-800 pt-1 mt-1">Реф<br/> слот</span>
+                    <span className="text-[9px] text-stone-600 font-bold uppercase tracking-widest leading-none text-center px-1 border-t border-stone-800 pt-1 mt-1">Реф<br/> слот</span>
                   </div>
                 ) : building ? (
                   <>
@@ -230,21 +297,19 @@ export default function PalaceView() {
                         animate={{ scale: 1, opacity: 1 }}
                         src={BUILDINGS_INFO[building.id].image} 
                         alt={building.name} 
-                        className="w-10 h-10 sm:w-12 sm:h-12 object-contain z-10 mb-1 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] transition-transform group-hover:scale-110" 
+                        className="w-8 h-8 sm:w-10 sm:h-10 object-contain z-10 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] transition-transform group-hover:scale-110 mb-2 sm:mb-0" 
                       />
                     ) : (
-                      <span className="z-10 text-2xl sm:text-3xl mb-1 drop-shadow-md">{BUILDINGS_INFO[building.id]?.icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id]?.icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id]?.icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id]?.icon === 'Trees' ? '🪵' : '🪨'}</span>
+                      <span className="z-10 text-xl sm:text-2xl drop-shadow-md mb-2 sm:mb-0">{BUILDINGS_INFO[building.id]?.icon === 'Sword' ? '⚔️' : BUILDINGS_INFO[building.id]?.icon === 'Wheat' ? '🌾' : BUILDINGS_INFO[building.id]?.icon === 'Coins' ? '🪙' : BUILDINGS_INFO[building.id]?.icon === 'Trees' ? '🪵' : '🪨'}</span>
                     )}
                     {isSelected && (
                       <div className="absolute inset-0 border-2 border-amber-400 rounded-xl z-20 animate-pulse pointer-events-none w-full h-full"></div>
                     )}
-                    {!isSelected && (
-                      <div className="absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 bg-stone-900/80 px-1 py-0.5 rounded shadow-sm border border-stone-700/50">
-                        <div className="text-[8px] sm:text-[9px] text-amber-400/90 font-bold z-10 font-mono leading-none shadow-black drop-shadow-md">
-                          L.{building.level}
-                        </div>
+                    <div className="absolute bottom-0 inset-x-0 bg-stone-900/90 py-1 shadow-sm border-t border-stone-700/50 z-20 text-center">
+                      <div className="text-[10px] font-mono font-bold text-amber-400 leading-none shadow-black drop-shadow-md">
+                        Lvl {building.level}
                       </div>
-                    )}
+                    </div>
                   </>
                 ) : (
                   <>
@@ -260,37 +325,39 @@ export default function PalaceView() {
         </div>
       </motion.div>
 
-      {/* Action Menu (Bottom Sheet style) */}
+      </div>
+
+      {/* Action Menu (Modal style) */}
       <AnimatePresence>
         {selectedCell !== null && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 50 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 50 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-[95%] max-w-[400px] wow-panel p-5 z-50 shadow-[0_0_50px_rgba(0,0,0,0.8)] border-amber-900/50 backdrop-blur-md bg-stone-900/95"
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none rounded-lg"></div>
-            <div className="flex justify-between items-center mb-4 relative z-10">
-              <p className="text-xs sm:text-sm text-yellow-500 font-black uppercase tracking-widest text-shadow-glow">
-                {buildings[selectedCell] ? 'Дії з будівлею' : 'Побудувати'}
+          <div className="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-4 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-full max-w-[360px] wow-panel p-4 pb-6 rounded-xl shadow-[0_10px_60px_rgba(0,0,0,0.9)] border-amber-900/50 backdrop-blur-md bg-stone-900/98 max-h-[85vh] flex flex-col relative"
+            >
+              <div className="flex justify-between items-center mb-4 relative z-10 shrink-0 border-b border-stone-800 pb-3">
+                <p className="text-sm text-yellow-500 font-extrabold uppercase tracking-[0.2em] text-shadow-glow">
+                {buildings[selectedCell] ? 'УПРАВЛІННЯ' : 'ПОБУДУВАТИ'}
               </p>
-              <button onClick={() => setSelectedCell(null)} className="text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700 p-1 rounded-full transition-colors shadow-inner border border-stone-700/50">
-                <X className="w-4 h-4 sm:w-5 sm:h-5"/>
+              <button onClick={() => setSelectedCell(null)} className="text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700 p-2 rounded-full transition-all active:scale-90 shadow-inner border border-stone-700/50">
+                <X className="w-5 h-5"/>
               </button>
             </div>
 
-            <div className="relative z-10">
+            <div className="relative z-10 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-stone-700 scrollbar-track-transparent pr-1">
               {buildings[selectedCell] ? (
                 <div className="flex flex-col gap-3">
-                  <div className="mb-2 flex flex-col p-3 bg-stone-950/50 rounded-lg border border-stone-800 shadow-inner w-full">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 pb-2 border-b border-stone-800 gap-2">
-                      <span className="font-black text-white text-base uppercase tracking-widest text-shadow-glow break-words w-full sm:w-auto">{buildings[selectedCell]!.name}</span> 
-                      <span className="text-[10px] sm:text-xs text-amber-500 font-black bg-amber-950/50 px-2 py-0.5 rounded border border-amber-900/50 shadow-inner whitespace-nowrap">LVL {buildings[selectedCell]!.level} / {palaceLevel * 5}</span>
+                  <div className="mb-1 flex flex-col p-3 bg-stone-950/60 rounded-lg border border-stone-800 shadow-inner w-full">
+                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-stone-800 gap-2">
+                      <span className="font-black text-white text-base uppercase tracking-widest text-shadow-glow break-words">{buildings[selectedCell]!.name}</span> 
+                      <span className="text-[10px] text-amber-500 font-black bg-amber-950/50 px-2 py-1 rounded border border-amber-900/50 shadow-inner whitespace-nowrap">LVL {buildings[selectedCell]!.level} / {palaceLevel * 5}</span>
                     </div>
                     {BUILDINGS_INFO[buildings[selectedCell]!.id]?.production && (
                       <div className="mt-1">
-                        <p className="text-[9px] uppercase text-stone-500 font-bold mb-1 tracking-widest">Видобуток (кожні 5 сек):</p>
+                        <p className="text-[10px] uppercase text-stone-500 font-black mb-1.5 tracking-widest opacity-70">Видобуток (кожні 5 сек):</p>
                         {renderProduction(BUILDINGS_INFO[buildings[selectedCell]!.id].production, buildings[selectedCell]!.level)}
                       </div>
                     )}
@@ -298,28 +365,57 @@ export default function PalaceView() {
                   
                   <button 
                     onClick={handleUpgrade}
-                    disabled={!buildings[selectedCell] || !BUILDINGS_INFO[buildings[selectedCell]!.id] || !hasEnoughResources(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level), resources)}
-                    className="w-full text-left py-3 px-4 rounded font-bold border-l-4 border-emerald-500 transition-all disabled:opacity-50 disabled:grayscale flex justify-between wow-panel-metal hover:bg-stone-700 hover:-translate-y-0.5"
+                    disabled={!buildings[selectedCell] || !BUILDINGS_INFO[buildings[selectedCell]!.id] || buildings[selectedCell]!.level >= palaceLevel * 5 || !hasEnoughResources(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level), resources)}
+                    className="w-full text-left py-4 px-4 rounded font-bold border-l-8 border-emerald-600 transition-all disabled:opacity-50 disabled:grayscale flex justify-between wow-panel-metal hover:bg-stone-700 hover:-translate-y-1 shadow-lg"
                   >
                     <div className="flex flex-col items-start gap-1">
-                      <span className="text-emerald-400 font-black uppercase tracking-widest text-sm drop-shadow-md flex items-center gap-2"><ArrowUpCircle className="w-5 h-5"/> Покращити</span>
-                      {BUILDINGS_INFO[buildings[selectedCell]!.id]?.production && (
-                        <span className="text-[10px] text-emerald-300/80 font-bold bg-emerald-950/30 px-1.5 py-0.5 rounded">Буде: +{formatNumber(Object.values(BUILDINGS_INFO[buildings[selectedCell]!.id].production!)[0] as number * (buildings[selectedCell]!.level + 1))} / 5s</span>
+                      <span className="text-emerald-400 font-black uppercase tracking-widest text-sm drop-shadow-md flex items-center gap-2"><ArrowUpCircle className="w-5 h-5"/> {buildings[selectedCell]!.level >= palaceLevel * 5 ? 'МАКС. ДЛЯ ПАЛАЦУ' : 'ПОКРАЩИТИ'}</span>
+                      {BUILDINGS_INFO[buildings[selectedCell]!.id]?.production && buildings[selectedCell]!.level < palaceLevel * 5 && (
+                        <span className="text-[9px] text-emerald-300/80 font-black bg-emerald-950/30 px-1.5 py-0.5 rounded tracking-tighter">БУДЕ: +{formatNumber(Object.values(BUILDINGS_INFO[buildings[selectedCell]!.id].production!)[0] as number * (buildings[selectedCell]!.level + 1))} / 5s</span>
                       )}
                     </div>
                     <div className="flex items-center">
-                      {renderCost(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level))}
+                      {buildings[selectedCell]!.level < palaceLevel * 5 && renderCost(getUpgradeCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level))}
                     </div>
                   </button>
-                <button 
-                  onClick={handleSell}
-                  className="w-full text-left py-2 px-3 rounded font-bold border-l-4 border-red-800 transition-colors flex justify-between text-xs wow-panel-metal hover:bg-stone-700"
-                >
-                  <span className="text-red-500">💰 Знести</span>
-                  <span className="text-[9px] text-stone-500 mt-0.5">Поверне 50% бази</span>
-                </button>
+                  
+                <div className="flex gap-2 w-full mt-2">
+                  <button 
+                    onClick={() => {
+                      setMovingBuildingFrom(selectedCell);
+                      setSelectedCell(null);
+                    }}
+                    className="flex-1 text-left py-2.5 px-4 rounded font-bold border-l-4 border-blue-900 transition-all flex flex-col gap-1 text-xs wow-panel-metal hover:bg-blue-950/20 active:bg-blue-950/40"
+                  >
+                    <div className="flex justify-between w-full items-center">
+                      <span className="text-blue-400 font-black flex items-center gap-2 uppercase tracking-widest text-[10px]"><Move className="w-4 h-4"/> Перемістити</span>
+                    </div>
+                  </button>
+                  <button 
+                    onClick={handleSell}
+                    className={cn("flex-1 text-left py-2.5 px-4 rounded font-bold border-l-4 transition-all flex flex-col gap-1 text-xs wow-panel-metal hover:bg-red-950/20 active:bg-red-950/40", showSellConfirm ? "border-red-600 bg-red-950/30 ring-2 ring-red-500 animate-pulse" : "border-red-900")}
+                  >
+                    <div className="flex justify-between w-full items-center">
+                      <span className="text-red-500 font-black flex items-center gap-2 uppercase tracking-widest text-[10px]"><Trash2 className="w-4 h-4"/> {showSellConfirm ? "ТОЧНО?" : "Знести"}</span>
+                      <span className="text-[9px] text-stone-600 font-black uppercase tracking-[0.1em]">-50%</span>
+                    </div>
+                    <div className="flex gap-2 items-center opacity-60">
+                      {(() => {
+                        const totalSpent = getCumulativeBuildingCost(buildings[selectedCell]!.id, buildings[selectedCell]!.level);
+                        return (
+                          <div className="flex gap-1 flex-wrap text-[9px] font-mono font-black">
+                            {totalSpent.gold > 0 && <span className="text-yellow-600">+{formatNumber(totalSpent.gold * 0.5)} G</span>}
+                            {totalSpent.wood > 0 && <span className="text-amber-700">+{formatNumber(totalSpent.wood * 0.5)} W</span>}
+                            {totalSpent.stone > 0 && <span className="text-stone-500">+{formatNumber(totalSpent.stone * 0.5)} S</span>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </button>
+                </div>
+
                 {buildings[selectedCell]?.id === 'barracks' && (
-                  <button className="w-full py-3 px-4 rounded font-bold border-l-4 border-amber-600 transition-colors mt-2 text-xs wow-panel-metal text-stone-300 flex items-center justify-center gap-2 bg-stone-800">
+                  <button className="w-full py-4 px-4 rounded font-black border-l-8 border-amber-700 transition-colors mt-2 text-[10px] uppercase tracking-widest wow-panel-metal text-stone-400 flex items-center justify-center gap-2 bg-stone-800/50">
                     <Swords className="w-4 h-4 text-amber-500" />
                     <span>Наймайте Армію у вкладці "Армія"</span>
                   </button>
@@ -327,57 +423,59 @@ export default function PalaceView() {
                 {buildings[selectedCell]?.id === 'forge' && (
                   <button 
                     onClick={() => setShowForge(true)}
-                    className="w-full py-3 px-4 rounded font-bold border-l-4 border-stone-400 transition-all mt-2 wow-panel-metal text-stone-100 hover:bg-stone-700 flex items-center justify-center gap-2 hover:-translate-y-0.5"
+                    className="w-full py-4 px-4 rounded font-black border-l-8 border-stone-400 transition-all mt-2 wow-panel-metal text-stone-100 hover:bg-stone-700 flex items-center justify-center gap-2 hover:-translate-y-1 shadow-lg"
                   >
                     <Hammer className="w-5 h-5 text-stone-300" />
-                    <span className="uppercase tracking-widest text-shadow-glow">Кузня</span>
+                    <span className="uppercase tracking-[0.2em] text-shadow-glow">КУЗНЯ</span>
                   </button>
                 )}
                 {buildings[selectedCell]?.id === 'altar' && (
                   <button 
                     onClick={() => setShowAltar(true)}
-                    className="w-full py-3 px-4 rounded font-bold border-l-4 border-fuchsia-600 transition-all mt-2 wow-panel-metal text-stone-100 hover:bg-stone-700 flex items-center justify-center gap-2 hover:-translate-y-0.5"
+                    className="w-full py-4 px-4 rounded font-black border-l-8 border-fuchsia-700 transition-all mt-2 wow-panel-metal text-stone-100 hover:bg-stone-700 flex items-center justify-center gap-2 hover:-translate-y-1 shadow-lg"
                   >
                     <Sparkles className="w-5 h-5 text-fuchsia-400" />
-                    <span className="uppercase tracking-widest text-shadow-glow">Вівтар</span>
+                    <span className="uppercase tracking-[0.2em] text-shadow-glow">ВІВТАР</span>
                   </button>
                 )}
               </div>
             ) : (
-              <div className="flex flex-col gap-3 max-h-[45vh] overflow-y-auto px-2 pb-4 pt-1 snap-y scrollbar-thin scrollbar-thumb-stone-600 scrollbar-track-stone-900 w-full mb-1">
+              <div className="flex flex-col gap-3 overflow-y-auto px-1 pb-6 pt-2 snap-y scrollbar-thin scrollbar-thumb-stone-600 scrollbar-track-transparent w-full">
                 {Object.values(BUILDINGS_INFO).filter(b => b.id !== 'tavern').map((info) => {
                   const cost = getUpgradeCost(info.id, 0);
                   const canAfford = hasEnoughResources(cost, resources);
                   return (
                     <motion.button
-                      whileHover={canAfford ? { scale: 1.02 } : {}}
+                      whileHover={canAfford ? { scale: 1.02, x: 5 } : {}}
                       whileTap={canAfford ? { scale: 0.98 } : {}}
                       key={info.id}
                       onClick={() => handleBuild(info.id)}
                       disabled={!canAfford}
                       className={cn(
-                        "w-full text-left p-3 rounded-lg border-l-4 transition-all flex flex-col gap-2 relative overflow-hidden group shadow-lg snap-start shrink-0",
+                        "w-full text-left p-4 rounded-xl border-l-[12px] transition-all flex flex-col gap-3 relative overflow-hidden group shadow-xl snap-start shrink-0 min-h-[110px]",
                         canAfford 
-                          ? "wow-panel-metal border-amber-500 hover:border-amber-400" 
-                          : "bg-stone-800/80 border-stone-700/50 opacity-60 cursor-not-allowed"
+                          ? "wow-panel-metal border-amber-600 hover:border-amber-400" 
+                          : "bg-stone-800/90 border-stone-700/50 opacity-40 cursor-not-allowed grayscale"
                       )}
                     >
                       {canAfford && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/5 to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none"></div>}
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-2">
-                           <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 bg-stone-900 rounded p-1 shadow-inner border border-stone-700">
-                              {info.image ? (
-                                <img src={info.image} alt="" className="w-full h-full object-contain" />
-                              ) : null}
-                           </div>
-                           <div className="flex-1 min-w-0 pr-2">
-                              <span className="font-black text-sm tracking-widest uppercase text-amber-500 drop-shadow-md block truncate">{info.name}</span>
-                              <p className="text-[9px] sm:text-[10px] text-stone-400 font-semibold leading-tight mt-0.5 line-clamp-2">{info.description}</p>
-                           </div>
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-stone-950 rounded-lg p-1.5 shadow-2xl border border-amber-900/30 group-hover:border-amber-500/50 transition-colors">
+                           {info.image ? (
+                             <img src={info.image} alt="" className="w-full h-full object-contain" />
+                           ) : (
+                             <div className="w-full h-full flex items-center justify-center text-2xl">
+                               {info.id === 'barracks' ? '⚔️' : info.id === 'farm' ? '🌾' : '🏗️'}
+                             </div>
+                           )}
+                        </div>
+                        <div className="flex-1 min-w-0 pr-1">
+                           <span className="font-black text-sm sm:text-base tracking-[0.1em] uppercase text-white drop-shadow-md block truncate group-hover:text-amber-400 transition-colors">{info.name}</span>
+                           <p className="text-[10px] sm:text-xs text-stone-400 font-bold leading-tight mt-1 line-clamp-2 italic opacity-80">{info.description}</p>
                         </div>
                       </div>
-                      <div className="mt-1 flex items-center justify-between w-full bg-stone-950/50 p-2 rounded-md border border-stone-800 shadow-inner flex-wrap gap-1">
-                        <span className="text-[9px] uppercase font-bold tracking-widest text-stone-500">Вартість:</span>
+                      <div className="mt-1 flex items-center justify-between w-full bg-stone-950/70 p-2.5 rounded-lg border border-stone-800 shadow-inner flex-wrap gap-2 group-hover:bg-stone-950 transition-colors">
+                        <span className="text-[9px] sm:text-[10px] uppercase font-black tracking-widest text-stone-600">Вартість:</span>
                         {renderCost(cost)}
                       </div>
                     </motion.button>
@@ -386,7 +484,8 @@ export default function PalaceView() {
               </div>
             )}
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -404,7 +503,7 @@ export default function PalaceView() {
               animate={{ scale: 1, y: 0 }} 
               exit={{ scale: 0.9, y: 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full max-w-sm wow-panel p-6 relative overflow-hidden bg-stone-900 border-amber-500/50 shadow-[0_0_50px_rgba(245,158,11,0.2)]"
+              className="w-full max-w-sm max-h-[90vh] overflow-y-auto wow-panel p-6 relative bg-stone-900 border-amber-500/50 shadow-[0_0_50px_rgba(245,158,11,0.2)]"
             >
                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
                <img src="/buildings/hall.webp" alt="UI" className="absolute top-0 right-0 w-40 h-40 opacity-5 pointer-events-none translate-x-1/4 -translate-y-1/4 mix-blend-screen" />
@@ -422,7 +521,7 @@ export default function PalaceView() {
                <div className="space-y-4 mb-6 relative z-10">
                   <div className="p-4 bg-stone-950/80 rounded-lg border border-amber-900/40 text-xs text-stone-300 italic leading-relaxed shadow-inner relative overflow-hidden">
                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-600/50"></div>
-                     "{PALACE_DESCRIPTIONS[palaceLevel] || "Розвивайте свій палац для отримання нових можливостей."}"
+                     &quot;{PALACE_DESCRIPTIONS[palaceLevel] || "Розвивайте свій палац для отримання нових можливостей."}&quot;
                   </div>
                   <div className="flex items-center gap-4 p-4 bg-stone-800/80 rounded-lg border border-green-900/30 shadow-lg">
                      <div className="bg-green-900/40 p-2 rounded-full border border-green-700/50 shadow-[0_0_15px_rgba(34,197,94,0.2)]">

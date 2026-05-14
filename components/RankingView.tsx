@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useGame } from '../lib/game-context';
-import { formatNumber } from '../lib/game.utils';
+import { formatNumber, getRaceIcon, cn } from '../lib/game.utils';
 import { Trophy, Users, Sword, Shield, X, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { UNITS_INFO, UnitId } from '../lib/game.types';
@@ -57,7 +57,7 @@ export default function RankingView() {
                 : 'bg-stone-900/40 border-stone-800'
             }`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm italic ${
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm italic shrink-0 ${
               index === 0 ? 'bg-yellow-500 text-stone-900 border-2 border-white' :
               index === 1 ? 'bg-stone-300 text-stone-900' :
               index === 2 ? 'bg-amber-700 text-white' :
@@ -66,11 +66,9 @@ export default function RankingView() {
               {index + 1}
             </div>
 
-            {leader.activeHeroId && (
-              <div className="w-8 h-8 rounded-full border-2 border-amber-500 overflow-hidden bg-stone-900 shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
-                <img src={`/heroes/${leader.activeHeroId}.png`} alt="Hero" className="w-full h-full object-cover" />
-              </div>
-            )}
+            <div className="w-10 h-10 rounded-full border-2 border-amber-900/50 overflow-hidden bg-stone-950 shrink-0 shadow-lg">
+              <img src={getRaceIcon(leader.race || (leader.resources?.race as any))} alt="Race" className="w-full h-full object-cover" />
+            </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -115,31 +113,39 @@ export default function RankingView() {
               </button>
 
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-stone-800 rounded-full mx-auto border-2 border-amber-500 shadow-2xl flex items-center justify-center mb-3 overflow-hidden">
-                   {selectedUser.activeHeroId ? (
-                     <img src={`/heroes/${selectedUser.activeHeroId}.png`} className="w-full h-full object-cover" alt="Hero" />
-                   ) : (
-                     <Users className="w-10 h-10 text-amber-500" />
-                   )}
+                <div className="w-24 h-24 mx-auto mb-3 bg-stone-800 rounded-full border-4 border-amber-900 shadow-2xl flex items-center justify-center overflow-hidden">
+                  <img src={getRaceIcon(selectedUser.race || selectedUser.resources?.race)} className="w-full h-full object-cover p-1" alt="Race" />
                 </div>
                 <h3 className="text-xl font-black text-amber-500 uppercase">{selectedUser.playerName}</h3>
-                <p className="text-xs text-stone-500 uppercase font-bold tracking-widest">Міць армії: {formatNumber(selectedUser.armyPower || 0)}</p>
+                <p className="text-xs text-stone-500 uppercase font-bold tracking-widest leading-none mt-1">Володіння Лорда</p>
               </div>
 
               <div className="space-y-4 max-h-[350px] overflow-y-auto p-1 pr-2 scrollbar-thin">
-                {selectedUser.activeHeroId && (
-                  <div className="wow-panel-metal p-2 border-amber-900/50 bg-amber-900/10 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded border border-amber-500 overflow-hidden shrink-0">
-                      <img src={`/heroes/${selectedUser.activeHeroId}.png`} alt="Hero" className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <h4 className="text-[10px] font-black text-amber-500 uppercase">Герой Правителя</h4>
-                      <p className="text-[8px] text-stone-400 font-bold uppercase opacity-80">Веде армію в бій</p>
-                    </div>
+                {/* Defensive Structures */}
+                {(selectedUser.resources?.siegeUnits || selectedUser.siegeUnits)?.some((s: any) => s) && (
+                  <div className="space-y-2">
+                     <p className="text-[10px] text-stone-500 font-bold uppercase tracking-widest border-b border-stone-800 pb-1">Оборонне спорядження</p>
+                     <div className="grid grid-cols-4 gap-2">
+                        {(selectedUser.resources?.siegeUnits || selectedUser.siegeUnits || []).map((unitId: UnitId | null, idx: number) => {
+                          if (!unitId) return <div key={idx} className="aspect-square rounded border border-stone-800 bg-stone-900/50 flex items-center justify-center text-[8px] text-stone-700">EMPTY</div>;
+                          const info = UNITS_INFO[unitId];
+                          return (
+                            <div key={idx} className="aspect-square rounded border border-amber-900/30 bg-amber-950/20 p-1 relative overflow-hidden group">
+                               <img src={info?.image} alt="" className="w-full h-full object-contain" />
+                               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center p-1 text-center">
+                                 <span className="text-[6px] font-black uppercase text-amber-500">{info?.name}</span>
+                               </div>
+                            </div>
+                          );
+                        })}
+                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                   <p className="text-[10px] text-stone-500 font-bold uppercase tracking-widest border-b border-stone-800 pb-1">Армія володіння</p>
+                   <p className="text-[8px] text-stone-600 font-bold uppercase mb-1">Міць: {formatNumber(selectedUser.armyPower || 0)}</p>
+                   <div className="grid grid-cols-2 gap-2">
                   {Object.entries(selectedUser.army || {}).map(([id, count]) => {
                     if ((count as number) <= 0) return null;
                     const info = UNITS_INFO[id as UnitId];
@@ -157,13 +163,14 @@ export default function RankingView() {
                   })}
                 </div>
               </div>
-
-              <button 
-                onClick={() => setSelectedUser(null)}
-                className="w-full mt-6 py-3 bg-stone-800 text-stone-300 font-black uppercase tracking-widest text-xs rounded hover:bg-stone-700"
-              >
-                Закрити
-              </button>
+            </div>
+            
+            <button 
+              onClick={() => setSelectedUser(null)}
+              className="w-full mt-6 py-3 bg-stone-800 text-stone-300 font-black uppercase tracking-widest text-xs rounded hover:bg-stone-700"
+            >
+              Закрити
+            </button>
             </motion.div>
           </div>
         )}

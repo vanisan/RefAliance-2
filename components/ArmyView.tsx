@@ -1,11 +1,15 @@
 import { useGame } from '../lib/game-context';
 import { UNITS_INFO, UnitId } from '../lib/game.types';
 import { hasEnoughResources, deductResources, formatNumber } from '../lib/game.utils';
-import { Coins, Trees, Mountain, Wheat, UserPlus, Shield, Users, Gem } from 'lucide-react';
+import { Coins, Trees, Mountain, Wheat, UserPlus, Shield, Users, Gem, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 export default function ArmyView() {
-  const { resources, setResources, army, setArmy, buildings } = useGame();
+  const { resources, setResources, army, setArmy, buildings, equipment } = useGame();
+  
+  const atkMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.attackBonus || 0), 0) / 100;
+  const defMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.defenseBonus || 0), 0) / 100;
+  const hpMod  = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.hpBonus || 0), 0) / 100;
   
   // Find highest barracks level to determine allowed units or hiring speed
   const barracksLevel = buildings.reduce((max, b) => (b?.id === 'barracks' ? Math.max(max, b.level) : max), 0);
@@ -16,21 +20,25 @@ export default function ArmyView() {
   const maxTroops = 50 + (farmsCount * 10) + (totalFarmLevels * 20);
   const currentTroops = Object.values(army).reduce((acc, count) => acc + Number(count), 0);
 
-  const [hireCounts, setHireCounts] = useState<Record<UnitId, number>>({
-    knight: 1, archer: 1, berserk: 1, mage: 1, dragon: 1, titan: 1, assassin: 1, goblin: 0, orc: 0,
-    skelet: 0, vampire: 0, demon: 0, giant: 0, hydra: 0, souleater: 0, driada: 1, paladin: 1,
-    banshee: 0, arachnid: 0, frostdragon: 0, archidruid: 0,
-    balista: 1, elven_balista: 1, archer_tower: 1, mage_tower: 1,
-    veliar: 0, kronos: 0, archimond: 0, despot: 1,
-    skorpidus: 0, scarbius: 0
-  });
+  const [hireCounts, setHireCounts] = useState<Record<string, number>>({});
+
+  const updateCount = (unitId: string, increment: boolean) => {
+    setHireCounts(prev => {
+      const current = prev[unitId] || 1;
+      const next = increment ? current + 1 : Math.max(1, current - 1);
+      return { ...prev, [unitId]: next };
+    });
+  };
 
   const handleHire = (unitId: UnitId) => {
     const info = UNITS_INFO[unitId];
     if (!info.cost) return;
 
     const count = hireCounts[unitId] || 1;
-    if (currentTroops + count > maxTroops) return;
+    if (currentTroops + count > maxTroops) {
+      alert(`Недостатньо місця в армії! У вас ${currentTroops}/${maxTroops} місць. Побудуйте або покращіть Ферми.`);
+      return;
+    }
 
     const totalCost = {
       gold: (info.cost.gold || 0) * count,
@@ -49,33 +57,44 @@ export default function ArmyView() {
     });
   };
 
-  const updateCount = (unitId: UnitId, increment: boolean) => {
-    setHireCounts(prev => {
-      const current = prev[unitId] || 1;
-      const next = increment ? current + 1 : Math.max(1, current - 1);
-      return { ...prev, [unitId]: next };
-    });
-  };
-
   const renderCost = (cost: any, count: number) => {
     if (!cost) return null;
     return (
-      <div className="flex gap-2 text-[10px] font-mono mb-2">
-        {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3 h-3 mr-0.5"/>{formatNumber(cost.gold * count)}</span>}
-        {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3 h-3 mr-0.5"/>{formatNumber(cost.wood * count)}</span>}
-        {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3 h-3 mr-0.5"/>{formatNumber(cost.stone * count)}</span>}
-        {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3 h-3 mr-0.5"/>{formatNumber(cost.food * count)}</span>}
-        {cost.crystals > 0 && <span className="flex items-center text-cyan-400"><Gem className="w-3 h-3 mr-0.5"/>{formatNumber(cost.crystals * count)}</span>}
+      <div className="flex flex-wrap gap-2 text-xs sm:text-[10px] font-mono">
+        {cost.gold > 0 && <span className="flex items-center text-yellow-500"><Coins className="w-3.5 h-3.5 sm:w-3 sm:h-3 mr-1 sm:mr-0.5"/>{formatNumber(cost.gold * count)}</span>}
+        {cost.wood > 0 && <span className="flex items-center text-amber-600"><Trees className="w-3.5 h-3.5 sm:w-3 sm:h-3 mr-1 sm:mr-0.5"/>{formatNumber(cost.wood * count)}</span>}
+        {cost.stone > 0 && <span className="flex items-center text-stone-400"><Mountain className="w-3.5 h-3.5 sm:w-3 sm:h-3 mr-1 sm:mr-0.5"/>{formatNumber(cost.stone * count)}</span>}
+        {cost.food > 0 && <span className="flex items-center text-orange-400"><Wheat className="w-3.5 h-3.5 sm:w-3 sm:h-3 mr-1 sm:mr-0.5"/>{formatNumber(cost.food * count)}</span>}
+        {cost.crystals > 0 && <span className="flex items-center text-cyan-400"><Gem className="w-3.5 h-3.5 sm:w-3 sm:h-3 mr-1 sm:mr-0.5"/>{formatNumber(cost.crystals * count)}</span>}
       </div>
     );
   };
 
+  const { race } = useGame();
   let recruitableUnits: UnitId[] = [];
-  if (barracksLevel >= 1) recruitableUnits.push('knight', 'archer');
-  if (barracksLevel >= 2) recruitableUnits.push('berserk', 'mage');
-  if (barracksLevel >= 3) recruitableUnits.push('assassin');
-  if (barracksLevel >= 4) recruitableUnits.push('driada', 'paladin');
-  if (barracksLevel >= 5) recruitableUnits.push('dragon', 'titan');
+
+  if (race === 'human') {
+    if (barracksLevel >= 1) recruitableUnits.push('h_peasant');
+    if (barracksLevel >= 2) recruitableUnits.push('h_footman');
+    if (barracksLevel >= 3) recruitableUnits.push('h_archer');
+    if (barracksLevel >= 4) recruitableUnits.push('h_knight');
+    if (barracksLevel >= 5) recruitableUnits.push('h_archmage');
+  } else if (race === 'orc') {
+    if (barracksLevel >= 1) recruitableUnits.push('o_peon');
+    if (barracksLevel >= 2) recruitableUnits.push('o_grunt');
+    if (barracksLevel >= 3) recruitableUnits.push('o_headhunter');
+    if (barracksLevel >= 4) recruitableUnits.push('o_raider');
+    if (barracksLevel >= 5) recruitableUnits.push('o_shaman');
+  } else if (race === 'elf') {
+    if (barracksLevel >= 1) recruitableUnits.push('e_wisp');
+    if (barracksLevel >= 2) recruitableUnits.push('e_archer');
+    if (barracksLevel >= 3) recruitableUnits.push('e_huntress');
+    if (barracksLevel >= 4) recruitableUnits.push('e_druid');
+    if (barracksLevel >= 5) recruitableUnits.push('e_dryad');
+  }
+
+  // Elite units
+  // Removed as requested: they are only available via summoning
 
   return (
     <div className="w-full h-full flex flex-col items-center p-2 space-y-3 pb-24 overflow-y-auto bg-stone-900/30">
@@ -112,7 +131,7 @@ export default function ArmyView() {
       </div>
 
       {/* Recruitment */}
-      <div className="space-y-4 relative z-10 w-full pb-8">
+      <div className="space-y-3 relative z-10 w-full pb-8">
         <h3 className="font-bold text-sm text-stone-400 mb-2 border-b border-stone-800 pb-2 uppercase tracking-widest">Найм (Рівень казарми: {barracksLevel})</h3>
         
         {recruitableUnits.map(unitId => {
@@ -129,44 +148,45 @@ export default function ArmyView() {
           const hasSpace = currentTroops + count <= maxTroops;
 
           return (
-            <div key={unitId} className="wow-panel-metal p-3 flex flex-col relative overflow-hidden transition-all">
-              <div className="flex justify-between items-start mb-2 relative z-10">
+            <div key={unitId} className="wow-panel-metal p-2 sm:p-3 flex flex-col relative overflow-hidden transition-all">
+              <div className="flex justify-between items-center mb-2 relative z-10">
                 <div className="flex gap-3 items-center">
                   {info.image && (
-                     <div className="w-10 h-10 bg-stone-800 rounded border border-stone-700 overflow-hidden shrink-0 flex items-center justify-center">
-                       <img src={info.image} alt={info.name} className="w-full h-full object-cover" />
+                     <div className="w-12 h-12 bg-stone-900 rounded border border-stone-700 overflow-hidden shrink-0 flex items-center justify-center p-0.5 shadow-inner">
+                       <img src={info.image} alt={info.name} className="w-full h-full object-cover rounded-sm" />
                      </div>
                   )}
-                  <div>
-                    <div className="font-black text-base text-stone-200 uppercase tracking-widest">{info.name}</div>
-                    <div className="text-[11px] text-stone-400 flex flex-wrap gap-x-2 gap-y-1 mt-1 font-mono">
-                      <span className="bg-stone-950 px-1 py-0.5 rounded text-red-500">❤ {formatNumber(info.hp)}</span>
-                      <span className="bg-stone-950 px-1 py-0.5 rounded text-yellow-500">⚔ {formatNumber(info.attack)}</span>
-                      <span className="bg-stone-950 px-1 py-0.5 rounded text-blue-400">🛡 {formatNumber(info.defense)}</span>
-                      <span className="bg-stone-950 px-1 py-0.5 rounded text-emerald-500">⚡ {info.speed}</span>
+                  <div className="flex flex-col justify-center gap-1.5">
+                    <div className="font-black text-xs sm:text-sm text-stone-200 uppercase tracking-widest leading-none drop-shadow-md">{info.name}</div>
+                    <div className="text-[9px] text-stone-400 flex flex-wrap gap-1.5 font-mono">
+                      <span className="flex items-center gap-0.5 text-red-400"><span className="text-[10px]">❤</span> {formatNumber(Math.floor(info.hp * hpMod))}</span>
+                      <span className="flex items-center gap-0.5 text-yellow-500"><span className="text-[10px]">⚔</span> {formatNumber(Math.floor(info.attack * atkMod))}</span>
+                      <span className="flex items-center gap-0.5 text-blue-400"><span className="text-[10px]">🛡</span> {formatNumber(Math.floor(info.defense * defMod))}</span>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-lg border border-stone-800 shrink-0">
-                  <button onClick={() => updateCount(unitId, false)} className="w-6 h-6 bg-stone-800 rounded text-stone-300 font-bold hover:bg-stone-700 transition-colors">-</button>
-                  <span className="font-mono font-bold w-10 text-center text-xs text-stone-200">{formatNumber(count)}</span>
-                  <button onClick={() => updateCount(unitId, true)} className="w-6 h-6 bg-stone-800 rounded text-stone-300 font-bold hover:bg-stone-700 transition-colors">+</button>
-                  <button onClick={() => setHireCounts(prev => ({...prev, [unitId]: (prev[unitId] || 1) * 5}))} className="w-6 h-6 bg-stone-800 rounded text-amber-500 font-bold hover:bg-stone-700 transition-colors text-[9px]">x5</button>
+                <div className="flex items-center gap-1 bg-stone-950/50 p-1 rounded-lg border border-stone-800 shrink-0">
+                  <button onClick={() => updateCount(unitId, false)} className="w-8 h-8 bg-stone-800 rounded font-bold hover:bg-stone-700 text-stone-300 transition-colors flex items-center justify-center">-</button>
+                  <span className="font-mono font-bold w-6 text-center text-xs text-stone-200">{formatNumber(count)}</span>
+                  <button onClick={() => updateCount(unitId, true)} className="w-8 h-8 bg-stone-800 rounded font-bold hover:bg-stone-700 text-stone-300 transition-colors flex items-center justify-center">+</button>
                 </div>
               </div>
 
-              <div className="flex items-end justify-between mt-2 pt-2 border-t border-stone-700/50 relative z-10">
-                <div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-stone-800/80 relative z-10 w-full pl-0.5">
+                <div className="flex-1">
                   {renderCost(info.cost, count)}
                 </div>
-                <button
-                  onClick={() => handleHire(unitId)}
-                  disabled={!canAfford || count < 1 || !hasSpace}
-                  className={`px-5 py-2 wow-button text-[10px] uppercase font-black tracking-widest ${!hasSpace && canAfford ? 'opacity-50 !bg-red-900/50' : ''}`}
-                >
-                  {hasSpace ? 'Найняти' : `Місць немає (${currentTroops}/${maxTroops})`}
-                </button>
+                <div className="shrink-0 flex items-center pl-2">
+                   <button onClick={() => setHireCounts(prev => ({...prev, [unitId]: (prev[unitId] || 1) * 5}))} className="h-7 px-2 mr-2 bg-stone-800 rounded border border-stone-700 text-amber-500 font-bold hover:bg-stone-700 transition-colors text-[9px] flex items-center justify-center whitespace-nowrap hidden sm:flex">x5</button>
+                   <button
+                     onClick={() => handleHire(unitId)}
+                     disabled={!canAfford || count < 1 || !hasSpace}
+                     className={`px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-black rounded text-[10px] uppercase tracking-widest whitespace-nowrap min-w-[70px] text-center shadow-[0_0_10px_rgba(217,119,6,0.3)] transition-all ${!hasSpace && canAfford ? 'ring-2 ring-red-500 bg-red-950 text-red-500 opacity-90' : ''}`}
+                   >
+                     {hasSpace ? 'Найняти' : `НЕМА МІСЦЯ`}
+                   </button>
+                </div>
               </div>
             </div>
           );

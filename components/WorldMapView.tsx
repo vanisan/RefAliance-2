@@ -2,23 +2,27 @@ import { useState, useEffect } from 'react';
 import { useGame } from '../lib/game-context';
 import { X, Globe, User, Shield, Info, Layout } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BUILDINGS_INFO, UnitId, UNITS_INFO } from '../lib/game.types';
+import { BUILDINGS_INFO, UnitId, UNITS_INFO, MapNode } from '../lib/game.types';
+import { cn } from '../lib/game.utils';
 
 interface WorldMapViewProps {
   onClose: () => void;
+  onStartCombat?: (node: MapNode) => void;
 }
 
 interface RankedPlayer {
   id: string;
+  uid?: string;
   playerName: string;
   armyPower: number;
   buildings: any[];
   army: any;
   siegeUnits: (UnitId | null)[];
+  resources?: any;
 }
 
-export default function WorldMapView({ onClose }: WorldMapViewProps) {
-  const { getLeaderboard } = useGame();
+export default function WorldMapView({ onClose, onStartCombat }: WorldMapViewProps) {
+  const { getLeaderboard, resources, setResources, user } = useGame();
   const [randomPlayers, setRandomPlayers] = useState<RankedPlayer[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<RankedPlayer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +41,7 @@ export default function WorldMapView({ onClose }: WorldMapViewProps) {
   }, [getLeaderboard]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2 md:p-6 backdrop-blur-sm overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-2 md:p-6 backdrop-blur-sm overflow-hidden">
       <div className="absolute inset-0 bg-[url('/universemap.png')] bg-cover bg-center opacity-40"></div>
       
       <div className="w-full h-full max-w-5xl rounded-lg wow-panel flex flex-col relative z-10 p-4 border-amber-900 overflow-hidden">
@@ -146,10 +150,10 @@ export default function WorldMapView({ onClose }: WorldMapViewProps) {
                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Облога (Оборона):</span>
                     </div>
                     <div className="flex gap-2">
-                       {selectedPlayer.siegeUnits && selectedPlayer.siegeUnits.map((sid, i) => (
+                       {(selectedPlayer.resources?.siegeUnits || selectedPlayer.siegeUnits || []).map((sid: any, i: number) => (
                          <div key={i} className="w-10 h-10 bg-stone-900 border border-stone-800 rounded flex items-center justify-center relative">
                             {sid && (
-                              <img src={UNITS_INFO[sid].image} alt="" className="w-8 h-8 object-contain" />
+                              <img src={UNITS_INFO[sid as UnitId]?.image} alt="" className="w-8 h-8 object-contain" />
                             )}
                             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
                          </div>
@@ -169,8 +173,53 @@ export default function WorldMapView({ onClose }: WorldMapViewProps) {
                </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
-               <button onClick={() => setSelectedPlayer(null)} className="wow-button px-6 py-2 uppercase font-black text-xs tracking-widest">Закрити</button>
+            <div className="mt-6 flex justify-between items-center gap-4">
+               <button onClick={() => setSelectedPlayer(null)} className="wow-button-metal px-6 py-2 uppercase font-black text-xs tracking-widest text-stone-400">Закрити</button>
+               
+               {user?.id !== (selectedPlayer.id || selectedPlayer.uid) && onStartCombat && (
+                  <div className="flex-1 flex flex-col items-end gap-1">
+                    <button 
+                      disabled={(resources.settlementKeys || 0) <= 0}
+                      onClick={() => {
+                        const armyEntries = Object.entries(selectedPlayer.army || {})
+                          .filter(([_, count]) => (count as number) > 0)
+                          .map(([id, count]) => ({ unitId: id as UnitId, count: count as number }));
+
+                        onStartCombat({
+                          id: `attack-${selectedPlayer.id || selectedPlayer.uid}`,
+                          name: `Атака на ${selectedPlayer.playerName}`,
+                          type: 'settlement',
+                          x: 0, y: 0,
+                          enemies: armyEntries,
+                          targetId: selectedPlayer.id || selectedPlayer.uid,
+                          targetName: selectedPlayer.playerName,
+                          targetSiegeUnits: selectedPlayer.resources?.siegeUnits || selectedPlayer.siegeUnits || [],
+                          reward: {}, 
+                          cleared: false,
+                          campaignLevel: 'all'
+                        });
+                        
+                        setResources(prev => ({ 
+                          ...prev, 
+                          settlementKeys: (prev.settlementKeys || 1) - 1,
+                          lastSettlementKeyTime: Date.now()
+                        }));
+                        
+                        setSelectedPlayer(null);
+                        onClose();
+                      }}
+                      className={cn(
+                        "px-8 py-2.5 rounded font-black uppercase tracking-widest text-xs transition-all active:scale-95",
+                        (resources.settlementKeys || 0) > 0 
+                          ? "bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.4)] border border-red-400/50" 
+                          : "bg-stone-800 text-stone-600 cursor-not-allowed border border-stone-700"
+                      )}
+                    >
+                      {(resources.settlementKeys || 0) > 0 ? 'Розпочати бій' : 'Немає ключів'}
+                    </button>
+                    <p className="text-[8px] text-stone-500 font-bold uppercase tracking-tighter">Вартість: 1 ключ нападу</p>
+                  </div>
+               )}
             </div>
           </motion.div>
         )}

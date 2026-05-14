@@ -3,7 +3,7 @@ import { MapNode, UNITS_INFO } from '../lib/game.types';
 import { formatNumber, cn } from '../lib/game.utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Swords, MapPin, Store, Hammer, BookOpen, Skull, X, Shield, Trophy, Globe } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ShopView from './ShopView';
 import ArenaView from './ArenaView';
 import WorldMapView from './WorldMapView';
@@ -12,13 +12,22 @@ import SummonView from './SummonView';
 
 interface MapViewProps {
   onStartCombat: (node: MapNode) => void;
+  forceCityOpen?: boolean;
 }
 
 import BattlePrepModal from './BattlePrepModal';
 
-export default function MapView({ onStartCombat }: MapViewProps) {
+export default function MapView({ onStartCombat, forceCityOpen }: MapViewProps) {
   const { mapNodes, mapRefreshTimer, army, resources, setResources, currentCampaignLevel, setCurrentCampaignLevel, buildings } = useGame();
   const [selectedNode, setSelectedNode] = useState<MapNode | null>(null);
+
+  // Initialize selectedNode if forceCityOpen is true
+  useEffect(() => {
+    if (forceCityOpen) {
+      const cityNode = mapNodes.find(n => n.type === 'city');
+      if (cityNode) setSelectedNode(cityNode);
+    }
+  }, [forceCityOpen, mapNodes]);
   const [showShop, setShowShop] = useState(false);
   const [showArena, setShowArena] = useState(false);
   const [showWorldMap, setShowWorldMap] = useState(false);
@@ -274,7 +283,7 @@ export default function MapView({ onStartCombat }: MapViewProps) {
                    <div className="flex items-center gap-2 font-black text-amber-500 italic">🍻 Таверна Героїв</div>
                    <span className="text-[7px] text-stone-500 font-bold">НОВЕ</span>
                  </button>
-                 {buildings?.some(b => b?.id === 'barracks' && (b?.level ?? 0) >= 10) && (
+                 {buildings?.some(b => b?.id === 'barracks' && (b?.level ?? 0) >= 1) && (
                    <button 
                     onClick={() => {
                       setSelectedNode(null);

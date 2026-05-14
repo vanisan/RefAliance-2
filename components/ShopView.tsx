@@ -33,7 +33,7 @@ export default function ShopView({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 bg-stone-950 z-50 flex flex-col p-4 pt-16 overflow-y-auto"
+      className="fixed inset-0 bg-stone-950 z-[100] flex flex-col p-4 pt-16 overflow-y-auto"
     >
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 h-16 bg-stone-900 border-b border-stone-800 flex justify-between items-center px-4 shadow-[0_4px_10px_rgba(0,0,0,0.5)] z-20">

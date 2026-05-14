@@ -28,6 +28,7 @@ type CombatUnit = {
   x: number;
   y: number;
   hasActed: boolean;
+  curses?: { attackCurse: number; defenseCurse: number };
 };
 
 interface Projectile {
@@ -78,6 +79,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 5));
 
+  const [invitation, setInvitation] = useState<{ matchId: string, fromName: string, fromPlayer: any } | null>(null);
+
   // --- LOBBY LOGIC ---
   useEffect(() => {
     if (!user || !supabase) {
@@ -98,9 +101,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       .on('broadcast', { event: 'match_invitation' }, ({ payload }) => {
         if (payload.targetId === user.id) {
           // Received a match invitation
-          if (confirm(`Гравець ${payload.fromName} викликає вас на бій! Прийняти?`)) {
-            joinMatch(payload.matchId, payload.fromPlayer, 1);
-          }
+          setInvitation({ matchId: payload.matchId, fromName: payload.fromName, fromPlayer: payload.fromPlayer });
         }
       })
       .subscribe(async (status) => {
@@ -547,8 +548,11 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       return;
     }
 
-    const dx = Math.max(0, Math.max(x - (activeUnit.x + (info.size || 1) - 1), activeUnit.x - (x + 1 - 1)));
-    const dy = Math.max(0, Math.max(y - (activeUnit.y + (info.size || 1) - 1), activeUnit.y - (y + 1 - 1)));
+    const targetSize = uAt ? UNITS_INFO[uAt.unitId].size || 1 : 1;
+    const tx = uAt ? uAt.x : x;
+    const ty = uAt ? uAt.y : y;
+    const dx = Math.max(0, Math.max(tx - (activeUnit.x + (info.size || 1) - 1), activeUnit.x - (tx + targetSize - 1)));
+    const dy = Math.max(0, Math.max(ty - (activeUnit.y + (info.size || 1) - 1), activeUnit.y - (ty + targetSize - 1)));
     const dist = dx + dy;
 
     if (uAt) {
@@ -690,23 +694,35 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     let effAttack = Math.floor(attInfo.attack * pAtt.atkMod);
     let effDefense = Math.floor(defInfo.defense * pDef.defMod);
     
+    // Apply curses
+    if (att.curses) effAttack = Math.max(1, effAttack - att.curses.attackCurse);
+    if (def.curses) effDefense = Math.max(1, effDefense - def.curses.defenseCurse);
+
     // Paladin Aura
     const defSize = defInfo.size || 1;
     const hasPaladinAura = currentUnits.some(u => {
-      if (u.playerIndex !== def.playerIndex || u.unitId !== 'paladin' || u.count <= 0) return false;
+      if (u.playerIndex !== def.playerIndex || UNITS_INFO[u.unitId].special !== 'aura_def_10_hp_20' || u.count <= 0) return false;
       const uSize = UNITS_INFO[u.unitId]?.size || 1;
       const dx = Math.max(0, Math.max(u.x - (def.x + defSize - 1), def.x - (u.x + uSize - 1)));
       const dy = Math.max(0, Math.max(u.y - (def.y + defSize - 1), def.y - (u.y + uSize - 1)));
       return dx <= 1 && dy <= 1;
     });
-    if (hasPaladinAura) effDefense += 15;
+    if (hasPaladinAura) effDefense += 10;
 
     const effMinDmg = Math.floor(attInfo.minDamage * pAtt.atkMod);
     const effMaxDmg = Math.floor(attInfo.maxDamage * pAtt.atkMod);
-    const effUnitHp = Math.floor(defInfo.hp * pDef.hpMod);
+    let effUnitHp = Math.floor(defInfo.hp * pDef.hpMod);
+    if (hasPaladinAura) effUnitHp += 20;
 
     const rawDmg = getRandomDamage(effMinDmg, effMaxDmg);
     let totalDmg = rawDmg * att.count;
+    
+    if (attInfo.special === 'crit_25_x2' && Math.random() < 0.25) {
+      totalDmg *= 2;
+    }
+    if (attInfo.special === 'crit_30_x1_5' && Math.random() < 0.30) {
+      totalDmg = Math.floor(totalDmg * 1.5);
+    }
     const statDiff = effAttack - effDefense;
     const multiplier = Math.max(0.05, 1 + (statDiff * 0.05));
     totalDmg = Math.floor(totalDmg * multiplier);
@@ -1121,10 +1137,41 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          className="w-full flex flex-col items-center"
+          className="w-full h-full flex flex-col items-center"
         >
           {gameOver ? renderResults() : view === 'lobby' ? renderLobby() : renderBattle()}
         </motion.div>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {invitation && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-stone-900 border-2 border-amber-500 p-6 rounded-xl shadow-[0_0_50px_rgba(245,158,11,0.3)] z-[200] max-w-sm w-full"
+          >
+            <h3 className="text-xl font-black text-amber-500 uppercase tracking-widest mb-2">Виклик на бій!</h3>
+            <p className="text-stone-300 font-medium mb-6">Гравець <span className="text-white font-bold">{invitation.fromName}</span> викликає вас на арену.</p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setInvitation(null)}
+                className="flex-1 py-3 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold uppercase tracking-widest rounded-lg transition-colors"
+              >
+                Відхилити
+              </button>
+              <button 
+                onClick={() => {
+                  joinMatch(invitation.matchId, invitation.fromPlayer, 1);
+                  setInvitation(null);
+                }}
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black uppercase tracking-widest rounded-lg transition-colors"
+              >
+                Прийняти
+              </button>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

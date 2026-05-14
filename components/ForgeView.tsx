@@ -8,7 +8,12 @@ import { useState } from "react";
 import { hasEnoughResources, deductResources } from "@/lib/game.utils";
 
 export default function ForgeView({ onClose }: { onClose: () => void }) {
-  const { resources, setResources, siegeUnits, setSiegeUnits } = useGame();
+  const { resources, setResources, siegeUnits, setSiegeUnits, equipment } = useGame();
+  
+  const atkMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.attackBonus || 0), 0) / 100;
+  const defMod = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.defenseBonus || 0), 0) / 100;
+  const hpMod  = 1 + Object.values(equipment).reduce((acc, eq) => acc + (eq?.stats.hpBonus || 0), 0) / 100;
+  
   const [error, setError] = useState<string | null>(null);
 
   const siegeIds: UnitId[] = ['balista', 'elven_balista', 'archer_tower', 'mage_tower'];
@@ -125,13 +130,13 @@ export default function ForgeView({ onClose }: { onClose: () => void }) {
                       
                       <div className="flex flex-wrap gap-2 mb-3">
                          <div className="flex items-center gap-1 text-[10px] text-red-300">
-                           <Sword size={10} /> {info.attack}
+                           <Sword size={10} /> {Math.floor(info.attack * atkMod)}
                          </div>
                          <div className="flex items-center gap-1 text-[10px] text-blue-300">
-                           <Shield size={10} /> {info.defense}
+                           <Shield size={10} /> {Math.floor(info.defense * defMod)}
                          </div>
                          <div className="flex items-center gap-1 text-[10px] text-green-300">
-                           <Heart size={10} /> {info.hp}
+                           <Heart size={10} /> {Math.floor(info.hp * hpMod)}
                          </div>
                       </div>
 
