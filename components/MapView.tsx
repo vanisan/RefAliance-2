@@ -365,7 +365,7 @@ export default function MapView({ onStartCombat, forceCityOpen }: MapViewProps) 
         
         {prepNode && (
           <BattlePrepModal 
-            onStart={(selectedArmy) => {
+            onStart={(selectedArmy, selectedSiegeUnits) => {
               if (prepNode.type === 'daily_boss') {
                  setResources(prev => ({
                     ...prev,
@@ -373,7 +373,7 @@ export default function MapView({ onStartCombat, forceCityOpen }: MapViewProps) 
                     lastBossKeyTime: (prev.bossKeys || 0) >= 2 ? Date.now() : prev.lastBossKeyTime
                  }));
               }
-              onStartCombat({ ...prepNode, selectedArmy } as any);
+              onStartCombat({ ...prepNode, selectedArmy, targetSiegeUnits: selectedSiegeUnits } as any);
               setPrepNode(null);
             }}
             onCancel={() => setPrepNode(null)}

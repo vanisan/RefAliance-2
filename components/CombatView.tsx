@@ -163,11 +163,37 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
         });
       }
 
-      return initialUnits;
-    });
+      // Player Siege Units
+    const playerSiege = (node as any).targetSiegeUnits as (UnitId | null)[];
+    if (playerSiege) {
+      playerSiege.forEach((unitId, idx) => {
+        if (!unitId) return;
+        const info = UNITS_INFO[unitId];
+        const size = 1; // Player units are 1x1 in current grid mostly
+        const sY = idx * 2;
+        if (sY + size <= GRID_HEIGHT) {
+          initialUnits.push({
+            id: `p-siege-${idx}`,
+            unitId: unitId,
+            count: 1,
+            startCount: 1,
+            hp: Math.floor(info.hp * hpMod), 
+            isEnemy: false,
+            x: 0,
+            y: sY,
+            hasActed: false,
+            hasRetaliated: false
+          });
+        }
+      });
+    }
+
+    return initialUnits;
+  });
 
   const [turn, setTurn] = useState<'player' | 'enemy'>(node.type === 'boss' || node.type === 'settlement' ? 'enemy' : 'player');
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  const [autoCombat, setAutoCombat] = useState(false);
   const [attackingUnitId, setAttackingUnitId] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>(['Бій розпочався!']);
   const [gameOver, setGameOver] = useState<'victory' | 'defeat' | null>(null);
@@ -843,7 +869,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
       return;
     }
 
-    if (!activeUnit) return;
+    if (!activeUnit || activeUnit.isEnemy) return;
 
     const activeInfo = UNITS_INFO[activeUnit.unitId];
     const activeSize = activeInfo.size || 1;
@@ -1054,6 +1080,53 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     
     onEnd();
   };
+
+  // AI Auto-combat for player
+  useEffect(() => {
+    if (autoCombat && turn === 'player' && !gameOver && activeUnitId && activeUnitId !== 'hero-token') {
+      const activeUnit = units.find(u => u.id === activeUnitId);
+      if (!activeUnit || activeUnit.hasActed || activeUnit.isEnemy) return;
+
+      const timer = setTimeout(() => {
+        const enemies = units.filter(u => u.isEnemy && u.count > 0);
+        if (enemies.length === 0) return;
+
+        // Simple Target: Nearest enemy
+        let target = enemies[0];
+        let minDist = 999;
+        const mySize = UNITS_INFO[activeUnit.unitId].size || 1;
+
+        enemies.forEach(e => {
+            const eSize = UNITS_INFO[e.unitId].size || 1;
+            const dist = getManhattanDist(activeUnit.x, activeUnit.y, mySize, e.x, e.y, eSize);
+            if (dist < minDist) { minDist = dist; target = e; }
+        });
+
+        // Try to move towards or attack
+        const info = UNITS_INFO[activeUnit.unitId];
+        if (minDist <= info.range) {
+           handleCellClick(target.x, target.y);
+        } else {
+           // Move closer
+           const dx = Math.sign(target.x - activeUnit.x);
+           const dy = Math.sign(target.y - activeUnit.y);
+           handleCellClick(activeUnit.x + dx, activeUnit.y + dy);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    
+    // Auto-skip hero turn if autoCombat is on
+    if (autoCombat && turn === 'player' && !gameOver && isHeroTurn) {
+        setTimeout(() => {
+            setHasHeroActed(true);
+            hasHeroActedRef.current = true;
+            setIsHeroTurn(false);
+            setActiveUnitId(null);
+            setTimeout(() => determineNextActiveUnit(units), 100);
+        }, 500);
+    }
+  }, [autoCombat, turn, gameOver, activeUnitId, units, isHeroTurn]);
 
   // Generate grid UI
   const gridCells = [];
@@ -1577,25 +1650,36 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
           </button>
           
           {turn === 'player' && (
-            <button 
-              onClick={() => {
-                if (activeUnitId === 'hero-token') {
-                  setHasHeroActed(true);
-                  hasHeroActedRef.current = true;
-                  setIsHeroTurn(false);
-                  setActiveUnitId(null);
-                  setTimeout(() => determineNextActiveUnit(units), 100);
-                  return;
-                }
-                if (activeUnitId) {
-                  const updatedUnits = units.map(u => u.id === activeUnitId ? markUnitActed(u) : u);
-                  determineNextActiveUnit(updatedUnits);
-                }
-              }}
-              className="flex-1 px-2 py-0 bg-stone-800 border border-stone-700 text-stone-300 rounded font-black text-[10px] uppercase hover:bg-stone-700"
-            >
-              ПАС
-            </button>
+            <div className="flex gap-1 flex-1">
+              <button 
+                onClick={() => {
+                  if (activeUnitId === 'hero-token') {
+                    setHasHeroActed(true);
+                    hasHeroActedRef.current = true;
+                    setIsHeroTurn(false);
+                    setActiveUnitId(null);
+                    setTimeout(() => determineNextActiveUnit(units), 100);
+                    return;
+                  }
+                  if (activeUnitId) {
+                    const updatedUnits = units.map(u => u.id === activeUnitId ? markUnitActed(u) : u);
+                    determineNextActiveUnit(updatedUnits);
+                  }
+                }}
+                className="flex-1 px-2 py-0 bg-stone-800 border border-stone-700 text-stone-300 rounded font-black text-[10px] uppercase hover:bg-stone-700"
+              >
+                ПАС
+              </button>
+              <button 
+                onClick={() => setAutoCombat(!autoCombat)}
+                className={cn(
+                  "flex-1 px-2 py-0 border rounded font-black text-[10px] uppercase transition-all active:scale-95",
+                  autoCombat ? "bg-red-600 border-red-400 text-white shadow-[0_0_10px_rgba(220,38,38,0.4)]" : "bg-stone-800 border-stone-700 text-stone-400"
+                )}
+              >
+                {autoCombat ? "ВИМК. АВТО" : "АВТОБІЙ"}
+              </button>
+            </div>
           )}
         </div>
 

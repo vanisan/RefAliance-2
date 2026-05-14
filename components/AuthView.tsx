@@ -71,10 +71,14 @@ export default function AuthView() {
 
       // 1. Increment MASTER'S referrals in the DB (Unlocks THEIR cell)
       const currentMasterRefs = master.referrals || master.resources?.referrals || 0;
+      const newRefs = currentMasterRefs + 1;
+      const updatedResources = { ...(master.resources || {}), referrals: newRefs };
+
       const { error: masterUpdateError } = await supabase
         .from('users')
         .update({ 
-          referrals: currentMasterRefs + 1,
+          referrals: newRefs,
+          resources: updatedResources,
           lastUpdate: new Date().toISOString()
         })
         .eq('id', master.id);

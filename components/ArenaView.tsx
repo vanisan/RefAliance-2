@@ -577,7 +577,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const handleCellClick = (x: number, y: number) => {
     if (turn !== myIndex || gameOver) return;
     const activeUnit = units.find(u => u.id === activeUnitId);
-    if (!activeUnit) return;
+    if (!activeUnit || activeUnit.playerIndex !== myIndex) return;
 
     const uAt = getUnitAt(x, y);
     const info = UNITS_INFO[activeUnit.unitId];
@@ -1226,6 +1226,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
           onStart={prepData.type === 'invite' ? handleStartInvitation : handleJoinInvitation}
           onCancel={() => setPrepData(null)}
           title={prepData.type === 'invite' ? `Заклик ${prepData.payload.name}` : `Бій проти ${prepData.payload.fromName}`}
+          showSiegeUnits={false}
         />
       )}
     </div>
