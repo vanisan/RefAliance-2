@@ -71,6 +71,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
+  // --- STATE REFS FOR CALLBACKS ---
+  const stateRef = useRef({ units, turn, activeUnitId, myIndex, match });
+  useEffect(() => {
+    stateRef.current = { units, turn, activeUnitId, myIndex, match };
+  }, [units, turn, activeUnitId, myIndex, match]);
+
   const reportedLossesRef = useRef<Record<string, number>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
   const lobbyChannelRef = useRef<RealtimeChannel | null>(null);
@@ -233,9 +239,6 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       })
       .on('broadcast', { event: 'player_joined' }, ({ payload }) => {
         if (role === 0) {
-          // Instead of doing state side-effects inside setMatch, we calculate it here
-          // But we need the current match state (p0). 
-          // `p0` is in the closure of startMatch.
           const updated: ArenaMatchState = {
             id,
             players: [p0, payload.player],
@@ -246,15 +249,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
             winner: null
           };
           setMatch(updated);
-          syncFullState(updated);
+          const newUnits = initializeUnits(updated.players[0], updated.players[1]);
+          syncFullState(updated, newUnits);
           addLog(`Гравець ${payload.player.name} увійшов у бій!`);
         }
       })
       .on('broadcast', { event: 'skip_turn' }, ({ payload }) => {
-        if (myIndex === 0) {
-            const updatedUnits = units.map(u => u.id === payload.unitId ? { ...u, hasActed: true } : u);
-            finishAction(updatedUnits);
-        }
+        handleRemoteSkipTurn(payload.unitId);
       })
       .on('broadcast', { event: 'sync_state' }, ({ payload }) => {
         console.log('Received sync_state:', payload);
@@ -308,17 +309,20 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     let u = currentUnits || units;
     if (u.length === 0 && m.players[0] && m.players[1]) {
       u = initializeUnits(m.players[0], m.players[1]);
-      setUnits(u);
     }
+    
+    setUnits(u);
 
     const nextActiveId = getNextActiveUnitId(u, m.turn);
+    const activeUnit = u.find(x => x.id === nextActiveId);
+    const actualTurn = activeUnit ? activeUnit.playerIndex : m.turn;
 
     channelRef.current?.send({
       type: 'broadcast',
       event: 'sync_state',
       payload: {
         units: u,
-        turn: m.turn,
+        turn: actualTurn,
         round: 1,
         timer: TURN_TIME,
         activeUnitId: nextActiveId,
@@ -326,7 +330,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       }
     });
 
-    setTurn(m.turn);
+    setTurn(actualTurn as 0 | 1);
     setActiveUnitId(nextActiveId);
   };
 
@@ -448,6 +452,14 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const skipTurn = () => {
     channelRef.current?.send({ type: 'broadcast', event: 'skip_turn', payload: { unitId: activeUnitId } });
+    handleRemoteSkipTurn(activeUnitId);
+  };
+
+  const handleRemoteSkipTurn = (unitId: string | null) => {
+    if (!unitId) return;
+    const { units } = stateRef.current;
+    const updatedUnits = units.map(u => u.id === unitId ? { ...u, hasActed: true } : u);
+    finishAction(updatedUnits);
   };
 
   const finishAction = (updatedUnits: CombatUnit[]) => {
@@ -487,18 +499,20 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       setTimer(TURN_TIME);
     }
 
-    // Only broadcast if we took the action
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'sync_state',
-      payload: {
-        units: finalUnits,
-        turn: nextTurn,
-        round: nextRound,
-        timer: TURN_TIME,
-        activeUnitId: nextId || getNextActiveUnitId(finalUnits, nextTurn)
-      }
-    });
+    // Only Host broadcasts authoritative state
+    if (myIndex === 0) {
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'sync_state',
+        payload: {
+          units: finalUnits,
+          turn: nextTurn,
+          round: nextRound,
+          timer: TURN_TIME,
+          activeUnitId: nextId || getNextActiveUnitId(finalUnits, nextTurn)
+        }
+      });
+    }
   };
 
   const [isHealMode, setIsHealMode] = useState(false);
@@ -584,6 +598,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const handleRemoteMove = (unitId: string, x: number, y: number) => {
+    const { units } = stateRef.current;
     const updated = units.map(u => u.id === unitId ? { ...u, x, y, hasActed: true } : u);
     setUnits(updated);
     const unit = updated.find(u => u.id === unitId);
@@ -591,10 +606,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       addLog(`${UNITS_INFO[unit.unitId].name} перемістився.`);
     }
     
-    // Only Host progresses state
-    if (myIndex === 0) {
-      finishAction(updated);
-    }
+    // Both Host and Guest progress state
+    finishAction(updated);
   };
 
   const localAttack = (attId: string, defId: string) => {
@@ -603,11 +616,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const handleRemoteAttack = (attId: string, defId: string) => {
+    const { units } = stateRef.current;
     const att = units.find(u => u.id === attId);
     const def = units.find(u => u.id === defId);
     
     if (att && def) {
-        processAttack(att, def);
+        processAttack(att, def, units);
     }
   };
 
@@ -617,6 +631,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const handleRemoteHeal = (driadaId: string, targetId: string) => {
+    const { units } = stateRef.current;
     const driada = units.find(u => u.id === driadaId);
     const target = units.find(u => u.id === targetId);
     
@@ -641,15 +656,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       setFloatingTexts(prev => [...prev, { id: fId, text: `+${healAmount}`, x: target.x, y: target.y, color: 'text-green-500' }]);
       setTimeout(() => setFloatingTexts(prev => prev.filter(f => f.id !== fId)), 1000);
       
-      // Only Host progresses state
-      if (myIndex === 0) {
-        finishAction(updated);
-      }
+      // Both Host and Guest progress state
+      finishAction(updated);
     }
   };
 
   // --- COMBAT CORE ---
-  const processAttack = (attacker: CombatUnit, defender: CombatUnit) => {
+  const processAttack = (attacker: CombatUnit, defender: CombatUnit, currentUnits: CombatUnit[]) => {
     const attackerInfo = UNITS_INFO[attacker.unitId];
     const defenderInfo = UNITS_INFO[defender.unitId];
 
@@ -685,14 +698,15 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     };
 
     // Damage calculation
-    const damageObj = calculatePvPDamage(attacker, defender, units);
+    const damageObj = calculatePvPDamage(attacker, defender, currentUnits);
     let remainingStackHP = (defender.count - 1) * damageObj.effUnitHp + defender.hp - damageObj.totalDmg;
     let newCount = Math.max(0, Math.ceil(remainingStackHP / damageObj.effUnitHp));
     let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % damageObj.effUnitHp === 0 ? damageObj.effUnitHp : remainingStackHP % damageObj.effUnitHp);
 
     addFloatingText(`-${damageObj.totalDmg}`, defender.x, defender.y, 'text-rose-500');
 
-    const updated = units.map(u => {
+    // Use currentUnits instead of closure units
+    const updated = currentUnits.map(u => {
       if (u.id === attacker.id) return { ...u, hasActed: true };
       if (u.id === defender.id) return { ...u, count: newCount, hp: newTopHP };
       return u;
@@ -701,10 +715,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     setUnits(updated);
     addLog(`${attackerInfo.name} -> ${damageObj.totalDmg} шкоди. Вбито: ${defender.count - newCount}`);
     
-    // Only Host progresses state
-    if (myIndex === 0) {
-      finishAction(updated);
-    }
+    // Both Host and Guest progress state
+    finishAction(updated);
   };
 
   const calculatePvPDamage = (att: CombatUnit, def: CombatUnit, currentUnits: CombatUnit[]) => {
