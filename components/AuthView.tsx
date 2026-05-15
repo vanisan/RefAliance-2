@@ -35,7 +35,13 @@ export default function AuthView() {
         .contains('resources', { referredBy: user.id });
 
       if (error) throw error;
+      
+      const refCount = data?.length || 0;
       setMyReferrals(data?.map(u => ({ id: u.id, name: u.playerName })) || []);
+      
+      if (refCount !== globalReferrals) {
+        setGlobalReferrals(refCount);
+      }
     } catch (e) {
       console.error('Error fetching referrals:', e);
     }
@@ -56,44 +62,26 @@ export default function AuthView() {
     setLoading(true);
     try {
       // Find the Master (owner of the code)
-      const { data: allUsers, error: searchError } = await supabase
+      const { data: masterData, error: searchError } = await supabase
         .from('users')
-        .select('id, playerName, referrals, resources');
+        .select('id, playerName')
+        .ilike('id', `${code.toLowerCase()}%`)
+        .limit(1);
 
       if (searchError) throw searchError;
 
-      const master = allUsers?.find(u => u.id.substring(0, 6).toUpperCase() === code);
+      const master = masterData?.[0];
 
       if (!master) {
         setLoading(false);
         return alert('Код не знайдено. Перевірте правильність вводу.');
       }
 
-      // 1. Increment MASTER'S referrals in the DB (Unlocks THEIR cell)
-      const currentMasterRefs = master.referrals || master.resources?.referrals || 0;
-      const newRefs = currentMasterRefs + 1;
-      const updatedResources = { ...(master.resources || {}), referrals: newRefs };
-
-      const { error: masterUpdateError } = await supabase
-        .from('users')
-        .update({ 
-          referrals: newRefs,
-          resources: updatedResources,
-          lastUpdate: new Date().toISOString()
-        })
-        .eq('id', master.id);
-
-      if (masterUpdateError) throw masterUpdateError;
-      
-      // 2. Mark CURRENT user as referred by the Master
+      // Mark CURRENT user as referred by the Master
       setResources(prev => ({ ...prev, referredBy: master.id }));
-      // We don't increment setGlobalReferrals for ourselves anymore, 
-      // because points go to the master who INVITED us.
 
       setRefInput('');
       alert(`Дякуємо! Ви використали код гравця ${master.playerName}. Тепер він отримав додаткову клітинку у Палаці!`);
-      // No longer need to fetch master's referrals for ourselves, 
-      // but we might want to refresh our own referred status if we had a UI for it.
     } catch (e: any) {
       console.error('Referral Error:', e);
       alert('Помилка при додаваннi коду: ' + (e?.message || e?.error?.message || JSON.stringify(e)));
