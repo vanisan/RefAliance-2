@@ -64,7 +64,7 @@ export default function AuthView() {
       // Find the Master (owner of the code)
       const { data: allUsers, error: searchError } = await supabase
         .from('users')
-        .select('id, playerName');
+        .select('id, playerName, resources, referrals');
 
       if (searchError) throw searchError;
 
@@ -73,6 +73,23 @@ export default function AuthView() {
       if (!master) {
         setLoading(false);
         return alert('Код не знайдено. Перевірте правильність вводу.');
+      }
+
+      // Increment MASTER'S referrals in the DB
+      const currentMasterRefs = master.referrals || master.resources?.referrals || 0;
+      const newRefs = currentMasterRefs + 1;
+      const updatedMasterResources = { ...(master.resources || {}), referrals: newRefs };
+
+      const { error: masterUpdateError } = await supabase
+        .from('users')
+        .update({ 
+          referrals: newRefs,
+          resources: updatedMasterResources
+        })
+        .eq('id', master.id);
+
+      if (masterUpdateError) {
+        console.warn("Could not directly update master refs due to RLS, auto-heal will handle it:", masterUpdateError);
       }
 
       // Mark CURRENT user as referred by the Master

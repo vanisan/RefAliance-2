@@ -240,6 +240,18 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
               setArmy({ ...defaultArmy, ...(data.army || {}) });
               setReferrals(data.resources?.referrals || data.referrals || 0);
               
+              // Auto-fix referral count discrepancy
+              supabase.from('users').select('id', { count: 'exact', head: true })
+                .contains('resources', { referredBy: u.id })
+                .then(({ count, error }) => {
+                  if (!error && count !== null) {
+                    const dbRefs = data.resources?.referrals || data.referrals || 0;
+                    if (count > dbRefs) {
+                      setReferrals(count);
+                    }
+                  }
+                });
+
               const dbSiege = data.resources?.siegeUnits || data.siegeUnits;
               const localSiegeStr = localStorage.getItem(`siegeUnits_${u.id}`);
               const localSiege = localSiegeStr ? JSON.parse(localSiegeStr) : null;
