@@ -72,10 +72,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // --- STATE REFS FOR CALLBACKS ---
-  const stateRef = useRef({ units, turn, activeUnitId, myIndex, match });
+  const stateRef = useRef({ units, turn, round, activeUnitId, myIndex, match });
   useEffect(() => {
-    stateRef.current = { units, turn, activeUnitId, myIndex, match };
-  }, [units, turn, activeUnitId, myIndex, match]);
+    stateRef.current = { units, turn, round, activeUnitId, myIndex, match };
+  }, [units, turn, round, activeUnitId, myIndex, match]);
 
   const reportedLossesRef = useRef<Record<string, number>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -105,7 +105,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const players = Object.values(state).flat().map((p: any) => p.user).filter(u => !!u);
-        setLobbyPlayers(players);
+        const uniquePlayers = Array.from(new Map(players.map(p => [p.id, p])).values());
+        setLobbyPlayers(uniquePlayers);
       })
       .on('broadcast', { event: 'match_invitation' }, ({ payload }) => {
         if (payload.targetId === user.id) {
@@ -275,10 +276,10 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         handleRemoteMove(payload.unitId, payload.x, payload.y);
       })
       .on('broadcast', { event: 'attack' }, ({ payload }) => {
-        handleRemoteAttack(payload.attId, payload.defId);
+        handleRemoteAttack(payload.attId, payload.defId, payload.r1, payload.r2);
       })
       .on('broadcast', { event: 'heal' }, ({ payload }) => {
-        handleRemoteHeal(payload.driadaId, payload.targetId);
+        handleRemoteHeal(payload.driadaId, payload.targetId, payload.r);
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED' && role === 1 && p1) {
@@ -335,16 +336,19 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const getNextActiveUnitId = (currentUnits: CombatUnit[], currentPlayerTurn: 0 | 1): string | null => {
-    // 1. Get units for the current player that haven't acted
-    const currentUnitsReady = currentUnits.filter(u => u.playerIndex === currentPlayerTurn && u.count > 0 && !u.hasActed);
-    if (currentUnitsReady.length > 0) return currentUnitsReady[0].id;
-    
-    // 2. If no units for current player, check other player
-    const otherPlayerTurn = currentPlayerTurn === 0 ? 1 : 0;
-    const otherUnitsReady = currentUnits.filter(u => u.playerIndex === otherPlayerTurn && u.count > 0 && !u.hasActed);
-    if (otherUnitsReady.length > 0) return otherUnitsReady[0].id;
-    
-    return null;
+    const readyUnits = currentUnits.filter(u => u.count > 0 && !u.hasActed);
+    if (readyUnits.length === 0) return null;
+
+    readyUnits.sort((a,b) => {
+      const infoA = UNITS_INFO[a.unitId];
+      const infoB = UNITS_INFO[b.unitId];
+      if (a.playerIndex === currentPlayerTurn && b.playerIndex !== currentPlayerTurn) return -1;
+      if (b.playerIndex === currentPlayerTurn && a.playerIndex !== currentPlayerTurn) return 1;
+      if (infoA.speed !== infoB.speed) return infoB.speed - infoA.speed;
+      return a.id.localeCompare(b.id);
+    });
+
+    return readyUnits[0].id;
   };
 
   const initializeUnits = (p0: ArenaPlayer, p1: ArenaPlayer | null): CombatUnit[] => {
@@ -463,6 +467,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const finishAction = (updatedUnits: CombatUnit[]) => {
+    const { turn, round, myIndex } = stateRef.current;
     const nextId = getNextActiveUnitId(updatedUnits, turn);
     let nextTurn = turn;
     let nextRound = round;
@@ -611,33 +616,36 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   const localAttack = (attId: string, defId: string) => {
-    channelRef.current?.send({ type: 'broadcast', event: 'attack', payload: { attId, defId } });
-    handleRemoteAttack(attId, defId);
+    const r1 = Math.random();
+    const r2 = Math.random();
+    channelRef.current?.send({ type: 'broadcast', event: 'attack', payload: { attId, defId, r1, r2 } });
+    handleRemoteAttack(attId, defId, r1, r2);
   };
 
-  const handleRemoteAttack = (attId: string, defId: string) => {
+  const handleRemoteAttack = (attId: string, defId: string, r1: number, r2: number) => {
     const { units } = stateRef.current;
     const att = units.find(u => u.id === attId);
     const def = units.find(u => u.id === defId);
     
     if (att && def) {
-        processAttack(att, def, units);
+        processAttack(att, def, units, r1, r2);
     }
   };
 
   const localHeal = (driadaId: string, targetId: string) => {
-    channelRef.current?.send({ type: 'broadcast', event: 'heal', payload: { driadaId, targetId } });
-    handleRemoteHeal(driadaId, targetId);
+    const r = Math.random();
+    channelRef.current?.send({ type: 'broadcast', event: 'heal', payload: { driadaId, targetId, r } });
+    handleRemoteHeal(driadaId, targetId, r);
   };
 
-  const handleRemoteHeal = (driadaId: string, targetId: string) => {
+  const handleRemoteHeal = (driadaId: string, targetId: string, r: number = Math.random()) => {
     const { units } = stateRef.current;
     const driada = units.find(u => u.id === driadaId);
     const target = units.find(u => u.id === targetId);
     
     if (driada && target) {
       const lost = target.startCount - target.count;
-      const healAmount = Math.min(lost, Math.floor(Math.random() * 3) + 1);
+      const healAmount = Math.min(lost, Math.floor(r * 3) + 1);
 
       const updated = units.map(u => {
         if (u.id === driada.id) return { ...u, hasActed: true };
@@ -662,7 +670,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
   };
 
   // --- COMBAT CORE ---
-  const processAttack = (attacker: CombatUnit, defender: CombatUnit, currentUnits: CombatUnit[]) => {
+  const processAttack = (attacker: CombatUnit, defender: CombatUnit, currentUnits: CombatUnit[], r1: number = Math.random(), r2: number = Math.random()) => {
     const attackerInfo = UNITS_INFO[attacker.unitId];
     const defenderInfo = UNITS_INFO[defender.unitId];
 
@@ -698,7 +706,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     };
 
     // Damage calculation
-    const damageObj = calculatePvPDamage(attacker, defender, currentUnits);
+    const damageObj = calculatePvPDamage(attacker, defender, currentUnits, r1, r2);
     let remainingStackHP = (defender.count - 1) * damageObj.effUnitHp + defender.hp - damageObj.totalDmg;
     let newCount = Math.max(0, Math.ceil(remainingStackHP / damageObj.effUnitHp));
     let newTopHP = remainingStackHP <= 0 ? 0 : (remainingStackHP % damageObj.effUnitHp === 0 ? damageObj.effUnitHp : remainingStackHP % damageObj.effUnitHp);
@@ -719,11 +727,14 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     finishAction(updated);
   };
 
-  const calculatePvPDamage = (att: CombatUnit, def: CombatUnit, currentUnits: CombatUnit[]) => {
+  const calculatePvPDamage = (att: CombatUnit, def: CombatUnit, currentUnits: CombatUnit[], r1: number, r2: number) => {
+    const { match } = stateRef.current;
+    if (!match) return { totalDmg: 0, effUnitHp: 1 };
+    
     const attInfo = UNITS_INFO[att.unitId];
     const defInfo = UNITS_INFO[def.unitId];
-    const pAtt = match!.players[att.playerIndex];
-    const pDef = match!.players[def.playerIndex];
+    const pAtt = match.players[att.playerIndex];
+    const pDef = match.players[def.playerIndex];
 
     let effAttack = Math.floor(attInfo.attack * pAtt.atkMod);
     let effDefense = Math.floor(defInfo.defense * pDef.defMod);
@@ -748,13 +759,13 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     let effUnitHp = Math.floor(defInfo.hp * pDef.hpMod);
     if (hasPaladinAura) effUnitHp += 20;
 
-    const rawDmg = getRandomDamage(effMinDmg, effMaxDmg);
+    const rawDmg = Math.floor(r1 * (effMaxDmg - effMinDmg + 1)) + effMinDmg;
     let totalDmg = rawDmg * att.count;
     
-    if (attInfo.special === 'crit_25_x2' && Math.random() < 0.25) {
+    if (attInfo.special === 'crit_25_x2' && r2 < 0.25) {
       totalDmg *= 2;
     }
-    if (attInfo.special === 'crit_30_x1_5' && Math.random() < 0.30) {
+    if (attInfo.special === 'crit_30_x1_5' && r2 < 0.30) {
       totalDmg = Math.floor(totalDmg * 1.5);
     }
     const statDiff = effAttack - effDefense;
