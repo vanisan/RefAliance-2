@@ -29,6 +29,7 @@ type CombatUnit = {
   x: number;
   y: number;
   hasActed: boolean;
+  movedThisTurn?: boolean;
   curses?: { attackCurse: number; defenseCurse: number };
 };
 
@@ -476,7 +477,7 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     if (!nextId) {
       // New Round
       nextRound += 1;
-      finalUnits = updatedUnits.map(u => ({ ...u, hasActed: false }));
+      finalUnits = updatedUnits.map(u => ({ ...u, hasActed: false, movedThisTurn: false }));
       
       // Determine who goes first: Try Player 1 first (as a default for new rounds), or Player 0
       nextTurn = 1; 
@@ -604,7 +605,15 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
 
   const handleRemoteMove = (unitId: string, x: number, y: number) => {
     const { units } = stateRef.current;
-    const updated = units.map(u => u.id === unitId ? { ...u, x, y, hasActed: true } : u);
+    const updated = units.map(u => {
+      if (u.id === unitId) {
+        const info = UNITS_INFO[u.unitId];
+        const canStillHit = info?.special === 'charge_attack' && !u.movedThisTurn;
+        return { ...u, x, y, hasActed: !canStillHit, movedThisTurn: true };
+      }
+      return u;
+    });
+    
     setUnits(updated);
     const unit = updated.find(u => u.id === unitId);
     if (unit) {
@@ -714,11 +723,31 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
     addFloatingText(`-${damageObj.totalDmg}`, defender.x, defender.y, 'text-rose-500');
 
     // Use currentUnits instead of closure units
-    const updated = currentUnits.map(u => {
+    let updated = currentUnits.map(u => {
       if (u.id === attacker.id) return { ...u, hasActed: true };
       if (u.id === defender.id) return { ...u, count: newCount, hp: newTopHP };
       return u;
     });
+
+    if (attackerInfo.special === 'splash_25' || attackerInfo.special === 'splash_50' || attackerInfo.special === 'splash_60') {
+      const splashMult = attackerInfo.special === 'splash_25' ? 0.25 : (attackerInfo.special === 'splash_50' ? 0.5 : 0.6);
+      const splashDmg = Math.floor(damageObj.totalDmg * splashMult);
+      if (splashDmg > 0) {
+        updated = updated.map(u => {
+           if (u.id !== defender.id && u.playerIndex === defender.playerIndex && Math.abs(u.x - defender.x) <= 1 && Math.abs(u.y - defender.y) <= 1) {
+             const uInfo = UNITS_INFO[u.unitId];
+             const pDef = stateRef.current.match?.players[u.playerIndex];
+             let uEffHp = uInfo.hp * (pDef?.hpMod || 1);
+             let uRemaining = (u.count - 1) * uEffHp + u.hp - splashDmg;
+             let cCount = Math.max(0, Math.ceil(uRemaining / uEffHp));
+             let cTopHP = uRemaining <= 0 ? 0 : (uRemaining % uEffHp === 0 ? uEffHp : uRemaining % uEffHp);
+             setTimeout(() => addFloatingText(`-${splashDmg}`, u.x, u.y, 'text-orange-500'), 300);
+             return { ...u, count: cCount, hp: cTopHP };
+           }
+           return u;
+        });
+      }
+    }
 
     setUnits(updated);
     addLog(`${attackerInfo.name} -> ${damageObj.totalDmg} шкоди. Вбито: ${defender.count - newCount}`);
@@ -909,8 +938,8 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
         const isAllowedMove = turn === myIndex && activeUnit && !uUnderTile && dist <= (info?.speed || 0) && isAreaFree(x, y, activeSize, activeUnit.id, units);
         const isTarget = turn === myIndex && activeUnit && uUnderTile && uUnderTile.playerIndex !== myIndex && dist <= (info?.range || 1);
 
-        const isHealTarget = turn === myIndex && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && uUnderTile.playerIndex === myIndex && uUnderTile.count < uUnderTile.startCount;
-        const isUnhealable = turn === myIndex && activeUnit && activeUnit.unitId === 'driada' && uUnderTile && uUnderTile.playerIndex === myIndex && uUnderTile.count >= uUnderTile.startCount;
+        const isHealTarget = turn === myIndex && activeUnit && activeUnit.unitId === 'e_huntress' && uUnderTile && uUnderTile.playerIndex === myIndex && uUnderTile.count < uUnderTile.startCount;
+        const isUnhealable = turn === myIndex && activeUnit && activeUnit.unitId === 'e_huntress' && uUnderTile && uUnderTile.playerIndex === myIndex && uUnderTile.count >= uUnderTile.startCount;
         
         const isPaladinAura = activeUnit && activeUnit.unitId === 'paladin' && dist <= 1;
 
@@ -1126,12 +1155,12 @@ export default function ArenaView({ onClose }: ArenaViewProps) {
             >
               Пас
             </button>
-            {units.find(u => u.id === activeUnitId)?.unitId === 'driada' && (
+            {units.find(u => u.id === activeUnitId)?.unitId === 'e_huntress' && (
               <button 
                 onClick={() => setIsHealMode(true)}
                 className={cn("wow-button flex-1 p-2 flex items-center justify-center", isHealMode && "bg-blue-600")}
               >
-                <img src="/units/driadaheal.png" className="w-4 h-4" />
+                <img src="/unitskills/druidskill.png" className="w-4 h-4 object-contain" />
               </button>
             )}
             <button 

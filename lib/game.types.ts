@@ -151,7 +151,7 @@ export interface UnitInfo {
   image?: string;
   description?: string;
   combatType?: 'melee' | 'ranged';
-  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'double_action' | 'double_turn' | 'crit_25_x2' | 'splash_linear_40' | 'frenzy' | 'crit_30_x1_5' | 'aura_def_10_hp_20' | 'charge_attack' | 'splash_25' | 'active_curse_10' | 'double_attack_80' | 'active_resurrect_1_4' | 'active_throw_back' | 'triple_attack_50_25';
+  special?: 'double_attack' | 'counter_attack_50' | 'aura_def_20' | 'heal_resurrect' | 'splash_50' | 'splash_60' | 'double_action' | 'double_turn' | 'crit_25_x2' | 'splash_linear_40' | 'frenzy' | 'crit_30_x1_5' | 'aura_def_10_hp_20' | 'charge_attack' | 'splash_25' | 'active_curse_10' | 'double_attack_80' | 'active_resurrect_1_4' | 'active_throw_back' | 'triple_attack_50_25';
 }
 
 export interface MapNode {
@@ -322,7 +322,7 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     combatType: 'melee', description: 'Легендарний звір. Ближній бій. Величезна міць.'
   },
   titan: { 
-    id: 'titan', name: 'Титан', hp: 1500, attack: 200, defense: 60, minDamage: 150, maxDamage: 250, speed: 1, range: 5, initiative: 2, size: 1, 
+    id: 'titan', name: 'Титан', hp: 1500, attack: 200, defense: 60, minDamage: 150, maxDamage: 250, speed: 1, range: 20, initiative: 2, size: 1, 
     isEnemy: false, image: '/units/titan.png',
     combatType: 'ranged', description: 'Стародавній гігант. Дальній бій. Нищівні атаки.'
   },
@@ -379,9 +379,9 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     description: 'Повелитель холоду. Ближній бій.'
   },
   archidruid: {
-    id: 'archidruid', name: 'Архідруїд', hp: 1200, attack: 180, defense: 40, minDamage: 120, maxDamage: 180, speed: 3, range: 5, initiative: 8,
+    id: 'archidruid', name: 'Архідруїд', hp: 1200, attack: 180, defense: 40, minDamage: 120, maxDamage: 180, speed: 2, range: 5, initiative: 8,
     isEnemy: false, image: '/units/archidruid.png',
-    combatType: 'ranged', special: 'splash_50', description: 'Верховний захисник природи. Дальний бій. Сплеш-урон 50%.'
+    combatType: 'ranged', special: 'splash_60', description: 'Верховний захисник природи. Дальний бій. Сплеш-урон 60%.'
   },
   balista: {
     id: 'balista', name: 'Баліста', hp: 100, attack: 40, defense: 10, minDamage: 30, maxDamage: 50, speed: 0, range: 20, initiative: 99,
@@ -416,8 +416,8 @@ export const UNITS_INFO: Record<UnitId, UnitInfo> = {
     isEnemy: true, image: '/bosses/archimond.png', combatType: 'ranged', special: 'splash_50', description: 'ГОЛОВНИЙ БОС. Сплеш-урон 50%.'
   },
   despot: {
-    id: 'despot', name: 'Деспот', hp: 2000, attack: 250, defense: 80, minDamage: 200, maxDamage: 300, speed: 5, range: 1, initiative: 100,
-    isEnemy: false, image: '/units/despot.png', combatType: 'melee', description: 'Безжалісний тиран. Ближній бій. Найсильніший юніт.'
+    id: 'despot', name: 'Деспот', hp: 2000, attack: 250, defense: 80, minDamage: 200, maxDamage: 300, speed: 2, range: 1, initiative: 100,
+    isEnemy: false, image: '/units/despot.png', combatType: 'melee', special: 'charge_attack', description: 'Ходить та атакує в 1 хід. Найсильніший юніт.'
   },
   skorpidus: {
     id: 'skorpidus', name: 'Скорпідус', hp: 350, attack: 125, defense: 20, minDamage: 50, maxDamage: 100, speed: 3, range: 1,

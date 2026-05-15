@@ -342,12 +342,13 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
     let { newCount, newTopHP } = applyDamage(attacker, defender, currentUnits);
     let currentDefender = { ...defender, count: newCount, hp: newTopHP };
 
-    // Splash Damage Logic (Archidruid - special: 'splash_50' & Kronos - 'splash_linear_40')
+    // Splash Damage Logic (Archidruid - special: 'splash_50'/'splash_60' & Kronos - 'splash_linear_40')
     let splashTargets: { id: string, damage: number }[] = [];
-    if (attackerInfo.special === 'splash_50' || attackerInfo.special === 'splash_linear_40' || attackerInfo.special === 'splash_25') {
+    if (attackerInfo.special === 'splash_50' || attackerInfo.special === 'splash_60' || attackerInfo.special === 'splash_linear_40' || attackerInfo.special === 'splash_25') {
       const { totalDmg } = calculateDamage(attacker, defender, false, currentUnits);
       const isLinear = attackerInfo.special === 'splash_linear_40';
-      const splashDmgBase = Math.floor(totalDmg * (isLinear ? 0.4 : (attackerInfo.special === 'splash_25' ? 0.25 : 0.5)));
+      const mult = attackerInfo.special === 'splash_60' ? 0.6 : (attackerInfo.special === 'splash_50' ? 0.5 : (attackerInfo.special === 'splash_25' ? 0.25 : 0.4));
+      const splashDmgBase = Math.floor(totalDmg * mult);
       
       if (splashDmgBase > 0) {
         
@@ -1586,6 +1587,7 @@ export default function CombatView({ node, onEnd }: CombatViewProps) {
                       {UNITS_INFO[selectedUnitInfo.unitId].special === 'double_attack' ? 'Подвійна атака' : 
                        UNITS_INFO[selectedUnitInfo.unitId].special === 'counter_attack_50' ? 'Відповідна (50%)' : 
                        UNITS_INFO[selectedUnitInfo.unitId].special === 'splash_50' ? 'Вибух (50%)' : 
+                       UNITS_INFO[selectedUnitInfo.unitId].special === 'splash_60' ? 'Вибух (60%)' :
                        UNITS_INFO[selectedUnitInfo.unitId].special === 'active_resurrect_1_4' ? 'Воскресіння' :
                        UNITS_INFO[selectedUnitInfo.unitId].special === 'active_curse_10' ? 'Прокляття' :
                        UNITS_INFO[selectedUnitInfo.unitId].special === 'active_throw_back' ? 'Кидок назад' :
