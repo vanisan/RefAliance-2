@@ -62,15 +62,13 @@ export default function AuthView() {
     setLoading(true);
     try {
       // Find the Master (owner of the code)
-      const { data: masterData, error: searchError } = await supabase
+      const { data: allUsers, error: searchError } = await supabase
         .from('users')
-        .select('id, playerName')
-        .ilike('id', `${code.toLowerCase()}%`)
-        .limit(1);
+        .select('id, playerName');
 
       if (searchError) throw searchError;
 
-      const master = masterData?.[0];
+      const master = allUsers?.find(u => u.id.substring(0, 6).toUpperCase() === code);
 
       if (!master) {
         setLoading(false);
